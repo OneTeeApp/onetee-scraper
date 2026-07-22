@@ -19,6 +19,12 @@ class ClubCaddieAdapter(Adapter):
     platform = "clubcaddie"
 
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
+        # Captured July 2026: /webapi/view/<token>/slots returns JSON only through
+        # a stateful session handshake (SetSessionIdInLocalStorage bootstrap +
+        # single-use Interaction id); plain replays get the HTML shell and the
+        # session-init call 503s. This is anti-automation behaviour like GolfNow.
+        # Route for these courses is the Club Caddie partner API, not scraping.
         raise RuntimeError(
-            "Club Caddie JSON endpoint pending browser capture. "
-            "Course bookable at: " + course.get("booking_url", ""))
+            "Club Caddie tee sheet is behind a stateful anti-automation session; "
+            "use the Club Caddie partner API. Booking URL: "
+            + course.get("booking_url", ""))
