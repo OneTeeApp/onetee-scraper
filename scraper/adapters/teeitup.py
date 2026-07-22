@@ -41,7 +41,10 @@ class TeeItUpAdapter(Adapter):
         return data if isinstance(data, list) else data.get("courses", [])
 
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
-        alias = course["ids"]["alias"]
+        alias = course["ids"].get("alias")
+        if not alias:
+            raise ValueError(f"{course['slug']}: missing TeeItUp alias "
+                             "(booking URL did not yield one)")
         params: dict[str, Any] = {"date": date.isoformat()}
         if course["ids"].get("facility_id"):
             params["facilityIds"] = course["ids"]["facility_id"]

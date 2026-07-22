@@ -4,6 +4,8 @@ from __future__ import annotations
 import abc
 import datetime as dt
 import logging
+import random
+import time
 from typing import Any
 
 import requests
@@ -11,6 +13,9 @@ import requests
 from ..models import TeeTime
 
 log = logging.getLogger("teetime")
+
+RETRY_STATUS = {429, 500, 502, 503, 504}
+MAX_RETRIES = 4
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -48,10 +53,29 @@ class Adapter(abc.ABC):
     # -- helpers -------------------------------------------------------------
 
     def get_json(self, url: str, *, headers: dict | None = None,
-                 params: dict | None = None) -> Any:
-        r = self.session.get(url, headers=headers, params=params, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.json()
+                 params: Any = None) -> Any:
+        """GET with polite retry/backoff on rate limits and 5xx."""
+        last_exc: Exception | None = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                r = self.session.get(url, headers=headers, params=params,
+                                     timeout=TIMEOUT)
+                if r.status_code in RETRY_STATUS:
+                    raise requests.HTTPError(f"{r.status_code}", response=r)
+                r.raise_for_status()
+                return r.json()
+            except (requests.HTTPError, requests.ConnectionError,
+                    requests.Timeout) as e:
+                last_exc = e
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                if status is not None and status not in RETRY_STATUS:
+                    raise
+                if attempt < MAX_RETRIES - 1:
+                    # exponential backoff w/ jitter; respect Retry-After if present
+                    ra = getattr(getattr(e, "response", None), "headers", {})
+                    wait = float(ra.get("Retry-After", 0)) if ra else 0
+                    time.sleep(max(wait, (2 ** attempt) + random.uniform(0, 0.75)))
+        raise last_exc  # exhausted retries
 
     @staticmethod
     def base_tee_time(course: dict[str, Any], **kw) -> TeeTime:

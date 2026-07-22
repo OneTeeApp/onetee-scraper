@@ -38,9 +38,14 @@ class ForeUpAdapter(Adapter):
         ids = course["ids"]
         schedule_id = ids.get("schedule_id")
         if not schedule_id:
-            raise ValueError(
-                f"{course['slug']}: missing schedule_id — run discover_ids() first"
-            )
+            # auto-discover from the booking page at runtime
+            found = self.discover_ids(ids["course_id"])
+            cands = found.get("schedule_id") or []
+            if not cands:
+                raise ValueError(
+                    f"{course['slug']}: no schedule_id discoverable from "
+                    f"booking page {ids['course_id']}")
+            schedule_id = cands[0]
         params = {
             "time": "all",
             "date": date.strftime("%m-%d-%Y"),

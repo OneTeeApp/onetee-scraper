@@ -27,8 +27,9 @@ from .adapters.chronogolf import ChronogolfAdapter
 from .adapters.clubprophet import ClubProphetAdapter
 from .adapters.quick18 import Quick18Adapter
 from .adapters.teesnap import TeesnapAdapter
+from .adapters.clubcaddie import ClubCaddieAdapter
 from .adapters.experimental import (
-    MemberSportsAdapter, ClubCaddieAdapter, GolfNowAdapter, OtherAdapter,
+    MemberSportsAdapter, GolfNowAdapter, OtherAdapter,
 )
 
 log = logging.getLogger("teetime")
@@ -115,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--platforms", help="comma-separated platform filter")
     p.add_argument("--courses", help="comma-separated course-slug filter")
     p.add_argument("--include-raw", action="store_true")
-    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--workers", type=int, default=5)  # polite: retry handles 429
     p.add_argument("-v", "--verbose", action="store_true")
     a = p.parse_args(argv)
 
