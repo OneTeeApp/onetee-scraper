@@ -1,0 +1,71 @@
+name: Scrape tee times
+
+on:
+  schedule:
+    # Hourly at :17 (GitHub congests at :00). ~24 runs/day keeps D1 writes
+    # comfortably inside the free tier thanks to diff-based sync.
+    # Tighten to "*/30 ..." later if change-rates look low.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}      # manual "Run workflow" button
+  push:
+    branches: [main]         # also run once on every push (easy testing)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Scrape tee times (today + next 2 days)
+        run: |
+          set -e
+          for OFFSET in 0 1 2; do
+            DATE=$(date -u -d "+${OFFSET} days" +%F)
+            echo "::group::scrape ${DATE}"
+            python -m scraper.aggregate --date "${DATE}" \
+              --out "output/tee_times_${DATE}.json" || true
+            echo "::endgroup::"
+          done
+
+      - name: Push to Cloudflare D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          set -e
+          for F in output/tee_times_*.json; do
+            python -m scraper.d1 push --data "$F"
+          done
+
+      - name: Post to OneTee (no-op until ONETEE_API_URL secret is set)
+        if: ${{ vars.ONETEE_ENABLED == 'true' }}
+        env:
+          ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
+          ONETEE_API_KEY: ${{ secrets.ONETEE_API_KEY }}
+        run: |
+          for F in output/tee_times_*.json; do
+            python -m scraper.onetee --data "$F"
+          done
+
+      - name: Upload raw results as artifact (7-day debugging trail)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tee-times-${{ github.run_id }}
+          path: output/tee_times_*.json
+          retention-days: 7

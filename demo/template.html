@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeeFinder — Colorado Tee Times</title>
+<style>
+  :root {
+    --green-900:#0f2e1d; --green-700:#1c5233; --green-600:#277146;
+    --green-100:#e5f0e9; --sand:#f6f1e7; --sand-dark:#e9e0cd;
+    --ink:#1a2420; --ink-soft:#5a6b62; --card:#ffffff;
+    --accent:#c98a2d; --radius:12px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+         background:var(--sand); color:var(--ink); }
+  header { background:linear-gradient(135deg,var(--green-900),var(--green-700));
+           color:#fff; padding:28px 24px 56px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  header h1 { font-size:26px; letter-spacing:-0.02em; }
+  header h1 .flag { color:#ffd9a0; }
+  header p { margin-top:6px; opacity:.85; font-size:14px; }
+  .simbadge { display:inline-block; margin-left:10px; padding:3px 10px; border-radius:999px;
+              background:#ffd9a0; color:#5b3c00; font-size:12px; font-weight:700; vertical-align:middle; }
+  .toolbar { background:var(--card); border-radius:var(--radius);
+             box-shadow:0 2px 10px rgba(15,46,29,.08);
+             padding:16px; margin:-26px auto 18px; max-width:1080px;
+             display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:12px; }
+  .toolbar label { font-size:11px; font-weight:700; text-transform:uppercase;
+                   letter-spacing:.06em; color:var(--ink-soft); display:block; margin-bottom:4px; }
+  .toolbar input, .toolbar select {
+    width:100%; padding:9px 10px; border:1px solid var(--sand-dark); border-radius:8px;
+    font-size:14px; background:#fff; color:var(--ink); }
+  .toolbar input:focus, .toolbar select:focus { outline:2px solid var(--green-600); border-color:transparent; }
+  main { max-width:1080px; margin:0 auto; padding:0 16px 60px; }
+  .meta { display:flex; justify-content:space-between; align-items:baseline;
+          margin:6px 2px 14px; font-size:13.5px; color:var(--ink-soft); flex-wrap:wrap; gap:6px;}
+  .course-group { background:var(--card); border-radius:var(--radius);
+                  box-shadow:0 1px 6px rgba(15,46,29,.07); margin-bottom:14px; overflow:hidden; }
+  .course-head { display:flex; justify-content:space-between; align-items:center; gap:10px;
+                 padding:13px 16px; border-bottom:1px solid var(--sand-dark); flex-wrap:wrap; }
+  .course-head h2 { font-size:16px; }
+  .course-head .sub { font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .pill { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+          background:var(--green-100); color:var(--green-700); white-space:nowrap; }
+  .slots { display:flex; flex-wrap:wrap; gap:8px; padding:12px 16px 14px; }
+  .slot { border:1.5px solid var(--sand-dark); border-radius:10px; padding:8px 11px;
+          min-width:118px; text-decoration:none; color:inherit; background:#fff;
+          transition:border-color .12s, transform .12s; }
+  .slot:hover { border-color:var(--green-600); transform:translateY(-1px); }
+  .slot .t { font-weight:700; font-size:15px; color:var(--green-900); }
+  .slot .p { font-size:13px; color:var(--accent); font-weight:700; margin-top:2px; }
+  .slot .s { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .empty { text-align:center; padding:60px 0; color:var(--ink-soft); }
+  .empty b { color:var(--ink); }
+  footer { text-align:center; font-size:12px; color:var(--ink-soft); padding:20px; }
+  @media (max-width:760px){ .toolbar { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>⛳ TeeFinder <span class="flag">Colorado</span><span id="simbadge" class="simbadge" hidden>SIMULATED DATA</span></h1>
+    <p id="subtitle">Every public tee time in Colorado, one search.</p>
+  </div>
+</header>
+
+<div class="toolbar wrap">
+  <div><label for="q">Course or city</label>
+    <input id="q" type="search" placeholder="e.g. Breckenridge, Denver, Fossil…"></div>
+  <div><label for="tod">Time of day</label>
+    <select id="tod">
+      <option value="">Any time</option>
+      <option value="dawn">Early (before 8am)</option>
+      <option value="morning">Morning (8–12)</option>
+      <option value="midday">Midday (12–3)</option>
+      <option value="twilight">Twilight (after 3)</option>
+    </select></div>
+  <div><label for="price">Max price</label>
+    <select id="price">
+      <option value="">Any price</option>
+      <option value="40">Under $40</option>
+      <option value="60">Under $60</option>
+      <option value="80">Under $80</option>
+      <option value="120">Under $120</option>
+    </select></div>
+  <div><label for="players">Players</label>
+    <select id="players">
+      <option value="">Any</option><option value="1">1+</option>
+      <option value="2">2+</option><option value="3">3+</option><option value="4">4</option>
+    </select></div>
+  <div><label for="sort">Sort courses</label>
+    <select id="sort">
+      <option value="name">Name</option>
+      <option value="price">Cheapest slot</option>
+      <option value="slots">Most open times</option>
+    </select></div>
+</div>
+
+<main>
+  <div class="meta">
+    <span id="count"></span>
+    <span id="freshness"></span>
+  </div>
+  <div id="results"></div>
+</main>
+<footer>Prototype demo · data refreshes when the aggregator runs · times shown in course-local time (MT)</footer>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+const fmtTime = iso => {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+};
+const hourOf = iso => new Date(iso).getHours() + new Date(iso).getMinutes()/60;
+const money = v => v==null ? '' : '$' + (Math.round(v*100)/100).toFixed(v%1?2:0);
+
+const els = Object.fromEntries(['q','tod','price','players','sort','results','count','freshness','subtitle','simbadge']
+  .map(id => [id, document.getElementById(id)]));
+
+function render() {
+  const q = els.q.value.trim().toLowerCase();
+  const tod = els.tod.value, maxP = +els.price.value || Infinity,
+        minPl = +els.players.value || 0;
+  const inTod = h => !tod ||
+    (tod==='dawn' && h<8) || (tod==='morning' && h>=8 && h<12) ||
+    (tod==='midday' && h>=12 && h<15) || (tod==='twilight' && h>=15);
+
+  const filtered = DATA.tee_times.filter(t =>
+    (!q || t.course_name.toLowerCase().includes(q) || t.city.toLowerCase().includes(q)) &&
+    inTod(hourOf(t.teetime)) &&
+    (t.price_min==null || t.price_min <= maxP) &&
+    (t.open_spots==null || t.open_spots >= minPl));
+
+  const groups = {};
+  for (const t of filtered) (groups[t.course_slug] ??= []).push(t);
+  let entries = Object.values(groups).map(list => ({
+    list: list.sort((a,b)=>a.teetime.localeCompare(b.teetime)),
+    name: list[0].course_name, city: list[0].city, platform: list[0].platform,
+    minPrice: Math.min(...list.map(t=>t.price_min ?? Infinity)),
+  }));
+  const sort = els.sort.value;
+  entries.sort((a,b)=> sort==='price' ? a.minPrice-b.minPrice
+                    : sort==='slots' ? b.list.length-a.list.length
+                    : a.name.localeCompare(b.name));
+
+  els.count.textContent = `${filtered.length} tee times · ${entries.length} courses · ${DATA.date}`;
+  els.results.innerHTML = entries.length ? entries.map(g => `
+    <section class="course-group">
+      <div class="course-head">
+        <div><h2>${g.name}</h2><div class="sub">${g.city}, CO · from ${money(g.minPrice)}</div></div>
+        <span class="pill">${g.platform}</span>
+      </div>
+      <div class="slots">${g.list.map(t => `
+        <a class="slot" href="${t.booking_url}" target="_blank" rel="noopener"
+           title="Book at ${t.course_name}">
+          <div class="t">${fmtTime(t.teetime)}</div>
+          <div class="p">${money(t.price_min)}${t.price_max && t.price_max!==t.price_min ? '–'+money(t.price_max):''}</div>
+          <div class="s">${t.open_spots ?? '?'} spots · ${(t.holes||[]).join('/')||18} holes</div>
+        </a>`).join('')}
+      </div>
+    </section>`).join('')
+    : `<div class="empty"><b>No tee times match.</b><br>Try widening the time window or price cap.</div>`;
+}
+
+function init() {
+  if (!DATA) { els.results.innerHTML = '<div class="empty">No data embedded — run build_demo.py</div>'; return; }
+  if (DATA.simulated) {
+    els.simbadge.hidden = false;
+    els.subtitle.textContent = 'Demo with simulated data — run the aggregator locally to see live tee times.';
+  }
+  els.freshness.textContent = `generated ${new Date(DATA.generated_at).toLocaleString()}`;
+  for (const id of ['q','tod','price','players','sort'])
+    els[id].addEventListener('input', render);
+  render();
+}
+init();
+</script>
+</body>
+</html>
