@@ -40,7 +40,9 @@ SCHEMA = (pathlib.Path(__file__).parent.parent / "schema.sql").read_text()
 COLS = ["course_slug", "teetime", "course_name", "city", "platform", "holes",
         "open_spots", "price_min", "price_max", "currency", "booking_url",
         "simulated", "active", "first_seen_at", "last_seen_at"]
-CHUNK = 60  # rows per INSERT (60 × 15 params = 900 < SQLite's 999 limit)
+CHUNK = 6   # rows per INSERT — D1's HTTP API caps bound params at 100/query
+            # (6 rows × 15 cols = 90). Local SQLite would allow far more, but
+            # correctness on D1 wins; initial full load is a one-time cost.
 
 
 # --------------------------------------------------------------------------- #
