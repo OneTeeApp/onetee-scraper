@@ -31,26 +31,20 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Scrape tee times (today + next 2 days)
-        run: |
-          set -e
-          for OFFSET in 0 1 2; do
-            DATE=$(date -u -d "+${OFFSET} days" +%F)
-            echo "::group::scrape ${DATE}"
-            python -m scraper.aggregate --date "${DATE}" \
-              --out "output/tee_times_${DATE}.json" || true
-            echo "::endgroup::"
-          done
-
-      - name: Push to Cloudflare D1
+      - name: Scrape + push each date to D1 (per-date, so slow dates never
+              cost the earlier ones)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          set -e
-          for F in output/tee_times_*.json; do
-            python -m scraper.d1 push --data "$F"
+          for OFFSET in 0 1 2; do
+            DATE=$(date -u -d "+${OFFSET} days" +%F)
+            echo "::group::scrape+push ${DATE}"
+            python -m scraper.aggregate --date "${DATE}" \
+              --out "output/tee_times_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
+            echo "::endgroup::"
           done
 
       - name: Post to OneTee (no-op until ONETEE_API_URL secret is set)

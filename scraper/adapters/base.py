@@ -15,7 +15,7 @@ from ..models import TeeTime
 log = logging.getLogger("teetime")
 
 RETRY_STATUS = {429, 500, 502, 503, 504}
-MAX_RETRIES = 4
+MAX_RETRIES = 2  # keep total run time well under the 15-min workflow cap
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -71,10 +71,11 @@ class Adapter(abc.ABC):
                 if status is not None and status not in RETRY_STATUS:
                     raise
                 if attempt < MAX_RETRIES - 1:
-                    # exponential backoff w/ jitter; respect Retry-After if present
+                    # short backoff w/ jitter; respect Retry-After but cap it so
+                    # one slow host can't blow the workflow time budget
                     ra = getattr(getattr(e, "response", None), "headers", {})
-                    wait = float(ra.get("Retry-After", 0)) if ra else 0
-                    time.sleep(max(wait, (2 ** attempt) + random.uniform(0, 0.75)))
+                    wait = min(float(ra.get("Retry-After", 0)), 5) if ra else 0
+                    time.sleep(max(wait, (1.5 ** attempt) + random.uniform(0, 0.5)))
         raise last_exc  # exhausted retries
 
     @staticmethod

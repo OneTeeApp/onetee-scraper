@@ -75,7 +75,7 @@ class MemberSportsAdapter(Adapter):
                 "numberOfPlayers": 1, "numberOfHoles": 0,
             }
             r = self.session.post(f"{self.API}/golfclubs/onlineBookingTeeTimes",
-                                 json=body, timeout=40)
+                                 json=body, timeout=20)
             r.raise_for_status()
             data = r.json()
             slots = data if isinstance(data, list) else data.get("teeTimes", [])
