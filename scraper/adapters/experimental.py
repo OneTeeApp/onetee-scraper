@@ -7,6 +7,7 @@ live in their own module.
 from __future__ import annotations
 
 import datetime as dt
+import os
 from typing import Any
 
 from .base import Adapter
@@ -32,6 +33,28 @@ class MemberSportsAdapter(Adapter):
 
     platform = "membersports"
     API = "https://api.membersports.com/api/v1"
+
+    # MemberSports' API rejects requests (HTTP 407) that don't carry its two
+    # platform headers. These are the SAME for every MemberSports course, so one
+    # provisioned credential unlocks all ~18 CO courses. Supply them (with the
+    # course's/platform's permission) as GitHub Actions secrets; the adapter
+    # reads them here. We do NOT extract them from the app.
+    #   MEMBERSPORTS_API_KEY  -> x-api-key
+    #   MEMBERSPORTS_AUTH     -> Authorization (e.g. "Bearer <token>")
+    def _auth_headers(self) -> dict:
+        api_key = os.environ.get("MEMBERSPORTS_API_KEY")
+        auth = os.environ.get("MEMBERSPORTS_AUTH")
+        if not api_key:
+            raise RuntimeError(
+                "MemberSports needs a platform credential (HTTP 407 without it). "
+                "Set MEMBERSPORTS_API_KEY (x-api-key) and MEMBERSPORTS_AUTH "
+                "(Authorization) as secrets — one credential covers all ~18 "
+                "MemberSports courses. Booking: " )
+        h = {"x-api-key": api_key, "Accept": "application/json",
+             "Content-Type": "application/json"}
+        if auth:
+            h["Authorization"] = auth if auth.lower().startswith("bearer") else f"Bearer {auth}"
+        return h
 
     def _default_profile_id(self, club_id: str, course_id: str) -> int:
         try:
@@ -65,6 +88,9 @@ class MemberSportsAdapter(Adapter):
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         ids = course["ids"]
         club_id = ids["club_id"]
+        # apply the platform credential (raises a clear error if not provisioned)
+        # to every call this adapter makes on its session.
+        self.session.headers.update(self._auth_headers())
         self._warm(club_id)
         # a portal may cover several courses; use the registry's course if the
         # secondary id is a real course, else enumerate.
