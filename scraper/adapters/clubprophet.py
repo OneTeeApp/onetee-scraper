@@ -93,6 +93,8 @@ class ClubProphetAdapter(Adapter):
             headers=headers, timeout=20)
         r.raise_for_status()
         body = r.json()
+        if not isinstance(body, dict):        # datacenter IPs sometimes get a
+            return [], None                   # garbled/string response here
         opts = body.get("reservationOptions") or {}
         website_id = body.get("webSiteId") or opts.get("webSiteId")
         ids: list[int] = []

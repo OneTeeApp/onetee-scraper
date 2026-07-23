@@ -58,6 +58,21 @@ EXTRA_IDS = {
     # for a tenant.
     "indian peaks golf course": {"website_id": "f04abbc1-368f-40f4-096d-08d89aea9574",
                                  "course_ids": [10, 11]},
+    # Pin every cps.golf tenant's websiteId + courseIds (captured via the
+    # tenant's own GetAllOptions). Runtime discovery works from a residential IP
+    # but returns empty/garbled from GitHub's datacenter IP, so pinning lets the
+    # adapter skip discovery and run only token->register->teetimes (which does
+    # work headless). Eagle Trace / Emerald Greens / University of Denver 404 on
+    # the token endpoint even residentially -> inactive CPS setup, left out.
+    "cattail creek golf course":   {"website_id": "d6b99326-b2db-4033-44db-08dbf84ad30b", "course_ids": [1]},
+    "flatirons golf course":       {"website_id": "d0c1d3f9-28c7-4f79-8ee1-08d926a72623", "course_ids": [1]},
+    "fossil trace golf club":      {"website_id": "b6c22f3a-944a-46e9-020e-08da90168fb2", "course_ids": [1, 2, 3]},
+    "green valley ranch golf club":{"website_id": "e6b92812-d6c4-4f86-7eea-08d9fadf154d", "course_ids": [1, 2, 3, 4]},
+    "haymaker golf course":        {"website_id": "b74c91b6-8f7d-4db2-3fd0-08d9f56b5de1", "course_ids": [1, 2, 4]},
+    "indian tree golf course":     {"website_id": "e6d9cd59-8d46-4334-8601-08dad3012d25", "course_ids": [1]},
+    "mariana butte golf course":   {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "course_ids": [3]},
+    "red hawk ridge golf course":  {"website_id": "1ca33515-0bb5-4f13-3ebb-08d9d9c521b3", "course_ids": [1, 2]},
+    "the olde course at loveland": {"website_id": "e1be30d2-b87c-40ec-44dd-08dbf84ad30b", "course_ids": [2]},
 }
 
 # adapters that can actually fetch today
