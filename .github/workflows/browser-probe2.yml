@@ -1,0 +1,38 @@
+name: Browser probe — EZLinks + GolfNow (diagnostic)
+
+# Diagnostic only. Does a real headless Chromium — running from GitHub's
+# datacenter IP — naturally load EZLinks / GolfNow, where the plain HTTP client
+# is blocked? No stealth, no challenge-solving: we navigate real public pages
+# and read what a normal browser engine gets. If a managed challenge auto-clears
+# (as cps.golf's did) we see data; if an interactive "verify you are human" wall
+# blocks it, the RESULT line says so and we go no further.
+#
+# Read the "RESULT ..." lines in the job log, then this file + scripts get
+# deleted once the question is answered.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/browser_probe2.py"
+      - ".github/workflows/browser-probe2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Run probe
+        run: python scripts/browser_probe2.py
