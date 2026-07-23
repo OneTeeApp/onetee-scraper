@@ -53,8 +53,17 @@ class TeeItUpAdapter(Adapter):
         return {"x-be-alias": alias}
 
     def discover_facilities(self, alias: str) -> list[dict]:
-        """Return facility metadata (ids, names) for an alias."""
-        data = self.get_json(f"{API_BASE}/v2/courses", headers=self._headers(alias))
+        """Return facility metadata (ids, names) for an alias.
+
+        Most aliases answer /v2/courses, but some (Granby Ranch) 404 there
+        while still resolving on the older /alias/<alias>/facilities route,
+        so fall back to it."""
+        try:
+            data = self.get_json(f"{API_BASE}/v2/courses",
+                                 headers=self._headers(alias))
+        except Exception:  # noqa: BLE001 — some aliases 404 on /v2/courses
+            data = self.get_json(f"{API_BASE}/alias/{alias}/facilities",
+                                 headers=self._headers(alias))
         return data if isinstance(data, list) else data.get("courses", [])
 
     def _teetimes(self, alias: str, date: dt.date, facility_ids=None):

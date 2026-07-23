@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "scripts/discover3.py"
+      - "scripts/discover4_verify.py"
       - ".github/workflows/discover2.yml"
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
       - name: Run probes
         run: |
           mkdir -p probe-results
-          python scripts/discover3.py 2>&1 | tee probe-results/discover2.txt
+          python scripts/discover4_verify.py 2>&1 | tee probe-results/discover2.txt
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"

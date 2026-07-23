@@ -26,6 +26,7 @@ PATTERNS = {
     "teesnap": re.compile(r"https?://([a-z0-9-]+)\.teesnap\.net"),
     "quick18": re.compile(r"https?://([a-z0-9-]+)\.quick18\.com"),
     "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
+    "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -59,6 +60,17 @@ EXTRA_IDS = {
     # for a tenant.
     "indian peaks golf course": {"website_id": "f04abbc1-368f-40f4-096d-08d89aea9574",
                                  "course_ids": [10, 11]},
+    # Pinned via discover3 browser probe (GetAllOptions), July 2026:
+    "legacy ridge golf course":  {"website_id": "be7f2728-0758-4a72-fe80-08d97849167d",
+                                  "course_ids": [1, 4]},   # 4 = LR Back 9
+    "walnut creek golf preserve": {"website_id": "be7f2728-0758-4a72-fe80-08d97849167d",
+                                   "course_ids": [2]},
+    "mariana butte golf course": {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b",
+                                  "course_ids": [3]},
+    # ForeUp munis: Patty Jewett 401s without a booking_class; pin the classes
+    # that returned 200 in discover3.
+    "patty jewett golf course":  {"booking_class": "1339"},
+    "valley hi golf course":     {"booking_class": "4502"},
     # Pin every cps.golf tenant's websiteId + courseIds (captured via the
     # tenant's own GetAllOptions). Runtime discovery works from a residential IP
     # but returns empty/garbled from GitHub's datacenter IP, so pinning lets the
@@ -78,7 +90,7 @@ EXTRA_IDS = {
 
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
-               "membersports", "quick18", "teesnap"}
+               "membersports", "quick18", "teesnap", "foretees"}
 
 
 def slugify(name: str) -> str:
@@ -111,6 +123,8 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"subdomain": g[0]}
     if platform == "noteefy":
         return {"venue_guid": g[0]}
+    if platform == "foretees":
+        return {"club_key": g[0], "cid": g[1]}
     return {}
 
 

@@ -184,14 +184,12 @@
    "slug": "broadlands-golf-course",
    "name": "Broadlands Golf Course",
    "city": "Broomfield",
-   "platform": "noteefy",
+   "platform": "other:noteefy",
    "booking_url": "https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d",
-   "ids": {
-    "venue_guid": "ba16828e-77e6-425f-b63d-ac27e785f69d"
-   },
-   "status": "experimental",
+   "ids": {},
+   "status": "unsupported",
    "confidence": "high",
-   "notes": "MIGRATED to Noteefy (verified on thebroadlandsgc.com/golf/tee-times)."
+   "notes": "Noteefy booking page sits behind a Cloudflare challenge that does not auto-clear headlessly \u2014 no scrape path found; revisit."
   },
   {
    "slug": "broken-tee-golf-course",
@@ -455,10 +453,13 @@
    "slug": "dalton-ranch-golf-club",
    "name": "Dalton Ranch Golf Club",
    "city": "Durango",
-   "platform": "other:foretees",
+   "platform": "foretees",
    "booking_url": "https://web.foretees.com/v5/assets/foreteespublic/index.html#/availability?clubKey=gnES75QmoZRMwPaW&cid=1087",
-   "ids": {},
-   "status": "unsupported",
+   "ids": {
+    "club_key": "gnES75QmoZRMwPaW",
+    "cid": "1087"
+   },
+   "status": "ready",
    "confidence": "high",
    "notes": "Public tee times via ForeTees public availability portal."
   },
@@ -503,19 +504,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "eagleranchgolf.com/tee-times links to MemberSports."
-  },
-  {
-   "slug": "eagle-trace-golf-club",
-   "name": "Eagle Trace Golf Club",
-   "city": "Broomfield",
-   "platform": "clubprophet",
-   "booking_url": "https://eagletrace.cps.golf",
-   "ids": {
-    "tenant": "eagletrace"
-   },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "eagletrace.cps.golf tenant."
   },
   {
    "slug": "eaglevail-golf-club",
@@ -1000,7 +988,12 @@
    "platform": "clubprophet",
    "booking_url": "https://cityofwestminster.cps.golf/onlineresweb/search-teetime",
    "ids": {
-    "tenant": "cityofwestminster"
+    "tenant": "cityofwestminster",
+    "website_id": "be7f2728-0758-4a72-fe80-08d97849167d",
+    "course_ids": [
+     1,
+     4
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -1205,7 +1198,8 @@
    "booking_url": "https://foreupsoftware.com/index.php/booking/index/19459",
    "ids": {
     "course_id": "19459",
-    "schedule_id": null
+    "schedule_id": null,
+    "booking_class": "1339"
    },
    "status": "needs_ids",
    "confidence": "high",
@@ -1865,7 +1859,8 @@
    "booking_url": "https://foreupsoftware.com/index.php/booking/index/19457",
    "ids": {
     "course_id": "19457",
-    "schedule_id": null
+    "schedule_id": null,
+    "booking_class": "4502"
    },
    "status": "needs_ids",
    "confidence": "high",
@@ -1889,7 +1884,11 @@
    "platform": "clubprophet",
    "booking_url": "https://cityofwestminster.cps.golf/onlineresweb/search-teetime",
    "ids": {
-    "tenant": "cityofwestminster"
+    "tenant": "cityofwestminster",
+    "website_id": "be7f2728-0758-4a72-fe80-08d97849167d",
+    "course_ids": [
+     2
+    ]
    },
    "status": "ready",
    "confidence": "high",
