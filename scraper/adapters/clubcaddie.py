@@ -75,7 +75,11 @@ class ClubCaddieAdapter(Adapter):
             "CourseId": course_id, "apikey": token,
         }
         headers = {"X-Requested-With": "XMLHttpRequest",
-                   "Accept": "application/json, text/javascript, */*; q=0.01"}
+                   "Accept": "application/json, text/javascript, */*; q=0.01",
+                   # truthful Referer: we DID load this page first (above); the
+                   # server hands JSON to its own booking page's XHR and the
+                   # HTML shell to bare requests.
+                   "Referer": f"{base}/webapi/view/{token}"}
         data = self.get_json(f"{base}/webapi/view/{token}/slots",
                              params=params, headers=headers)
 
