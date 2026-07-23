@@ -76,12 +76,24 @@ class ClubCaddieAdapter(Adapter):
         }
         headers = {"X-Requested-With": "XMLHttpRequest",
                    "Accept": "application/json, text/javascript, */*; q=0.01",
-                   # truthful Referer: we DID load this page first (above); the
-                   # server hands JSON to its own booking page's XHR and the
-                   # HTML shell to bare requests.
                    "Referer": f"{base}/webapi/view/{token}"}
-        data = self.get_json(f"{base}/webapi/view/{token}/slots",
-                             params=params, headers=headers)
+        r = self.session.get(f"{base}/webapi/view/{token}/slots",
+                            params=params, headers=headers, timeout=20)
+        r.raise_for_status()
+        text = r.text.lstrip()
+        if text[:1] == "<":
+            # TESTED July 2026: even with the correct params, session cookie,
+            # X-Requested-With and a truthful Referer, Club Caddie returns its
+            # HTML booking-page shell (not JSON) to any non-browser client. Its
+            # consumer endpoint only serves data to a fully-established browser
+            # session — a soft anti-automation gate. Data is reachable only via
+            # the Club Caddie PARTNER API (a distinct endpoint they provision),
+            # not this consumer URL.
+            raise RuntimeError(
+                "Club Caddie consumer endpoint returns HTML (session-gated to "
+                "real browsers); needs the Club Caddie partner API endpoint. "
+                "Booking URL: " + course.get("booking_url", ""))
+        data = r.json()
 
         slots = self._slot_list(data)
         out: list[TeeTime] = []
