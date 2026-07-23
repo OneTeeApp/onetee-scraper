@@ -78,6 +78,28 @@ class Adapter(abc.ABC):
                     time.sleep(max(wait, (1.5 ** attempt) + random.uniform(0, 0.5)))
         raise last_exc  # exhausted retries
 
+    def post_json(self, url: str, *, json: Any = None, headers: dict | None = None,
+                  timeout: int = 30) -> Any:
+        """POST with retry/backoff on rate limits and 5xx (e.g. slow gateways
+        that intermittently 504 even when the same payload succeeds)."""
+        last_exc: Exception | None = None
+        for attempt in range(MAX_RETRIES + 1):   # one extra try: these APIs 504 often
+            try:
+                r = self.session.post(url, json=json, headers=headers, timeout=timeout)
+                if r.status_code in RETRY_STATUS:
+                    raise requests.HTTPError(f"{r.status_code}", response=r)
+                r.raise_for_status()
+                return r.json()
+            except (requests.HTTPError, requests.ConnectionError,
+                    requests.Timeout) as e:
+                last_exc = e
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                if status is not None and status not in RETRY_STATUS:
+                    raise
+                if attempt < MAX_RETRIES:
+                    time.sleep((1.6 ** attempt) + random.uniform(0, 0.6))
+        raise last_exc
+
     @staticmethod
     def base_tee_time(course: dict[str, Any], **kw) -> TeeTime:
         return TeeTime(

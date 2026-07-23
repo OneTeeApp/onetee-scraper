@@ -54,9 +54,18 @@ class MemberSportsAdapter(Adapter):
             pass
         return []
 
+    def _warm(self, club_id: str) -> None:
+        """The booking app loads several club endpoints before its POST; hitting
+        one warms the session (any anonymous cookie) the way a browser would."""
+        try:
+            self.session.get(f"{self.API}/golfclubs/{club_id}/name", timeout=15)
+        except Exception:
+            pass
+
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         ids = course["ids"]
         club_id = ids["club_id"]
+        self._warm(club_id)
         # a portal may cover several courses; use the registry's course if the
         # secondary id is a real course, else enumerate.
         courses = self._courses(club_id)
@@ -74,10 +83,10 @@ class MemberSportsAdapter(Adapter):
                 "memberProfileId": profile, "profileId": 0,
                 "numberOfPlayers": 1, "numberOfHoles": 0,
             }
-            r = self.session.post(f"{self.API}/golfclubs/onlineBookingTeeTimes",
-                                 json=body, timeout=20)
-            r.raise_for_status()
-            data = r.json()
+            # retrying POST: this gateway intermittently 504s even for payloads
+            # that succeed moments later.
+            data = self.post_json(f"{self.API}/golfclubs/onlineBookingTeeTimes",
+                                  json=body, timeout=30)
             slots = data if isinstance(data, list) else data.get("teeTimes", [])
             for slot in slots:
                 out.extend(self._parse_slot(course, cname, slot, date))
