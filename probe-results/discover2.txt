@@ -1,82 +1,45 @@
-RESULT check golf-granby-ranch: OK 0 times e.g. None
-RESULT check patty-jewett-golf-course: OK 1 times e.g. ('2026-07-24T14:20', 28)
-RESULT check valley-hi-golf-course: OK 0 times e.g. None
-RESULT check dalton-ranch-golf-club: OK 27 times e.g. ('2026-07-24T10:10:00', 100.0)
-RESULT meeker-browser: 1 api calls, body='Meeker Golf Course Booking Closed Online booking available from 12:00am to 5:00pm'
-  200 https://foreupsoftware.com/index.php/booking/22597
-browser-fetching 12 cps tenants for 2026-07-24
-  cattail-creek-golf-course          48 times
-  flatirons-golf-course              ERROR teetimes 403
-  fossil-trace-golf-club             ERROR teetimes 403
-  green-valley-ranch-golf-club       ERROR AttributeError
-  haymaker-golf-course               ERROR teetimes 403
-  indian-peaks-golf-course           11 times
-  indian-tree-golf-course            ERROR teetimes 403
-  legacy-ridge-golf-course           6 times
-  mariana-butte-golf-course          ERROR teetimes 403
-  red-hawk-ridge-golf-course         ERROR teetimes 403
-  the-olde-course-at-loveland        ERROR teetimes 403
-  walnut-creek-golf-preserve         11 times
-wrote output/v_cps.json (76 tee times, 8 errors)
-== CPS: ok 4/12 times 76 ==
-  cattail-creek-golf-course                48
-  indian-peaks-golf-course                 11
-  legacy-ridge-golf-course                 6
-  walnut-creek-golf-preserve               11
-  ERR flatirons-golf-course                browser teetimes 403
-  ERR fossil-trace-golf-club               browser teetimes 403
-  ERR green-valley-ranch-golf-club         browser AttributeError
-  ERR haymaker-golf-course                 browser teetimes 403
-  ERR indian-tree-golf-course              browser teetimes 403
-  ERR mariana-butte-golf-course            browser teetimes 403
-  ERR red-hawk-ridge-golf-course           browser teetimes 403
-  ERR the-olde-course-at-loveland          browser teetimes 403
-browser-fetching 7 ezlinks portals (11 courses) for 2026-07-24
-  aurora-hills-golf-course           29 times
-  meadow-hills-golf-course           17 times
-  murphy-creek-golf-course           28 times
-  saddle-rock-golf-course            23 times
-  springhill-golf-course             28 times
-  golf-club-at-bear-dance            3 times
-  grand-elk-golf-club                1 times
-  heritage-eagle-bend-golf-club      4 times
-  pine-creek-golf-club               51 times
-  raven-golf-club-at-three-peaks     28 times
-  the-golf-club-at-heather-ridge     65 times
-wrote output/v_ez.json (277 tee times, 0 errors)
-== EZLINKS: ok 11/11 times 277 ==
-  aurora-hills-golf-course                 29
-  golf-club-at-bear-dance                  3
-  grand-elk-golf-club                      1
-  heritage-eagle-bend-golf-club            4
-  meadow-hills-golf-course                 17
-  murphy-creek-golf-course                 28
-  pine-creek-golf-club                     51
-  raven-golf-club-at-three-peaks           28
-  saddle-rock-golf-course                  23
-  springhill-golf-course                   28
-  the-golf-club-at-heather-ridge           65
-browser-fetching 12 golfnow facilities for 2026-07-24
-  arrowhead-golf-club                0 times
-  bella-ridge-golf-course            14 times
-  cedaredge-golf-club                37 times
-  clubcorp-at-black-bear-golf-club   ERROR status 404
-  desert-hawk-at-pueblo-west         ERROR status 404
-  four-mile-ranch-golf-club          11 times
-  grandote-peaks-golf-club           18 times
-  gypsum-creek-golf-course           ERROR status 404
-  ironbridge-golf-club               0 times
-  pelican-lakes-golf-country-club    0 times
-  tamarack-golf-course               ERROR status 404
-  the-ridge-at-castle-pines-north    5 times
-wrote output/v_gn.json (85 tee times, 4 errors)
-== GOLFNOW: ok 8/12 times 85 ==
-  bella-ridge-golf-course                  14
-  cedaredge-golf-club                      37
-  four-mile-ranch-golf-club                11
-  grandote-peaks-golf-club                 18
-  the-ridge-at-castle-pines-north          5
-  ERR clubcorp-at-black-bear-golf-club     browser status 404
-  ERR desert-hawk-at-pueblo-west           browser status 404
-  ERR gypsum-creek-golf-course             browser status 404
-  ERR tamarack-golf-course                 browser status 404
+RESULT gn5 2484-black-bear-golf-club:
+  finalUrl: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search
+  dom: {"title": "Black Bear Golf Club Tee Times - Parker, CO | GolfNow", "times": 0, "notFound": false}
+  POST 200 https://www.golfnow.com/api/autocomplete/georeverse resp_len=337
+    body: {"searchKey":null,"take":null,"skip":null,"lat":"28.538336","lng":"-81.379234","includeOffPlatformFacilities":null}
+  POST 404 https://www.golfnow.com/api/tee-times/tee-time-search-results resp_len=67536
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":30,"teeTimeCount":20,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date.MinDate","sortDirection":0,"hotDealsOnly":false,"golfPassPerksOnly":false,"bestDealsOnly":false,"promoted
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
+RESULT gn5 5635-desert-hawk-at-pueblo-west:
+  finalUrl: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search
+  dom: {"title": "Desert Hawk At Pueblo West Tee Times - Peblo West, CO | GolfNow", "times": 0, "notFound": false}
+  POST 200 https://www.golfnow.com/api/autocomplete/georeverse resp_len=337
+    body: {"searchKey":null,"take":null,"skip":null,"lat":"28.538336","lng":"-81.379234","includeOffPlatformFacilities":null}
+  POST 404 https://www.golfnow.com/api/tee-times/tee-time-search-results resp_len=67546
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":30,"teeTimeCount":20,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date.MinDate","sortDirection":0,"hotDealsOnly":false,"golfPassPerksOnly":false,"bestDealsOnly":false,"promoted
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
+RESULT gn5 3534-gypsum-creek-golf-course:
+  finalUrl: https://www.golfnow.com/tee-times/facility/3534-gypsum-creek-golf-club/search
+  dom: {"title": "Gypsum Creek Golf Club Tee Times - Gypsum, CO | GolfNow", "times": 0, "notFound": false}
+  POST 404 https://www.golfnow.com/api/autocomplete/georeverse resp_len=67521
+    body: {"searchKey":null,"take":null,"skip":null,"lat":"28.538336","lng":"-81.379234","includeOffPlatformFacilities":null}
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
+  POST 404 https://www.golfnow.com/api/tee-times/tee-time-search-results resp_len=67536
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":30,"teeTimeCount":20,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date.MinDate","sortDirection":0,"hotDealsOnly":false,"golfPassPerksOnly":false,"bestDealsOnly":false,"promoted
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
+RESULT gn5 16424-tamarack-golf-course:
+  finalUrl: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search
+  dom: {"title": "Tamarack Golf Course Tee Times - Limon, CO | GolfNow", "times": 0, "notFound": false}
+  POST 200 https://www.golfnow.com/api/autocomplete/georeverse resp_len=337
+    body: {"searchKey":null,"take":null,"skip":null,"lat":"28.538336","lng":"-81.379234","includeOffPlatformFacilities":null}
+  POST 404 https://www.golfnow.com/api/tee-times/tee-time-search-results resp_len=67536
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":30,"teeTimeCount":20,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date.MinDate","sortDirection":0,"hotDealsOnly":false,"golfPassPerksOnly":false,"bestDealsOnly":false,"promoted
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
+RESULT gn5 1411-the-ridge-at-castle-pines-colorado:
+  finalUrl: https://www.golfnow.com/tee-times/facility/1411-the-ridge-at-castle-pines-colorado/search
+  dom: {"title": "The Ridge at Castle Pines (Colorado) Tee Times - Castle Rock, CO | Gol", "times": 1, "notFound": false}
+  POST 200 https://www.golfnow.com/api/autocomplete/georeverse resp_len=337
+    body: {"searchKey":null,"take":null,"skip":null,"lat":"28.538336","lng":"-81.379234","includeOffPlatformFacilities":null}
+  POST 200 https://www.golfnow.com/api/tee-times/tee-time-search-results resp_len=15808
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":30,"teeTimeCount":20,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date.MinDate","sortDirection":"Asc","hotDealsOnly":false,"golfPassPerksOnly":false,"bestDealsOnly":false,"prom
+  POST 200 https://www.golfnow.com/api/tee-times/hot-deals-zone resp_len=2
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":3,"teeTimeCount":null,"pageNumber":0,"date":"Jul 24 2026","sortBy":"Date","sortByRollup":"Date","sortDirection":"Asc","hotDealsOnly":true,"golfPassPerksOnly":null,"bestDealsOnly":null,"promotedCampai
+  POST 404 https://www.golfnow.com/api/tee-times/hot-deals-zone resp_len=67528
+    body: {"useWidgetNextAvailableDays":null,"nextAvailableTeeTime":null,"tags":null,"address":null,"pageSize":3,"teeTimeCount":null,"pageNumber":0,"date":"Jul 23 2026","sortBy":"Date","sortByRollup":"Date","sortDirection":"Asc","hotDealsOnly":true,"golfPassPerksOnly":null,"bestDealsOnly":null,"promotedCampai
+    resp: '<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n\t<meta charset="utf-8" />\r\n\t<base href="/" />\r\n\r\n\t<noscript>\r\n\t\t<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />\r\n\t</noscript>\r\n\t<meta ht'
