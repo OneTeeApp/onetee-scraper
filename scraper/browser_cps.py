@@ -91,28 +91,35 @@ def run(date: dt.date, registry_path: str, out_path: str) -> dict:
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=["--no-sandbox"])
         page = browser.new_page(user_agent=USER_AGENT)
-        for c in courses:
+        for i, c in enumerate(courses):
             ids = c["ids"]
             tenant = ids["tenant"]
             wid = ids.get("website_id") or ""
             cids = ",".join(str(x) for x in ids["course_ids"])
-            try:
-                page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
-                          wait_until="domcontentloaded", timeout=30000)
-                r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
-                if r.get("status") != 200:
-                    errors.append({"course": c["slug"], "platform": "clubprophet",
-                                   "error": f"browser {r.get('stage')} {r.get('status')}"})
-                    log.info("  %-34s ERROR %s %s", c["slug"], r.get("stage"),
-                             r.get("status"))
-                    continue
-                tts = _teetimes(c, r.get("content") or [])
-                tee_times.extend(tts)
-                log.info("  %-34s %d times", c["slug"], len(tts))
-            except Exception as e:  # noqa: BLE001
+            if i:
+                page.wait_for_timeout(1500)     # pace requests: the WAF bot-scores
+            last = None                          # bursts of rapid API calls
+            got = False
+            for attempt in range(3):             # the WAF is probabilistic; retry
+                try:
+                    page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
+                              wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_timeout(800)   # let any WAF/JS challenge settle
+                    r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
+                    last = f"{r.get('stage')} {r.get('status')}"
+                    if r.get("status") == 200:
+                        tts = _teetimes(c, r.get("content") or [])
+                        tee_times.extend(tts)
+                        log.info("  %-34s %d times", c["slug"], len(tts))
+                        got = True
+                        break
+                except Exception as e:  # noqa: BLE001
+                    last = f"{type(e).__name__}"
+                page.wait_for_timeout(2500 * (attempt + 1))   # backoff before retry
+            if not got:
                 errors.append({"course": c["slug"], "platform": "clubprophet",
-                               "error": f"{type(e).__name__}: {e}"[:120]})
-                log.info("  %-34s ERROR %s", c["slug"], type(e).__name__)
+                               "error": f"browser {last}"})
+                log.info("  %-34s ERROR %s", c["slug"], last)
         browser.close()
 
     doc = {
