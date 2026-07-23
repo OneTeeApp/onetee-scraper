@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import collections
 import datetime as dt
-import json
 import logging
+import os
 import sys
 
-from scraper import browser_ezlinks, browser_golfnow
+sys.path.insert(0, os.getcwd())  # allow `python scripts/…` to import the package
+
+from scraper import browser_ezlinks, browser_golfnow  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
