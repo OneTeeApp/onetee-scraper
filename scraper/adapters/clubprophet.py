@@ -60,11 +60,15 @@ class ClubProphetAdapter(Adapter):
             raise RuntimeError("Club Prophet: no access_token from token/short")
         return token
 
-    def _headers(self, token: str, website_id: str) -> dict:
-        # Static public component identifiers the onlineresweb SPA always sends.
-        return {
+    def _headers(self, token: str, website_id: str, base: str = "") -> dict:
+        # Static public component identifiers the onlineresweb SPA always sends,
+        # plus a full browser-like header profile. Some tenants' WAFs (e.g. City
+        # of Boulder / Flatirons) 403 requests that don't look like a real
+        # browser from a datacenter IP, while others (Indian Peaks) don't care.
+        h = {
             "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
             "User-Agent": USER_AGENT,
             "client-id": "onlineresweb",
             "x-terminalid": "3",
@@ -77,7 +81,17 @@ class ClubProphetAdapter(Adapter):
             "x-timezoneid": "America/Denver",
             "x-timezone-offset": "360",
             "x-requestid": str(uuid.uuid4()),
+            "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24", "Google Chrome";v="126"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"macOS"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
         }
+        if base:
+            h["Origin"] = base
+            h["Referer"] = f"{base}/onlineresweb/search-teetime"
+        return h
 
     def _discover(self, base: str, tenant: str, token: str) -> tuple[list[int], str | None]:
         """Return (courseIds, websiteId) from the tenant's bootstrap config.
@@ -87,7 +101,7 @@ class ClubProphetAdapter(Adapter):
         OnlineCourses can't be used for discovery because it *requires* the real
         websiteId (a zero guid returns an empty list).
         """
-        headers = self._headers(token, _ZERO_GUID)
+        headers = self._headers(token, _ZERO_GUID, base)
         r = self.session.get(
             f"{base}/onlineres/onlineapi/api/v1/onlinereservation/GetAllOptions/{tenant}",
             headers=headers, timeout=20)
@@ -169,7 +183,7 @@ class ClubProphetAdapter(Adapter):
             raise RuntimeError(f"{course['slug']}: could not resolve Club Prophet "
                                "courseIds (OnlineCourses discovery failed)")
 
-        headers = self._headers(token, website_id or _ZERO_GUID)
+        headers = self._headers(token, website_id or _ZERO_GUID, base)
 
         # Register a client-generated transaction id, then query the tee sheet.
         txid = str(uuid.uuid4())
