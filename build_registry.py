@@ -42,6 +42,15 @@ EXTRA_IDS = {
     "willis case golf course":   {"club_id": "3833", "secondary_id": "4932"},
     "kennedy golf course":       {"club_id": "3629", "secondary_id": "20573"},
     # city-park stays 3660/4711 (correct as extracted)
+
+    # TeeItUp: the book.teeitup.com vanity subdomain is NOT always the kenna
+    # x-be-alias. Captured the real alias each course's booking page sends to
+    # phx-api-be-east-1b.kenna.io/alias/<alias>/facilities and override it here.
+    # (Rollingstone had no booking URL in the CSV, so this also supplies it.)
+    "omni interlocken resort golf club": {"alias": "interlocken-golf-club-ohr"},
+    "pole creek golf club":              {"alias": "pole-creek-golf-club"},
+    "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
+    "rollingstone ranch golf club":      {"alias": "rollingstone-ranch"},
 }
 
 # adapters that can actually fetch today
