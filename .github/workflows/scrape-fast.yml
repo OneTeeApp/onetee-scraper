@@ -1,0 +1,50 @@
+name: Scrape tee times (fast, today)
+
+on:
+  schedule:
+    # TODAY only, every 5 minutes — keeps near-term availability fresh where it
+    # matters (popular same-day slots move fast) without the load of a full
+    # 3-day scan. GitHub's scheduler is best-effort and often fires late under
+    # load, so real cadence is looser than 5 min. The concurrency guard means a
+    # run that takes >5 min just makes the next one wait rather than overlap.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-fast          # own group: independent of the hourly full scan
+  cancel-in-progress: false
+
+jobs:
+  scrape-today:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Scrape + push TODAY to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          DATE=$(date -u +%F)
+          python -m scraper.aggregate --date "${DATE}" \
+            --out "output/tee_times_${DATE}.json" || true
+          python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
+
+      - name: Post to OneTee (no-op until ONETEE_API_URL secret is set)
+        if: ${{ vars.ONETEE_ENABLED == 'true' }}
+        env:
+          ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
+          ONETEE_API_KEY: ${{ secrets.ONETEE_API_KEY }}
+        run: |
+          DATE=$(date -u +%F)
+          python -m scraper.onetee --data "output/tee_times_${DATE}.json"

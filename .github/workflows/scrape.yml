@@ -1,22 +1,20 @@
-name: Scrape tee times
+name: Scrape tee times (full, 3 days)
 
 on:
   schedule:
-    # Every 5 minutes. NOTE: GitHub's scheduler is best-effort and often fires
-    # scheduled runs late (5-15 min) under load, so real cadence will be looser
-    # than 5 min. The concurrency guard below prevents overlap, so if a run
-    # takes >5 min the next one simply waits. Diff-based sync keeps D1 writes
-    # small per run even at this frequency.
-    - cron: "*/5 * * * *"
-  workflow_dispatch: {}      # manual "Run workflow" button
+    # Full 3-day scan, hourly at :17 (GitHub congests at :00). The fast
+    # workflow (scrape-fast.yml) keeps *today* fresh every ~5 min; this one
+    # keeps the next two days current without 12x-ing the request volume.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
   push:
-    branches: [main]         # also run once on every push (easy testing)
+    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: scrape
+  group: scrape-full          # own group: never blocks the fast job
   cancel-in-progress: false
 
 jobs:
@@ -25,16 +23,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Scrape + push each date to D1 (per-date, so slow dates never
-              cost the earlier ones)
+      - name: Scrape + push each date to D1 (today + next 2 days)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
