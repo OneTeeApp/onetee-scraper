@@ -21,12 +21,29 @@ Prices are in cents.
 from __future__ import annotations
 
 import datetime as dt
+import threading
+import time as _time
 from typing import Any
 
 from .base import Adapter
 from ..models import TeeTime
 
 API_BASE = "https://phx-api-be-east-1b.kenna.io"
+
+# All ~22 TeeItUp courses hit this one host; unthrottled concurrency trips 429s.
+# Cap concurrency and space requests so the shared host stays happy.
+_KENNA_SEM = threading.Semaphore(2)      # ≤2 concurrent kenna.io requests
+_KENNA_GAP = 0.35                        # min seconds between requests
+_KENNA_LOCK = threading.Lock()
+_KENNA_LAST = [0.0]
+
+
+def _kenna_throttle():
+    with _KENNA_LOCK:
+        wait = _KENNA_GAP - (_time.monotonic() - _KENNA_LAST[0])
+        if wait > 0:
+            _time.sleep(wait)
+        _KENNA_LAST[0] = _time.monotonic()
 
 
 class TeeItUpAdapter(Adapter):
@@ -49,8 +66,10 @@ class TeeItUpAdapter(Adapter):
         if course["ids"].get("facility_id"):
             params["facilityIds"] = course["ids"]["facility_id"]
 
-        data = self.get_json(f"{API_BASE}/v2/tee-times",
-                             headers=self._headers(alias), params=params)
+        with _KENNA_SEM:
+            _kenna_throttle()
+            data = self.get_json(f"{API_BASE}/v2/tee-times",
+                                 headers=self._headers(alias), params=params)
         out: list[TeeTime] = []
         blocks = data if isinstance(data, list) else [data]
         for block in blocks:
