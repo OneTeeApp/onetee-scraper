@@ -7,7 +7,8 @@ name: Browser probe — EZLinks + GolfNow (diagnostic)
 # (as cps.golf's did) we see data; if an interactive "verify you are human" wall
 # blocks it, the RESULT line says so and we go no further.
 #
-# Read the "RESULT ..." lines in the job log, then this file + scripts get
+# The API isn't reachable from the dev sandbox, so the job commits its RESULT
+# lines back to probe-results/ for offline inspection. This file + scripts get
 # deleted once the question is answered.
 
 on:
@@ -19,7 +20,11 @@ on:
       - ".github/workflows/browser-probe2.yml"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: browser-probe2
+  cancel-in-progress: false
 
 jobs:
   probe:
@@ -35,4 +40,13 @@ jobs:
           pip install playwright
           python -m playwright install --with-deps chromium
       - name: Run probe
-        run: python scripts/browser_probe2.py
+        run: |
+          mkdir -p probe-results
+          python scripts/browser_probe2.py 2>&1 | tee "probe-results/latest.txt"
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/latest.txt
+          git commit -m "probe results [skip ci]" || { echo "no changes"; exit 0; }
+          git push
