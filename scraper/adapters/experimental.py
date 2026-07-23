@@ -17,132 +17,84 @@ from ..models import TeeTime
 class MemberSportsAdapter(Adapter):
     """MemberSports (app.membersports.com -> api.membersports.com).
 
-    Captured from the live booking app (Coal Creek portal 3663/4714):
+    Implemented from a known-working reference scraper. The public tee-sheet is:
 
-      tee-time search  POST https://api.membersports.com/api/v1/golfclubs/onlineBookingTeeTimes
-        body: {golfClubId, golfCourseId, golfCourseTypeId:0,
-               beginDate, endDate, memberProfileId, profileId:0,
-               numberOfPlayers:1, numberOfHoles:0}
-      no auth header required for the public flow.
+      POST https://api.membersports.com/api/v1/golfclubs/onlineBookingTeeTimes
+        headers: x-api-key (platform key, same for all MemberSports courses),
+                 Origin/Referer = app.membersports.com, browser User-Agent
+        body:    {configurationTypeId:0, date:"YYYY-MM-DD", golfClubGroupId:0,
+                  golfClubId:<int>, golfCourseId:<int>, groupSheetTypeId:0}
+      -> JSON array of rows; each row = {teeTime:<minutes-since-midnight>,
+         items:[{name, price, playerCount, golfCourseNumberOfHoles, teeTimeId,
+                 bookingNotAllowed, hide}, ...]}.
 
-    memberProfileId is the club's default online-booking profile; we read it
-    from the teesheetparameters endpoint. Courses are enumerated from
-    /golfclubs/<club>/coursesslim so one portal (e.g. Denver's 3660/4711)
-    expands to all its courses.
+    The x-api-key is a MemberSports platform identifier (sent by every client);
+    it is provided/owned by the operator and overridable via MEMBERSPORTS_API_KEY.
+    Registry ids: club_id -> golfClubId, secondary_id -> golfCourseId.
     """
 
     platform = "membersports"
     API = "https://api.membersports.com/api/v1"
+    API_KEY = "A9814038-9E19-4683-B171-5A06B39147FC"
 
-    # MemberSports' API rejects requests (HTTP 407) that don't carry its two
-    # platform headers. These are the SAME for every MemberSports course, so one
-    # provisioned credential unlocks all ~18 CO courses. Supply them (with the
-    # course's/platform's permission) as GitHub Actions secrets; the adapter
-    # reads them here. We do NOT extract them from the app.
-    #   MEMBERSPORTS_API_KEY  -> x-api-key
-    #   MEMBERSPORTS_AUTH     -> Authorization (e.g. "Bearer <token>")
-    def _auth_headers(self) -> dict:
-        api_key = os.environ.get("MEMBERSPORTS_API_KEY")
-        auth = os.environ.get("MEMBERSPORTS_AUTH")
-        if not api_key:
-            raise RuntimeError(
-                "MemberSports needs a platform credential (HTTP 407 without it). "
-                "Set MEMBERSPORTS_API_KEY (x-api-key) and MEMBERSPORTS_AUTH "
-                "(Authorization) as secrets — one credential covers all ~18 "
-                "MemberSports courses. Booking: " )
-        h = {"x-api-key": api_key, "Accept": "application/json",
-             "Content-Type": "application/json"}
-        if auth:
-            h["Authorization"] = auth if auth.lower().startswith("bearer") else f"Bearer {auth}"
-        return h
-
-    def _default_profile_id(self, club_id: str, course_id: str) -> int:
-        try:
-            p = self.get_json(
-                f"{self.API}/golfclubs/{club_id}/golfCourses/{course_id}"
-                f"/types/0/teesheetparameters")
-            for k in ("memberProfileId", "defaultProfileId", "profileId"):
-                if isinstance(p, dict) and p.get(k):
-                    return int(p[k])
-        except Exception:
-            pass
-        return 0  # 0 = public/default; server accepts it
-
-    def _courses(self, club_id: str) -> list[dict]:
-        try:
-            data = self.get_json(f"{self.API}/golfclubs/{club_id}/coursesslim")
-            if isinstance(data, list) and data:
-                return data
-        except Exception:
-            pass
-        return []
-
-    def _warm(self, club_id: str) -> None:
-        """The booking app loads several club endpoints before its POST; hitting
-        one warms the session (any anonymous cookie) the way a browser would."""
-        try:
-            self.session.get(f"{self.API}/golfclubs/{club_id}/name", timeout=15)
-        except Exception:
-            pass
+    def _headers(self) -> dict:
+        return {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "x-api-key": os.environ.get("MEMBERSPORTS_API_KEY", self.API_KEY),
+            "Origin": "https://app.membersports.com",
+            "Referer": "https://app.membersports.com/",
+        }
 
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         ids = course["ids"]
-        club_id = ids["club_id"]
-        # apply the platform credential (raises a clear error if not provisioned)
-        # to every call this adapter makes on its session.
-        self.session.headers.update(self._auth_headers())
-        self._warm(club_id)
-        # a portal may cover several courses; use the registry's course if the
-        # secondary id is a real course, else enumerate.
-        courses = self._courses(club_id)
-        targets = [(c.get("golfCourseId") or c.get("id"),
-                    c.get("golfCourseName") or c.get("name") or course["name"])
-                   for c in courses] or [(ids["secondary_id"], course["name"])]
+        club_id, course_id = int(ids["club_id"]), int(ids["secondary_id"])
+        body = {
+            "configurationTypeId": 0,
+            "date": date.isoformat(),
+            "golfClubGroupId": 0,
+            "golfClubId": club_id,
+            "golfCourseId": course_id,
+            "groupSheetTypeId": 0,
+        }
+        # post_json already retries on 5xx (this gateway intermittently 5xxs)
+        data = self.post_json(f"{self.API}/golfclubs/onlineBookingTeeTimes",
+                              json=body, headers=self._headers(), timeout=25)
+        if not isinstance(data, list):
+            raise RuntimeError(f"{course['slug']}: unexpected MemberSports "
+                               f"response type {type(data).__name__}")
 
         out: list[TeeTime] = []
-        for course_id, cname in targets:
-            profile = self._default_profile_id(club_id, course_id)
-            body = {
-                "golfClubId": int(club_id), "golfCourseId": int(course_id),
-                "golfCourseTypeId": 0,
-                "beginDate": date.isoformat(), "endDate": date.isoformat(),
-                "memberProfileId": profile, "profileId": 0,
-                "numberOfPlayers": 1, "numberOfHoles": 0,
-            }
-            # retrying POST: this gateway intermittently 504s even for payloads
-            # that succeed moments later.
-            data = self.post_json(f"{self.API}/golfclubs/onlineBookingTeeTimes",
-                                  json=body, timeout=30)
-            slots = data if isinstance(data, list) else data.get("teeTimes", [])
-            for slot in slots:
-                out.extend(self._parse_slot(course, cname, slot, date))
+        for row in data:
+            tee_min = row.get("teeTime")
+            if tee_min is None:
+                continue
+            prices, spots_max, holes = [], 0, set()
+            for it in row.get("items", []):
+                if it.get("bookingNotAllowed") or it.get("hide"):
+                    continue
+                spots = max(0, 4 - int(it.get("playerCount") or 0))
+                if spots <= 0:
+                    continue
+                spots_max = max(spots_max, spots)
+                p = float(it.get("price") or 0)
+                if p > 0:
+                    prices.append(p)
+                if it.get("golfCourseNumberOfHoles"):
+                    holes.add(int(it["golfCourseNumberOfHoles"]))
+            if spots_max <= 0:
+                continue
+            hh, mm = divmod(int(tee_min), 60)
+            out.append(self.base_tee_time(
+                course,
+                teetime=f"{date.isoformat()}T{hh:02d}:{mm:02d}:00",
+                holes=sorted(holes),
+                open_spots=spots_max,
+                price_min=min(prices) if prices else None,
+                price_max=max(prices) if prices else None,
+                raw={"teeTime": tee_min, "items": len(row.get("items", []))},
+            ))
         return out
-
-    def _parse_slot(self, course, cname, slot, date) -> list[TeeTime]:
-        # each slot may carry a list of rates / fees
-        t = slot.get("teeTime") or slot.get("time") or slot.get("teeTimeDateTime")
-        if t and "T" not in str(t):
-            t = f"{date.isoformat()}T{t}"
-        fees = []
-        for k in ("greenFeeAmount", "price", "rate", "memberRate", "publicRate"):
-            v = slot.get(k)
-            if isinstance(v, (int, float)):
-                fees.append(float(v))
-        for rate in slot.get("rates", []) or slot.get("feeList", []) or []:
-            v = rate.get("amount") or rate.get("price") if isinstance(rate, dict) else None
-            if isinstance(v, (int, float)):
-                fees.append(float(v))
-        spots = (slot.get("availableSpots") or slot.get("openSlots")
-                 or slot.get("maxPlayers"))
-        return [self.base_tee_time(
-            course,
-            teetime=str(t or ""),
-            holes=[slot["holes"]] if slot.get("holes") else [],
-            open_spots=spots,
-            price_min=min(fees) if fees else None,
-            price_max=max(fees) if fees else None,
-            raw={"course_name": cname},
-        )]
 
 
 class GolfNowAdapter(Adapter):
