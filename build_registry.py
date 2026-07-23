@@ -51,6 +51,13 @@ EXTRA_IDS = {
     "pole creek golf club":              {"alias": "pole-creek-golf-club"},
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
     "rollingstone ranch golf club":      {"alias": "rollingstone-ranch"},
+
+    # Club Prophet (cps.golf): the adapter discovers courseIds + websiteId at
+    # runtime via OnlineCourses from just the tenant subdomain. Indian Peaks is
+    # pinned (captured live) as a guaranteed anchor in case discovery ever fails
+    # for a tenant.
+    "indian peaks golf course": {"website_id": "f04abbc1-368f-40f4-096d-08d89aea9574",
+                                 "course_ids": [10, 11]},
 }
 
 # adapters that can actually fetch today
