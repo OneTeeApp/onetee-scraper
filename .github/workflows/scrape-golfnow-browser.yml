@@ -1,0 +1,55 @@
+name: Scrape GolfNow via browser (3 days)
+
+# GolfNow shows no interactive challenge to a real browser, but the plain HTTP
+# client is blocked. A headless Chromium loads each facility's search page,
+# captures the predicate the page itself POSTs to /api/tee-times/
+# tee-time-search-results, and replays it per date — inheriting the page's own
+# lat/long so results are the real facility's times (filtered by facilityId).
+# The plain scraper excludes golfnow, so this job solely owns those slugs in D1.
+# Hourly for the same reason as the other browser jobs.
+
+on:
+  schedule:
+    - cron: "52 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_golfnow.py"
+      - ".github/workflows/scrape-golfnow-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-golfnow-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape + push each date to D1 (today + next 2 days)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          for OFFSET in 0 1 2; do
+            DATE=$(date -u -d "+${OFFSET} days" +%F)
+            echo "::group::golfnow browser ${DATE}"
+            python -m scraper.browser_golfnow --date "${DATE}" \
+              --out "output/gn_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/gn_${DATE}.json" || true
+            echo "::endgroup::"
+          done
