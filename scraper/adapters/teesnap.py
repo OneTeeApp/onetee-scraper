@@ -30,6 +30,23 @@ COURSES_RE = re.compile(r"window\.courses\s*=\s*(\[.*?\]);", re.S)
 class TeesnapAdapter(Adapter):
     platform = "teesnap"
 
+    def _get_text(self, url: str) -> str:
+        """GET page text with retry — Teesnap intermittently resets the
+        connection (ConnectionResetError 104) from datacenter IPs; a retry
+        almost always succeeds on the next attempt."""
+        import time
+        last: Exception | None = None
+        for attempt in range(4):
+            try:
+                r = self.session.get(url, timeout=20)
+                r.raise_for_status()
+                return r.text
+            except Exception as e:  # noqa: BLE001 — connection resets included
+                last = e
+                if attempt < 3:
+                    time.sleep(1.0 + attempt)
+        raise last  # type: ignore[misc]
+
     def discover_courses(self, sub: str) -> list[dict]:
         """Extract course ids from the homepage-inlined `window.courses` data.
 
@@ -39,7 +56,7 @@ class TeesnapAdapter(Adapter):
         region and de-dupe. Disabled courses simply return empty tee-times, so
         over-including is harmless.
         """
-        html = self.session.get(f"https://{sub}.teesnap.net/", timeout=20).text
+        html = self._get_text(f"https://{sub}.teesnap.net/")
         start = html.find("window.courses")
         region = html[start:start + 30000] if start >= 0 else html
         ids: list[str] = []
