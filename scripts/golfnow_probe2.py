@@ -36,21 +36,19 @@ async ([bodyStr, dates]) => {
        body:JSON.stringify(body)});
     let j = {}; try { j = await r.json(); } catch (e) {}
     const tt = (j.ttResults && j.ttResults.teeTimes) || [];
-    let slim = null, keys = null;
-    if (tt[0]) {
-      keys = Object.keys(tt[0]);
-      slim = {};
-      for (const k of keys) {
-        const v = tt[0][k];
-        // drop the huge facility blob; keep tee-time scalar fields verbatim
-        if (k === "facility") { slim[k] = "<facility obj omitted>"; continue; }
-        slim[k] = v;
-      }
-    }
-    out.push({date:d, status:r.status, count:tt.length,
-              keys, slim,
-              minRate: (j.ttResults && j.ttResults.minDailyTeeTimeRate &&
-                        j.ttResults.minDailyTeeTimeRate.formattedValue) || null});
+    const money = (m) => (m && typeof m.value === "number") ? m.value : null;
+    const pick = tt.slice(0, 4).map((s) => ({
+      time: s.time, timeHour: s.timeHour, detailUrl: s.detailUrl,
+      displayRate: s.displayRate, currencyCode: s.currencyCode,
+      minRate: money(s.minTeeTimeRate), maxRate: money(s.maxTeeTimeRate),
+      isReservationRestricted: s.isReservationRestricted,
+      rates: (s.teeTimeRates || []).map((r) => ({
+        holes: r.holeCount, playerRule: r.playerRule,
+        greens: r.singlePlayerPrice ? money(r.singlePlayerPrice.greensFees) : null,
+        online: r.singlePlayerPrice ? money(r.singlePlayerPrice.dueOnline) : null,
+      })),
+    }));
+    out.push({date:d, status:r.status, count:tt.length, picked: pick});
     if (tt.length) break;
   }
   return {tries: out};
@@ -83,12 +81,9 @@ def probe(pw, fid: str, slug: str, dates: list[str]) -> None:
         print(f"RESULT gn2 {fid}-{slug}:", flush=True)
         print("  captured_body:", captured["body"][:1200], flush=True)
         for t in (r.get("tries") or []):
-            print(f"  date={t['date']} status={t['status']} count={t['count']} "
-                  f"minRate={t.get('minRate')}", flush=True)
-            if t.get("keys"):
-                print("    KEYS:", json.dumps(t["keys"]), flush=True)
-            if t.get("slim"):
-                print("    SLOT:", json.dumps(t["slim"])[:2500], flush=True)
+            print(f"  date={t['date']} status={t['status']} count={t['count']}", flush=True)
+            for slot in (t.get("picked") or []):
+                print("    SLOT:", json.dumps(slot), flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"RESULT gn2 {fid}: ERROR {type(e).__name__} {str(e)[:120]}", flush=True)
     finally:
