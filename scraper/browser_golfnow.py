@@ -132,6 +132,10 @@ def run(date: dt.date, registry_path: str, out_path: str) -> dict:
 
         for i, c in enumerate(courses):
             fid = int(c["ids"]["golfnow_facility_id"])
+            # GolfNow 404s the facility page when the slug segment doesn't match
+            # its canonical one (learned via Black Bear), so prefer the slug
+            # captured from the booking URL over our registry slug.
+            gn_slug = c["ids"].get("golfnow_slug") or c["slug"]
             if i:
                 page.wait_for_timeout(1200)
             last = None
@@ -140,7 +144,7 @@ def run(date: dt.date, registry_path: str, out_path: str) -> dict:
                 try:
                     captured.pop("body", None)
                     page.goto(
-                        f"https://www.golfnow.com/tee-times/facility/{fid}-{c['slug']}/search",
+                        f"https://www.golfnow.com/tee-times/facility/{fid}-{gn_slug}/search",
                         wait_until="domcontentloaded", timeout=45000)
                     # wait (up to ~12s) for the page to POST its own predicate
                     for _ in range(24):

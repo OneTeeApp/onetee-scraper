@@ -22,9 +22,10 @@ PATTERNS = {
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
     "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)"),
     "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinksgolf\.com"),
-    "golfnow": re.compile(r"golfnow\.com/tee-times/facility/(\d+)-"),
+    "golfnow": re.compile(r"golfnow\.com/tee-times/facility/(\d+)-([a-z0-9-]+)"),
     "teesnap": re.compile(r"https?://([a-z0-9-]+)\.teesnap\.net"),
     "quick18": re.compile(r"https?://([a-z0-9-]+)\.quick18\.com"),
+    "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -105,9 +106,11 @@ def extract_ids(platform: str, url: str) -> dict:
     if platform == "ezlinks":
         return {"portal": g[0]}
     if platform == "golfnow":
-        return {"golfnow_facility_id": g[0]}
+        return {"golfnow_facility_id": g[0], "golfnow_slug": g[1].removesuffix("/search")}
     if platform in ("teesnap", "quick18"):
         return {"subdomain": g[0]}
+    if platform == "noteefy":
+        return {"venue_guid": g[0]}
     return {}
 
 
