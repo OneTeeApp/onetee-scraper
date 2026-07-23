@@ -30,6 +30,17 @@ PATTERNS = {
 # extra IDs known from research that aren't visible in the URL
 EXTRA_IDS = {
     "buffalo run golf course": {"facility_id": "12190"},
+    # Denver MemberSports courses are separate clubs linked in one "Denver
+    # Courses" group; the booking URL only carries the group (3660/4711), so
+    # override each with its real golfClubId/golfCourseId (from the group's
+    # member list). Without this they'd all query City Park and collapse to one.
+    "evergreen golf course":     {"club_id": "3691", "secondary_id": "4751"},
+    "wellshire golf course":     {"club_id": "3831", "secondary_id": "4928"},
+    "overland park golf course": {"club_id": "3755", "secondary_id": "4827"},
+    "harvard gulch golf course": {"club_id": "3713", "secondary_id": "4781"},
+    "willis case golf course":   {"club_id": "3833", "secondary_id": "4932"},
+    "kennedy golf course":       {"club_id": "3629", "secondary_id": "20573"},
+    # city-park stays 3660/4711 (correct as extracted)
 }
 
 # adapters that can actually fetch today

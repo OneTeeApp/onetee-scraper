@@ -31,18 +31,26 @@ class TeesnapAdapter(Adapter):
     platform = "teesnap"
 
     def discover_courses(self, sub: str) -> list[dict]:
-        """Regex the inlined window.courses array out of the homepage."""
+        """Extract course ids from the homepage-inlined `window.courses` data.
+
+        Robust to nested arrays in course objects (which broke the old
+        non-greedy array regex). Each course object reliably starts
+        `"id":<n>,"created_at"`, so we anchor on that inside the window.courses
+        region and de-dupe. Disabled courses simply return empty tee-times, so
+        over-including is harmless.
+        """
         html = self.session.get(f"https://{sub}.teesnap.net/", timeout=20).text
-        m = COURSES_RE.search(html)
-        if not m:
-            # fallback: first "id": N near a "key" field
-            ids = re.findall(r'"id":\s*(\d+),[^{}]*"key"', html)
-            return [{"id": int(i)} for i in ids]
-        try:
-            arr = json.loads(m.group(1))
-        except json.JSONDecodeError:
-            return []
-        return [c for c in arr if c.get("enabled", True)]
+        start = html.find("window.courses")
+        region = html[start:start + 30000] if start >= 0 else html
+        ids: list[str] = []
+        for i in re.findall(r'"id":\s*(\d+)\s*,\s*"created_at"', region):
+            if i not in ids:
+                ids.append(i)
+        if not ids:  # last-ditch fallback
+            for i in re.findall(r'"id":\s*(\d+),[^{}]*"key"', html):
+                if i not in ids:
+                    ids.append(i)
+        return [{"id": int(i)} for i in ids]
 
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         sub = course["ids"]["subdomain"]
