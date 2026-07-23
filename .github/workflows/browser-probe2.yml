@@ -16,7 +16,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "scripts/golfnow_probe2.py"
+      - "scripts/verify_browser_fetchers.py"
       - ".github/workflows/browser-probe2.yml"
 
 permissions:
@@ -37,13 +37,12 @@ jobs:
           python-version: "3.12"
       - name: Install Playwright + Chromium
         run: |
-          pip install playwright
+          pip install requests playwright
           python -m playwright install --with-deps chromium
-      - name: Run probe
+      - name: Run verification
         run: |
           mkdir -p probe-results
-          echo "===== GOLFNOW SLOT SHAPE =====" | tee "probe-results/latest.txt"
-          python scripts/golfnow_probe2.py 2>&1 | tee -a "probe-results/latest.txt"
+          python scripts/verify_browser_fetchers.py 2>&1 | tee "probe-results/latest.txt"
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
