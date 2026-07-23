@@ -1,19 +1,82 @@
-RESULT granby alias golf-granby-ranch: 200 ['Granby Ranch Golf Course']
-RESULT granby alias granby-ranch: 404 None
-RESULT granby alias golfgranbyranch: 404 None
-RESULT granby alias granby-ranch-golf-course: 404 None
-RESULT granby alias golf-granby-ranch-co: 404 None
-RESULT meeker page: 200 len=1002 title='Page title' matches=[]
-RESULT meeker alt: 200 len=1002
-RESULT foreup-bc patty-jewett bc=None: 401 times=None
-RESULT foreup-bc patty-jewett bc=1339: 200 times=1
-RESULT foreup-bc valley-hi bc=None: 200 times=0
-RESULT foreup-bc valley-hi bc=4502: 200 times=0
-RESULT foreup-bc valley-hi bc=7475: 401 times=None
-RESULT foreup-bc valley-hi bc=8429: 200 times=0
-RESULT foretees plain: 200 times=27
-RESULT cps3 cityofwestminster: {"stage": "ok", "webSiteId": "be7f2728-0758-4a72-fe80-08d97849167d", "courseOptions": [{"id": 1, "name": "Legacy Ridge Golf Course"}, {"id": 2, "name": "Walnut Creek"}, {"id": 4, "name": "LR Back 9 - 9 Holes Only"}], "sampleCourseOption": {"courseId": 1, "courseName": "Legacy Ridge Golf Course", "courseGUID": "4551250e-f5de-4e30-b181-5f22813dcd65", "webSiteId": "be7f2728-0758-4a72-fe80-08d97849167d", "fullCartSelectionType": 1, "fullCartSelectionTypeName": "AllowSelection", "halfCartSelectionTypeName": "DonotOffer", "caddieSelectionTypeName": "DonotOffer", "rentalSelectionTypeName": "DonotOffer", "holeSelectionTypeName": "DonotOffer", "daysInAdvanceForMember": -1, "daysInAdvanceForNonMember": -1, "noShowLimitForMember": -1, "noShowLimitForNonMember": -1, "maximumDailyBookingsMember": -1, "maximumDailyBookingsNonMember": -1, "isEnableGroupBookings": true, "groupBookingSizeOption": 1, "minGroupBookingPlayerLimit": 1, "maxGroupBookingPlayerLimit": 12, "groupBookingBetweenTeeTime": 3, "lim
-RESULT cps3 marianabutte: {"stage": "ok", "webSiteId": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "courseOptions": [{"id": 3, "name": "Mariana Butte"}], "sampleCourseOption": {"courseId": 3, "courseName": "Mariana Butte", "courseGUID": "465c3866-cfb4-4332-9e46-f2b7f7b36836", "webSiteId": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "fullCartSelectionType": 1, "fullCartSelectionTypeName": "AllowSelection", "halfCartSelectionTypeName": "DonotOffer", "caddieSelectionTypeName": "DonotOffer", "rentalSelectionTypeName": "DonotOffer", "holeSelectionTypeName": "DonotOffer", "daysInAdvanceForMember": -1, "daysInAdvanceForNonMember": -1, "noShowLimitForMember": -1, "noShowLimitForNonMember": -1, "maximumDailyBookingsMember": -1, "maximumDailyBookingsNonMember": -1, "minGroupBookingPlayerLimit": -1, "maxGroupBookingPlayerLimit": -1, "limitGroupSearchResults": -1, "maximumSlotAllowed": -1, "singleBookings": [], "twosomeBookings": [], "threesomeBookings": [], "overrideSystemDefaultClass": "", "overrideSystemDefaultType": "", "isInc
-RESULT eagletrace: final=https://eagletrace.cps.golf/onlineresweb/auth/verify-email?returnUrl=%2Fsearch-teetime title='Eagle Trace Online Reservations' hosts=['eagletrace.cps.golf']
-  body: "Eagle Trace online booking Sign In Please Enter Email to Continue Email NEXT Log in with Google Log in with Facebook Don't have an account? Sign up Eagle Trace Golf Club 1200 Clubhouse Dr Broomfield , CO 80020 Build No.25.2.5.60342 language English Powered By "
-RESULT noteefy2: title='Just a moment...' json=0
+RESULT check golf-granby-ranch: OK 0 times e.g. None
+RESULT check patty-jewett-golf-course: OK 1 times e.g. ('2026-07-24T14:20', 28)
+RESULT check valley-hi-golf-course: OK 0 times e.g. None
+RESULT check dalton-ranch-golf-club: OK 27 times e.g. ('2026-07-24T10:10:00', 100.0)
+RESULT meeker-browser: 1 api calls, body='Meeker Golf Course Booking Closed Online booking available from 12:00am to 5:00pm'
+  200 https://foreupsoftware.com/index.php/booking/22597
+browser-fetching 12 cps tenants for 2026-07-24
+  cattail-creek-golf-course          48 times
+  flatirons-golf-course              ERROR teetimes 403
+  fossil-trace-golf-club             ERROR teetimes 403
+  green-valley-ranch-golf-club       ERROR AttributeError
+  haymaker-golf-course               ERROR teetimes 403
+  indian-peaks-golf-course           11 times
+  indian-tree-golf-course            ERROR teetimes 403
+  legacy-ridge-golf-course           6 times
+  mariana-butte-golf-course          ERROR teetimes 403
+  red-hawk-ridge-golf-course         ERROR teetimes 403
+  the-olde-course-at-loveland        ERROR teetimes 403
+  walnut-creek-golf-preserve         11 times
+wrote output/v_cps.json (76 tee times, 8 errors)
+== CPS: ok 4/12 times 76 ==
+  cattail-creek-golf-course                48
+  indian-peaks-golf-course                 11
+  legacy-ridge-golf-course                 6
+  walnut-creek-golf-preserve               11
+  ERR flatirons-golf-course                browser teetimes 403
+  ERR fossil-trace-golf-club               browser teetimes 403
+  ERR green-valley-ranch-golf-club         browser AttributeError
+  ERR haymaker-golf-course                 browser teetimes 403
+  ERR indian-tree-golf-course              browser teetimes 403
+  ERR mariana-butte-golf-course            browser teetimes 403
+  ERR red-hawk-ridge-golf-course           browser teetimes 403
+  ERR the-olde-course-at-loveland          browser teetimes 403
+browser-fetching 7 ezlinks portals (11 courses) for 2026-07-24
+  aurora-hills-golf-course           29 times
+  meadow-hills-golf-course           17 times
+  murphy-creek-golf-course           28 times
+  saddle-rock-golf-course            23 times
+  springhill-golf-course             28 times
+  golf-club-at-bear-dance            3 times
+  grand-elk-golf-club                1 times
+  heritage-eagle-bend-golf-club      4 times
+  pine-creek-golf-club               51 times
+  raven-golf-club-at-three-peaks     28 times
+  the-golf-club-at-heather-ridge     65 times
+wrote output/v_ez.json (277 tee times, 0 errors)
+== EZLINKS: ok 11/11 times 277 ==
+  aurora-hills-golf-course                 29
+  golf-club-at-bear-dance                  3
+  grand-elk-golf-club                      1
+  heritage-eagle-bend-golf-club            4
+  meadow-hills-golf-course                 17
+  murphy-creek-golf-course                 28
+  pine-creek-golf-club                     51
+  raven-golf-club-at-three-peaks           28
+  saddle-rock-golf-course                  23
+  springhill-golf-course                   28
+  the-golf-club-at-heather-ridge           65
+browser-fetching 12 golfnow facilities for 2026-07-24
+  arrowhead-golf-club                0 times
+  bella-ridge-golf-course            14 times
+  cedaredge-golf-club                37 times
+  clubcorp-at-black-bear-golf-club   ERROR status 404
+  desert-hawk-at-pueblo-west         ERROR status 404
+  four-mile-ranch-golf-club          11 times
+  grandote-peaks-golf-club           18 times
+  gypsum-creek-golf-course           ERROR status 404
+  ironbridge-golf-club               0 times
+  pelican-lakes-golf-country-club    0 times
+  tamarack-golf-course               ERROR status 404
+  the-ridge-at-castle-pines-north    5 times
+wrote output/v_gn.json (85 tee times, 4 errors)
+== GOLFNOW: ok 8/12 times 85 ==
+  bella-ridge-golf-course                  14
+  cedaredge-golf-club                      37
+  four-mile-ranch-golf-club                11
+  grandote-peaks-golf-club                 18
+  the-ridge-at-castle-pines-north          5
+  ERR clubcorp-at-black-bear-golf-club     browser status 404
+  ERR desert-hawk-at-pueblo-west           browser status 404
+  ERR gypsum-creek-golf-course             browser status 404
+  ERR tamarack-golf-course                 browser status 404
