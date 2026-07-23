@@ -36,9 +36,21 @@ async ([bodyStr, dates]) => {
        body:JSON.stringify(body)});
     let j = {}; try { j = await r.json(); } catch (e) {}
     const tt = (j.ttResults && j.ttResults.teeTimes) || [];
+    let slim = null, keys = null;
+    if (tt[0]) {
+      keys = Object.keys(tt[0]);
+      slim = {};
+      for (const k of keys) {
+        const v = tt[0][k];
+        // drop the huge facility blob; keep tee-time scalar fields verbatim
+        if (k === "facility") { slim[k] = "<facility obj omitted>"; continue; }
+        slim[k] = v;
+      }
+    }
     out.push({date:d, status:r.status, count:tt.length,
-              sample: tt[0] || null,
-              minRate: (j.ttResults && j.ttResults.minDailyTeeTimeRate) || null});
+              keys, slim,
+              minRate: (j.ttResults && j.ttResults.minDailyTeeTimeRate &&
+                        j.ttResults.minDailyTeeTimeRate.formattedValue) || null});
     if (tt.length) break;
   }
   return {tries: out};
@@ -71,11 +83,12 @@ def probe(pw, fid: str, slug: str, dates: list[str]) -> None:
         print(f"RESULT gn2 {fid}-{slug}:", flush=True)
         print("  captured_body:", captured["body"][:1200], flush=True)
         for t in (r.get("tries") or []):
-            print(f"  date={t['date']} status={t['status']} count={t['count']}", flush=True)
-            if t.get("minRate"):
-                print("    minRate:", json.dumps(t["minRate"])[:300], flush=True)
-            if t.get("sample"):
-                print("    SAMPLE SLOT:", json.dumps(t["sample"])[:1600], flush=True)
+            print(f"  date={t['date']} status={t['status']} count={t['count']} "
+                  f"minRate={t.get('minRate')}", flush=True)
+            if t.get("keys"):
+                print("    KEYS:", json.dumps(t["keys"]), flush=True)
+            if t.get("slim"):
+                print("    SLOT:", json.dumps(t["slim"])[:2500], flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"RESULT gn2 {fid}: ERROR {type(e).__name__} {str(e)[:120]}", flush=True)
     finally:
