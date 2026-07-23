@@ -1,0 +1,55 @@
+name: Scrape CPS via browser (3 days)
+
+# Club Prophet (cps.golf) tenants whose WAF blocks the plain HTTP client's TLS
+# fingerprint from datacenter IPs are fetched with a real headless Chromium,
+# which clears the WAF (verified: Flatirons/Fossil 200 via browser vs 403 via
+# requests). Runs hourly — these are not as time-sensitive as same-day slots,
+# and spinning up Chromium every 5 min would be wasteful. The plain scraper
+# excludes clubprophet, so this job solely owns those course_slugs in D1.
+
+on:
+  schedule:
+    - cron: "37 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_cps.py"
+      - "scraper/adapters/clubprophet.py"
+      - ".github/workflows/scrape-cps-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-cps-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape + push each date to D1 (today + next 2 days)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          for OFFSET in 0 1 2; do
+            DATE=$(date -u -d "+${OFFSET} days" +%F)
+            echo "::group::cps browser ${DATE}"
+            python -m scraper.browser_cps --date "${DATE}" \
+              --out "output/cps_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
+            echo "::endgroup::"
+          done

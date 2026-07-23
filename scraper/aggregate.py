@@ -75,10 +75,11 @@ def fetch_course(course: dict, date: dt.date) -> FetchResult:
 
 def run(date: dt.date, registry_path: str, out_path: str,
         platforms: set[str] | None, courses: set[str] | None,
-        include_raw: bool, workers: int) -> dict:
+        include_raw: bool, workers: int, exclude: set[str] | None = None) -> dict:
     registry = load_registry(registry_path)
     targets = [c for c in registry
                if (not platforms or c["platform"] in platforms)
+               and (not exclude or c["platform"] not in exclude)
                and (not courses or c["slug"] in courses)]
     log.info("fetching %d courses for %s", len(targets), date)
 
@@ -115,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--out", default="output/tee_times.json")
     p.add_argument("--platforms", help="comma-separated platform filter")
+    p.add_argument("--exclude", help="comma-separated platforms to skip")
     p.add_argument("--courses", help="comma-separated course-slug filter")
     p.add_argument("--include-raw", action="store_true")
     p.add_argument("--workers", type=int, default=5)  # polite: retry handles 429
@@ -126,7 +128,8 @@ def main(argv: list[str] | None = None) -> int:
     run(dt.date.fromisoformat(a.date), a.registry, a.out,
         set(a.platforms.split(",")) if a.platforms else None,
         set(a.courses.split(",")) if a.courses else None,
-        a.include_raw, a.workers)
+        a.include_raw, a.workers,
+        set(a.exclude.split(",")) if a.exclude else None)
     return 0
 
 
