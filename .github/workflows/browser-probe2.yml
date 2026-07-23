@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "scripts/browser_probe2.py"
+      - "scripts/golfnow_probe.py"
       - ".github/workflows/browser-probe2.yml"
 
 permissions:
@@ -43,6 +44,8 @@ jobs:
         run: |
           mkdir -p probe-results
           python scripts/browser_probe2.py 2>&1 | tee "probe-results/latest.txt"
+          echo "===== GOLFNOW API DISCOVERY =====" | tee -a "probe-results/latest.txt"
+          python scripts/golfnow_probe.py 2>&1 | tee -a "probe-results/latest.txt"
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
