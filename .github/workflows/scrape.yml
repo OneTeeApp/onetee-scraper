@@ -2,10 +2,12 @@ name: Scrape tee times
 
 on:
   schedule:
-    # Hourly at :17 (GitHub congests at :00). ~24 runs/day keeps D1 writes
-    # comfortably inside the free tier thanks to diff-based sync.
-    # Tighten to "*/30 ..." later if change-rates look low.
-    - cron: "17 * * * *"
+    # Every 5 minutes. NOTE: GitHub's scheduler is best-effort and often fires
+    # scheduled runs late (5-15 min) under load, so real cadence will be looser
+    # than 5 min. The concurrency guard below prevents overlap, so if a run
+    # takes >5 min the next one simply waits. Diff-based sync keeps D1 writes
+    # small per run even at this frequency.
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}      # manual "Run workflow" button
   push:
     branches: [main]         # also run once on every push (easy testing)
