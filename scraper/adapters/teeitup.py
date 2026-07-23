@@ -57,19 +57,51 @@ class TeeItUpAdapter(Adapter):
         data = self.get_json(f"{API_BASE}/v2/courses", headers=self._headers(alias))
         return data if isinstance(data, list) else data.get("courses", [])
 
+    def _teetimes(self, alias: str, date: dt.date, facility_ids=None):
+        params: dict[str, Any] = {"date": date.isoformat()}
+        if facility_ids:
+            params["facilityIds"] = facility_ids
+        with _KENNA_SEM:
+            _kenna_throttle()
+            return self.get_json(f"{API_BASE}/v2/tee-times",
+                                 headers=self._headers(alias), params=params)
+
+    def _facility_ids(self, alias: str) -> str:
+        """Resolve this alias's facility/course ids via /v2/courses."""
+        with _KENNA_SEM:
+            _kenna_throttle()
+            data = self.discover_facilities(alias)
+        ids = []
+        for c in (data if isinstance(data, list) else []):
+            fid = c.get("id") or c.get("facilityId") or c.get("courseId")
+            if fid:
+                ids.append(str(fid))
+        return ",".join(ids)
+
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         alias = course["ids"].get("alias")
         if not alias:
             raise ValueError(f"{course['slug']}: missing TeeItUp alias "
                              "(booking URL did not yield one)")
-        params: dict[str, Any] = {"date": date.isoformat()}
-        if course["ids"].get("facility_id"):
-            params["facilityIds"] = course["ids"]["facility_id"]
+        facility_id = course["ids"].get("facility_id")
+        try:
+            data = self._teetimes(alias, date, facility_id)
+        except Exception:
+            # Some courses 404/500 on the bare call (or a stale facility_id);
+            # discover the real facility ids from /v2/courses and retry.
+            fids = self._facility_ids(alias)
+            if not fids:
+                raise
+            data = self._teetimes(alias, date, fids)
 
-        with _KENNA_SEM:
-            _kenna_throttle()
-            data = self.get_json(f"{API_BASE}/v2/tee-times",
-                                 headers=self._headers(alias), params=params)
+        blocks = data if isinstance(data, list) else [data]
+        # if the bare call returned nothing, try explicit facility ids once
+        if not any(b.get("teetimes") for b in blocks) and not facility_id:
+            fids = self._facility_ids(alias)
+            if fids:
+                data = self._teetimes(alias, date, fids)
+                blocks = data if isinstance(data, list) else [data]
+
         out: list[TeeTime] = []
         blocks = data if isinstance(data, list) else [data]
         for block in blocks:

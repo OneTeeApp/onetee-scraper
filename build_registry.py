@@ -29,7 +29,8 @@ PATTERNS = {
 
 # extra IDs known from research that aren't visible in the URL
 EXTRA_IDS = {
-    "buffalo run golf course": {"facility_id": "12190"},
+    # (Buffalo Run's old hardcoded facility_id 12190 was stale -> HTTP 500;
+    #  the adapter now discovers facility ids at runtime, so it's removed.)
     # Denver MemberSports courses are separate clubs linked in one "Denver
     # Courses" group; the booking URL only carries the group (3660/4711), so
     # override each with its real golfClubId/golfCourseId (from the group's
