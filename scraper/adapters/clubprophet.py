@@ -79,21 +79,27 @@ class ClubProphetAdapter(Adapter):
             "x-requestid": str(uuid.uuid4()),
         }
 
-    def _discover(self, base: str, headers: dict) -> tuple[list[int], str | None]:
-        """Return (courseIds, websiteId) from OnlineCourses."""
+    def _discover(self, base: str, tenant: str, token: str) -> tuple[list[int], str | None]:
+        """Return (courseIds, websiteId) from the tenant's bootstrap config.
+
+        GetAllOptions/<tenant> is the SPA's first data call and needs only the
+        anonymous token (no websiteId) — it returns webSiteId plus courseOptions.
+        OnlineCourses can't be used for discovery because it *requires* the real
+        websiteId (a zero guid returns an empty list).
+        """
+        headers = self._headers(token, _ZERO_GUID)
         r = self.session.get(
-            f"{base}/onlineres/onlineapi/api/v1/onlinereservation/OnlineCourses",
+            f"{base}/onlineres/onlineapi/api/v1/onlinereservation/GetAllOptions/{tenant}",
             headers=headers, timeout=20)
         r.raise_for_status()
         body = r.json()
-        rows = body.get("content", body) if isinstance(body, dict) else body
+        opts = body.get("reservationOptions") or {}
+        website_id = body.get("webSiteId") or opts.get("webSiteId")
         ids: list[int] = []
-        website_id: str | None = None
-        for c in rows or []:
-            cid = c.get("id", c.get("courseId"))
-            if cid is not None:
+        for c in (body.get("courseOptions") or []):
+            cid = c.get("courseId", c.get("id"))
+            if cid is not None and int(cid) >= 0 and int(cid) not in ids:
                 ids.append(int(cid))
-            website_id = website_id or c.get("websiteId")
         return ids, website_id
 
     # -- parsing -------------------------------------------------------------
@@ -151,9 +157,8 @@ class ClubProphetAdapter(Adapter):
 
         # Discover courseIds / websiteId when not pinned in the registry.
         if not course_ids or not website_id:
-            headers0 = self._headers(token, website_id or _ZERO_GUID)
             try:
-                disc_ids, disc_web = self._discover(base, headers0)
+                disc_ids, disc_web = self._discover(base, tenant, token)
             except Exception:
                 disc_ids, disc_web = [], None
             course_ids = course_ids or disc_ids
