@@ -65,24 +65,29 @@ class EZLinksAdapter(Adapter):
                 "p03": "5:00 AM", "p04": "7:00 PM", "p05": 0, "p06": 2,
                 "p07": False}
         resp = self.post_json(f"{base}/api/search/search", json=body, headers=h)
+        slots = self.raw_to_slots(resp.get("r06") or [])
+        with _LOCK:
+            _CACHE[key] = slots
+        return slots
+
+    @staticmethod
+    def raw_to_slots(r06: list[dict]) -> list[dict]:
+        """Map the API's r06 rows to portal slot dicts. Shared with the
+        browser fetcher, which runs the same init+search call in-page."""
         slots = []
-        for t in (resp.get("r06") or []):
+        for t in (r06 or []):
             slots.append({
                 "time": t.get("r15"), "name": t.get("r16", "") or "",
                 "course_id": t.get("r07"),
                 "price": float(t.get("r25") or 0),
                 "max_players": t.get("r14"),
             })
-        with _LOCK:
-            _CACHE[key] = slots
         return slots
 
-    def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
-        portal = course["ids"].get("portal")
-        if not portal:
-            raise ValueError(f"{course['slug']}: no EZLinks portal")
-        slots = self._load_portal(portal, date)
-
+    @classmethod
+    def course_teetimes(cls, course: dict[str, Any], slots: list[dict]) -> list[TeeTime]:
+        """Filter a portal's slots to one registry course, folding same-time
+        18/9-hole variants together. Shared by the plain and browser fetchers."""
         want = _norm(course["name"])
         by_time: dict[str, dict] = {}
         for s in slots:
@@ -104,7 +109,7 @@ class EZLinksAdapter(Adapter):
         for tt, e in by_time.items():
             if not tt:
                 continue
-            out.append(self.base_tee_time(
+            out.append(cls.base_tee_time(
                 course,
                 teetime=str(tt),
                 holes=sorted(e["holes"]),
@@ -114,3 +119,10 @@ class EZLinksAdapter(Adapter):
                 raw={},
             ))
         return out
+
+    def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
+        portal = course["ids"].get("portal")
+        if not portal:
+            raise ValueError(f"{course['slug']}: no EZLinks portal")
+        slots = self._load_portal(portal, date)
+        return self.course_teetimes(course, slots)
