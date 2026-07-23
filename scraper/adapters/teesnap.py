@@ -93,10 +93,20 @@ class TeesnapAdapter(Adapter):
                           if p.get("price") not in (None, "")]
                 holes = sorted({18 if p.get("roundType") == "EIGHTEEN_HOLE"
                                 else 9 for p in slot.get("prices", [])})
-                for sec in slot.get("teeOffSections", []) or [{}]:
+                # Teesnap has two slot shapes: older sheets nest the time in
+                # teeOffSections[].turnTo.time; newer ones (e.g. Pagosa Springs)
+                # put the ISO time at the slot's top-level "teeTime" and use
+                # teeOffSections only for FRONT_NINE/BACK_NINE labels. Prefer the
+                # nested times if present (preserves existing courses), else fall
+                # back to the top-level teeTime.
+                times = []
+                for sec in slot.get("teeOffSections", []) or []:
                     t = (sec.get("turnTo") or {}).get("time") or sec.get("time")
-                    if not t:
-                        continue
+                    if t:
+                        times.append(t)
+                if not times and slot.get("teeTime"):
+                    times.append(slot["teeTime"])
+                for t in times:
                     out.append(self.base_tee_time(
                         course,
                         teetime=str(t),

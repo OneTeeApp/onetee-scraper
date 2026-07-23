@@ -45,6 +45,31 @@ class Quick18Adapter(Adapter):
                     _time.sleep(1.0 + attempt)
         raise last  # type: ignore[misc]
 
+    @staticmethod
+    def _column_holes(soup) -> dict[int, int]:
+        """Map each column index to 9 or 18 holes using the header row.
+
+        Quick18 tee sheets vary by site: some use the full 7-column matrix
+        (Tee Time | Course | Players | 18 Walking | 18 Riding | 9 Walking |
+        9 Riding), others a compact 3-column layout (Tee Time | Players |
+        Price). We read hole counts off the header instead of assuming a fixed
+        layout, so both parse correctly.
+        """
+        for tr in soup.find_all("tr"):
+            headers = tr.find_all(["th", "td"])
+            texts = [h.get_text(" ", strip=True).lower() for h in headers]
+            if not any("hole" in t for t in texts):
+                continue
+            col: dict[int, int] = {}
+            for i, t in enumerate(texts):
+                if "18" in t:
+                    col[i] = 18
+                elif re.search(r"\b9\b", t):
+                    col[i] = 9
+            if col:
+                return col
+        return {}
+
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         from bs4 import BeautifulSoup  # lazy: isolate dep to this adapter
         sub = course["ids"]["subdomain"]
@@ -52,11 +77,12 @@ class Quick18Adapter(Adapter):
             f"https://{sub}.quick18.com/teetimes/searchmatrix",
             {"teedate": date.strftime("%Y%m%d")})
         soup = BeautifulSoup(html, "html.parser")
+        col_holes = self._column_holes(soup)
 
         out: list[TeeTime] = []
         for tr in soup.find_all("tr"):
             cells = tr.find_all("td")
-            if len(cells) < 4:
+            if len(cells) < 2:                       # need time + at least one more
                 continue
             first = cells[0].get_text(" ", strip=True)
             m = TIME_RE.match(first)
@@ -69,18 +95,28 @@ class Quick18Adapter(Adapter):
             except ValueError:
                 continue
 
-            # cell layout: 0=time 1=course 2=players 3..6=rate columns
-            course_name = cells[1].get_text(" ", strip=True) if len(cells) > 1 else course["name"]
-            players_txt = cells[2].get_text(" ", strip=True) if len(cells) > 2 else ""
+            # Scan every cell after the time: pull the players count from
+            # whichever cell mentions "player", and prices from any cell with a
+            # "$". Hole count for each price comes from that column's header
+            # (col_holes); a single unlabeled rate defaults to 18 holes.
+            players_txt = ""
+            prices: list[float] = []
+            holes: set[int] = set()
+            for idx, c in enumerate(cells):
+                if idx == 0:
+                    continue
+                txt = c.get_text(" ", strip=True)
+                if not players_txt and PLAYERS_RE.search(txt):
+                    players_txt = txt
+                for p in PRICE_RE.findall(txt):
+                    prices.append(float(p.replace(",", "")))
+                    if idx in col_holes:
+                        holes.add(col_holes[idx])
+            if not holes and prices:
+                holes.add(18)                        # single unlabeled rate
+
             pm = PLAYERS_RE.search(players_txt)
             spots = int(pm.group(2) or pm.group(1)) if pm else None
-
-            prices, holes = [], set()
-            rate_cells = cells[3:7] if len(cells) >= 7 else cells[3:]
-            for idx, c in enumerate(rate_cells):
-                for p in PRICE_RE.findall(c.get_text(" ", strip=True)):
-                    prices.append(float(p.replace(",", "")))
-                    holes.add(18 if idx < 2 else 9)  # first two cols = 18h
 
             out.append(self.base_tee_time(
                 course,
@@ -89,7 +125,7 @@ class Quick18Adapter(Adapter):
                 open_spots=spots,
                 price_min=min(prices) if prices else None,
                 price_max=max(prices) if prices else None,
-                raw={"course_name": course_name, "players": players_txt},
+                raw={"players": players_txt},
             ))
 
         if not out and "searchmatrix" not in html.lower() and "tee" not in html.lower():
