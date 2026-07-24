@@ -1,7 +1,7 @@
 == PK columns ==
 ['course_slug', 'teetime', 'course_label']
 == row counts ==
-[{'total': 28151, 'act': 19730}]
+[{'total': 28493, 'act': 19922}]
 == hyland: same-time sub-course rows (want n up to 3 with labels) ==
   {'teetime': '2026-07-24T16:00:00', 'n': 2, 'labels': 'Hyland Hills Gold Course | Hyland Hills South Par 3'}
   {'teetime': '2026-07-24T16:10:00', 'n': 2, 'labels': 'Hyland Hills Golf Blue Course | Hyland Hills South Par 3'}
@@ -20,35 +20,35 @@
 == teeitup rows still carrying Z (want 0) ==
 [{'n': 0}]
 == chronogolf open_spots histogram (want a 1-4 spread, not all 4) ==
-  {'open_spots': 1, 'n': 277}
-  {'open_spots': 2, 'n': 261}
+  {'open_spots': 1, 'n': 290}
+  {'open_spots': 2, 'n': 277}
   {'open_spots': 3, 'n': 66}
-  {'open_spots': 4, 'n': 2093}
+  {'open_spots': 4, 'n': 2130}
 == broadlands booking_url (want noteefy) ==
-  {'booking_url': 'https://www.chronogolf.com/club/broadlands-golf-course'}
   {'booking_url': 'https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d'}
 == cities with parentheses (want 0) ==
 [{'n': 0}]
 == labels present per platform ==
-  {'platform': 'chronogolf', 'n': 1468}
+  {'platform': 'chronogolf', 'n': 1593}
   {'platform': 'clubprophet', 'n': 14}
-  {'platform': 'membersports', 'n': 858}
+  {'platform': 'membersports', 'n': 989}
   {'platform': 'teeitup', 'n': 178}
   {'platform': 'teesnap', 'n': 739}
 == active rows per platform ==
-  {'platform': 'chronogolf', 'n': 2697}
+  {'platform': 'chronogolf', 'n': 2763}
   {'platform': 'clubcaddie', 'n': 1348}
   {'platform': 'clubprophet', 'n': 831}
   {'platform': 'ezlinks', 'n': 2680}
-  {'platform': 'foretees', 'n': 94}
-  {'platform': 'foreup', 'n': 2317}
+  {'platform': 'foretees', 'n': 92}
+  {'platform': 'foreup', 'n': 2390}
   {'platform': 'golfnow', 'n': 2209}
-  {'platform': 'membersports', 'n': 2505}
+  {'platform': 'membersports', 'n': 2560}
   {'platform': 'quick18', 'n': 968}
   {'platform': 'supersaas', 'n': 45}
   {'platform': 'teeitup', 'n': 2902}
   {'platform': 'teesnap', 'n': 1134}
 == recent runs (inserted/updated/errors) ==
+  {'id': 378, 'generated_at': '2026-07-24T21:11:13.204161+00:00', 'date': '2026-07-26', 'courses_queried': 58, 'courses_ok': 12, 'tee_times': 585, 'rows_inserted': 342} | teeitup errors: [{'course': 'aguila-9-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'antelope-hills-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'golden-hills-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/golden-hills-golf-club-az/facilities'}]
   {'id': 377, 'generated_at': '2026-07-24T21:08:15.536661+00:00', 'date': '2026-07-26', 'courses_queried': 58, 'courses_ok': 29, 'tee_times': 1446, 'rows_inserted': 478} | teeitup errors: [{'course': 'ak-chin-southern-dunes-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'buffalo-run-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'encanto-9-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}]
   {'id': 376, 'generated_at': '2026-07-24T21:06:07.057908+00:00', 'date': '2026-07-26', 'courses_queried': 58, 'courses_ok': 21, 'tee_times': 785, 'rows_inserted': 429} | teeitup errors: [{'course': 'ahwatukee-country-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/ahwatukee-golf-club/facilities'}, {'course': 'arizona-national-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'cerbat-cliffs-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}]
   {'id': 375, 'generated_at': '2026-07-24T21:06:05.053874+00:00', 'date': '2026-07-25', 'courses_queried': 58, 'courses_ok': 16, 'tee_times': 516, 'rows_inserted': 376} | teeitup errors: [{'course': 'golf-granby-ranch', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'cave-creek-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}, {'course': 'greenway-park-golf-course', 'platform': 'teeitup', 'error': 'HTTPError: 429'}]
@@ -58,4 +58,3 @@
   {'id': 371, 'generated_at': '2026-07-24T21:01:28.606733+00:00', 'date': '2026-07-25', 'courses_queried': 58, 'courses_ok': 44, 'tee_times': 1446, 'rows_inserted': 947} | teeitup errors: [{'course': 'junior-national-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/junior-national-golf-club/facilities'}, {'course': 'san-pedro-golf-course', 'platform': 'teeitup', 'error': 'ValueError: san-pedro-golf-course: missing TeeItUp alias (booking URL did not yield one)'}]
   {'id': 370, 'generated_at': '2026-07-24T21:01:01.241724+00:00', 'date': '2026-07-24', 'courses_queried': 58, 'courses_ok': 43, 'tee_times': 586, 'rows_inserted': 479} | teeitup errors: [{'course': 'omni-tucson-national', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/omni-tucson-national-resort-spa/facilities'}, {'course': 'golden-hills-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/golden-hills-golf-club-az/facilities'}]
   {'id': 369, 'generated_at': '2026-07-24T20:59:39.078979+00:00', 'date': '2026-07-24', 'courses_queried': 58, 'courses_ok': 53, 'tee_times': 1011, 'rows_inserted': 700} | teeitup errors: 5
-  {'id': 368, 'generated_at': '2026-07-24T20:59:13.695392+00:00', 'date': '2026-07-24', 'courses_queried': 58, 'courses_ok': 37, 'tee_times': 610, 'rows_inserted': 458} | teeitup errors: [{'course': 'ahwatukee-country-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/ahwatukee-golf-club/facilities'}, {'course': 'sierra-vista-golf-center-at-pueblo-del-sol', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/sierra-vista-golf-center-at-pueblo-del-sol/facilities'}, {'course': 'san-tan-highlands-golf-club', 'platform': 'teeitup', 'error': 'HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/san-tan-highlands/facilities'}]
