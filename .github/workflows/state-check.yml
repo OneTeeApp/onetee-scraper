@@ -1,0 +1,35 @@
+name: State check
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["scripts/state_check.py"]
+permissions:
+  contents: write
+concurrency:
+  group: state-check
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install requests
+      - name: Check
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          mkdir -p probe-results
+          python scripts/state_check.py 2>&1 | tee probe-results/state.txt
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/state.txt
+          git commit -m "state check [skip ci]" || exit 0
+          git push
