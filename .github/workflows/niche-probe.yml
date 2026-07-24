@@ -20,33 +20,54 @@ jobs:
         run: |
           pip install requests beautifulsoup4 playwright
           python -m playwright install --with-deps chromium
-      - name: Verify the 7 re-tagged CO native engines return slots
+      - name: Diagnose the 2 empty natives (Ironbridge foreup, Arrowhead ezlinks) over 7 days
         run: |
           mkdir -p probe-results output
-          D=$(date -u -d "+1 days" +%F)
-          # scope a mini-registry to just the native (primary) sources of the 7
-          python - <<'PY'
-          import json
-          venues={"arrowhead-golf-club","bella-ridge-golf-course","cedaredge-golf-club",
-                  "four-mile-ranch-golf-club","grandote-peaks-golf-club","ironbridge-golf-club",
-                  "the-ridge-at-castle-pines-north"}
-          r=json.load(open("registry.json"))
-          r["courses"]=[c for c in r["courses"] if c["venue_id"] in venues and c["source_role"]=="primary"]
-          json.dump(r,open("reg_native.json","w"))
-          print("native sources:",[(c["slug"],c["platform"]) for c in r["courses"]])
-          PY
           {
-            echo "=== date ${D} ==="
-            echo "--- foreup + teeitup (plain) ---"
-            python -m scraper.aggregate --registry reg_native.json \
-              --platforms foreup,teeitup --date "${D}" --out output/native_plain.json 2>&1 || true
-            python -c "import json;d=json.load(open('output/native_plain.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
-            echo "--- ezlinks (browser) ---"
-            python -m scraper.browser_ezlinks --registry reg_native.json --date "${D}" --out output/native_ez.json 2>&1 || true
-            python -c "import json;d=json.load(open('output/native_ez.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
-            echo "--- clubcaddie (browser) ---"
-            python -m scraper.browser_clubcaddie --registry reg_native.json --date "${D}" --days 1 --out-dir output 2>&1 || true
-            python -c "import json;d=json.load(open('output/cc_${D}.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
+            echo "### Ironbridge foreUP: what IDs does course 20595's booking page expose? ###"
+            python - <<'PY'
+          import datetime as dt
+          from scraper.adapters.foreup import ForeUpAdapter
+          a=ForeUpAdapter()
+          try:
+            found=a.discover_ids("20595")
+            print("  discover_ids(20595):",found)
+          except Exception as e:
+            print("  discover_ids err:",type(e).__name__,e)
+          # run the real adapter (current ids 20595/5045) across dates
+          import json
+          c=[x for x in json.load(open("registry.json"))["courses"] if x["slug"]=="ironbridge-golf-club"][0]
+          print("  registry ids:",c["ids"])
+          for off in [1,2,3,5,7,14]:
+            d=dt.date.today()+dt.timedelta(days=off)
+            try:
+              tt=a.fetch(c,d)
+              print(f"    {d}: {len(tt)} times")
+            except Exception as e:
+              print(f"    {d}: ERR {type(e).__name__}: {e}")
+          PY
+            echo
+            echo "### Arrowhead ezlinks portal probe (arrowheadpp vs alternates) over 7 days ###"
+            python - <<'PY'
+          import json,datetime as dt
+          from scraper.browser_ezlinks import run as ezrun
+          base=json.load(open("registry.json"))
+          arrow=[c for c in base["courses"] if c["slug"]=="arrowhead-golf-club"][0]
+          for portal in ["arrowheadpp","arrowhead","arrowheadsunpp","arrowheadgc"]:
+            c=json.loads(json.dumps(arrow))
+            c["ids"]["portal"]=portal
+            c["slug"]=f"arrowhead-{portal}"
+            json.dump({"courses":[c]},open("reg_arrow.json","w"))
+            counts={}
+            for off in [1,2,3,5,7]:
+              d=(dt.date.today()+dt.timedelta(days=off))
+              try:
+                doc=ezrun(d,"reg_arrow.json",f"output/a_{portal}_{off}.json")
+                counts[str(d)]=len(doc["tee_times"])
+              except Exception as e:
+                counts[str(d)]=f"ERR {type(e).__name__}"
+            print(f"  portal={portal}: {counts}")
+          PY
           } 2>&1 | tee probe-results/native.txt
       - name: Commit
         run: |
@@ -54,5 +75,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
           git add probe-results/native.txt
-          git commit -m "native-engine probe [skip ci]" || exit 0
+          git commit -m "native-engine diagnostic [skip ci]" || exit 0
           git push
