@@ -16,16 +16,86 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: |
-          pip install requests beautifulsoup4
-      - run: |
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Diagnose Indian Peaks cps.golf (discover real courseIds vs pinned 10/11)
+        run: |
           mkdir -p probe-results
-          python scripts/niche_probe.py 2>&1 | tee probe-results/niche.txt
+          python - <<'PY' 2>&1 | tee probe-results/indianpeaks.txt
+          import datetime as dt
+          from playwright.sync_api import sync_playwright
+
+          TENANT="indianpeaks"
+          D=(dt.date.today()+dt.timedelta(days=1)).strftime("%a %b %d %Y")
+
+          DISCOVER=r"""
+          async ([tenant]) => {
+            const base="https://"+tenant+".cps.golf";
+            const tr=await fetch(base+"/identityapi/myconnect/token/short",
+              {method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+               body:"client_id=onlinereswebshortlived"});
+            if(tr.status!==200) return {stage:"token",status:tr.status};
+            const token=(await tr.json()).access_token;
+            const H={Authorization:"Bearer "+token,"client-id":"onlineresweb",
+              "x-timezoneid":"America/Denver","x-timezone-offset":"360","Accept":"application/json"};
+            const go=await fetch(base+"/onlineres/onlineapi/api/v1/onlinereservation/GetAllOptions/"+tenant,{headers:H});
+            let b={}; try{b=await go.json();}catch(e){}
+            const co=(b.courseOptions||[]).map(c=>({courseId:c.courseId!==undefined?c.courseId:c.id,
+              name:c.courseName||c.name, holes:c.holes}));
+            return {stage:"getalloptions", status:go.status, token,
+                    webSiteId: b.webSiteId||(b.reservationOptions||{}).webSiteId, courseOptions: co};
+          }
+          """
+          TEETIMES=r"""
+          async ([tenant, wid, cids, date, token]) => {
+            const base="https://"+tenant+".cps.golf";
+            const api=base+"/onlineres/onlineapi/api/v1/onlinereservation";
+            const H=()=>({Authorization:"Bearer "+token,"client-id":"onlineresweb","x-terminalid":"3",
+              "x-websiteid":wid,"x-ismobile":"false","x-productid":"1","x-componentid":"1","x-siteid":"1",
+              "x-moduleid":"7","x-timezoneid":"America/Denver","x-timezone-offset":"360",
+              "x-requestid":crypto.randomUUID(),"Accept":"application/json"});
+            const txid=crypto.randomUUID();
+            await fetch(api+"/RegisterTransactionId",{method:"POST",
+              headers:{...H(),"Content-Type":"application/json"},body:JSON.stringify({transactionId:txid})});
+            const url=api+`/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0&numberOfPlayer=0`
+              +`&courseIds=${cids}&searchTimeType=0&transactionId=${txid}&teeOffTimeMin=0&teeOffTimeMax=23`
+              +`&isChangeTeeOffTime=true&teeSheetSearchView=5&classCode=R&defaultOnlineRate=N`
+              +`&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
+            const tt=await fetch(url,{headers:H()});
+            let c=[]; try{c=(await tt.json()).content||[];}catch(e){}
+            return {status:tt.status, n:c.length, sample:c.slice(0,3).map(s=>({t:s.startTime,cid:s.courseId,name:s.courseName}))};
+          }
+          """
+          with sync_playwright() as pw:
+            for attempt in range(3):
+              br=pw.chromium.launch(args=["--no-sandbox"])
+              try:
+                pg=br.new_page()
+                pg.goto(f"https://{TENANT}.cps.golf/onlineresweb/search-teetime",wait_until="domcontentloaded",timeout=35000)
+                pg.wait_for_timeout(6000)
+                disc=pg.evaluate(DISCOVER,[TENANT])
+                print("DISCOVER:",{k:v for k,v in disc.items() if k!="token"})
+                if disc.get("status")!=200:
+                  br.close(); continue
+                wid=disc.get("webSiteId") or ""
+                real_ids=[c["courseId"] for c in disc.get("courseOptions",[]) if c.get("courseId") is not None]
+                print("REAL courseIds:",real_ids," | pinned in registry: [10, 11]")
+                tok=disc["token"]
+                for label,cids in [("discovered",",".join(str(x) for x in real_ids)),("pinned-10,11","10,11")]:
+                  if not cids: print(f"  {label}: (no ids)"); continue
+                  res=pg.evaluate(TEETIMES,[TENANT,wid,cids,D,tok])
+                  print(f"  TeeTimes[{label}] cids={cids}: status={res['status']} n={res['n']} sample={res['sample']}")
+                br.close(); break
+              except Exception as e:
+                print("ERR",type(e).__name__,e); br.close()
+          PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
-          git add probe-results/niche.txt
-          git commit -m "niche probe [skip ci]" || exit 0
+          git add probe-results/indianpeaks.txt
+          git commit -m "indian peaks cps probe [skip ci]" || exit 0
           git push
