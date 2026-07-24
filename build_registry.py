@@ -88,6 +88,10 @@ EXTRA_IDS = {
     "mariana butte golf course":   {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "course_ids": [3]},
     "red hawk ridge golf course":  {"website_id": "1ca33515-0bb5-4f13-3ebb-08d9d9c521b3", "course_ids": [1, 2]},
     "the olde course at loveland": {"website_id": "e1be30d2-b87c-40ec-44dd-08dbf84ad30b", "course_ids": [2]},
+    # Arizona cps.golf tenants (GetAllOptions, July 2026):
+    "del lago golf club":  {"website_id": "03dffe68-f3cf-4563-c22c-08ddcacdb8cb", "course_ids": [1]},
+    "sewailo golf club":   {"website_id": "a719a286-7fcc-4c03-d59b-08db1f359d2a", "course_ids": [1]},
+    "the views golf club": {"website_id": "8c0a1716-ea2b-4c84-adff-08d8df3c1472", "course_ids": [1, 2, 3]},
 }
 
 # adapters that can actually fetch today
