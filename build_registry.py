@@ -27,6 +27,7 @@ PATTERNS = {
     "quick18": re.compile(r"https?://([a-z0-9-]+)\.(?:quick18|play18)\.com"),
     "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
     "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
+    "supersaas": re.compile(r"supersaas\.com/schedule/([^/]+)/([^/?#]+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -96,7 +97,7 @@ EXTRA_IDS = {
 
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
-               "membersports", "quick18", "teesnap", "foretees"}
+               "membersports", "quick18", "teesnap", "foretees", "supersaas"}
 
 
 def slugify(name: str) -> str:
@@ -144,6 +145,8 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"venue_guid": g[0]}
     if platform == "foretees":
         return {"club_key": g[0], "cid": g[1]}
+    if platform == "supersaas":
+        return {"account": g[0], "schedule": g[1]}
     return {}
 
 
