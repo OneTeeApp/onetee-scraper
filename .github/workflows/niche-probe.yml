@@ -51,6 +51,7 @@ jobs:
           # one-off tidy: strip parenthetical metro hints on legacy rows (new
           # inserts are already clean; existing rows only update spots/price)
           q("UPDATE tee_times SET city = TRIM(substr(city, 1, instr(city,'(')-1)) WHERE city LIKE '%(%'")
+          q("UPDATE tee_times SET booking_url='https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d' WHERE course_slug='broadlands-golf-course' AND booking_url LIKE '%chronogolf%'")
           print("== PK columns ==")
           print([x["name"] for x in q("PRAGMA table_info(tee_times)") if x.get("pk")])
           print("== row counts ==")
