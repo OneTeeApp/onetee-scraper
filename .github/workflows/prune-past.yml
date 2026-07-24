@@ -1,0 +1,45 @@
+name: Prune elapsed tee times
+
+# Safety net for stale availability.
+#
+# A tee time that has already started can't be booked, but two things kept
+# elapsed slots on the site as active=1:
+#   * d1.sync only deactivates rows for courses present in THAT scrape, so a
+#     course that errors keeps its old rows alive indefinitely;
+#   * time passes between runs — the scrape that wrote a 7:20am slot was
+#     correct at 7:06am and wrong by 7:21am.
+# The read API filters past times too, but only once the Worker is deployed.
+# This job fixes the DATA, so every consumer is correct regardless.
+#
+# It is deliberately independent of the scrapers: it still runs when a scrape
+# fails, when a platform is down, and when GitHub throttles the fast scan. It
+# needs no network access to any golf host and finishes in seconds.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prune-past
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Deactivate rows whose tee time has passed in the course's timezone
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: python -m scraper.d1 prune

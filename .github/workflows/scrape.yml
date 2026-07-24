@@ -54,8 +54,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          for OFFSET in 0 1 2; do
-            DATE=$(date -u -d "+${OFFSET} days" +%F)
+          # Dates come from scraper/dates.py (union of local today+2 across the
+          # timezones the registry covers), not `date -u`: after 18:00 MDT the
+          # UTC date is already tomorrow, so a UTC-based window silently dropped
+          # the real local today and left its evening slots stale in D1.
+          for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \

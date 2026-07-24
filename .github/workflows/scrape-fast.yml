@@ -35,11 +35,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          DATE=$(date -u +%F)
-          python -m scraper.aggregate --date "${DATE}" --workers 8 \
-            --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas \
-            --out "output/tee_times_${DATE}.json" || true
-          python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
+          # "today" is a per-timezone question, NOT `date -u` — see
+          # scraper/dates.py. Under UTC, every evening after 18:00 MDT this job
+          # scraped TOMORROW and left the real local today untouched in D1.
+          for DATE in $(python -m scraper.dates --registry registry.json --days 1); do
+            echo "::group::scrape+push ${DATE}"
+            python -m scraper.aggregate --date "${DATE}" --workers 8 \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas \
+              --out "output/tee_times_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
+            echo "::endgroup::"
+          done
+
+      - name: Prune elapsed slots
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: python -m scraper.d1 prune
 
       - name: Post to OneTee (no-op until ONETEE_API_URL secret is set)
         if: ${{ vars.ONETEE_ENABLED == 'true' }}
@@ -47,5 +60,6 @@ jobs:
           ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
           ONETEE_API_KEY: ${{ secrets.ONETEE_API_KEY }}
         run: |
-          DATE=$(date -u +%F)
-          python -m scraper.onetee --data "output/tee_times_${DATE}.json"
+          for DATE in $(python -m scraper.dates --registry registry.json --days 1); do
+            python -m scraper.onetee --data "output/tee_times_${DATE}.json"
+          done

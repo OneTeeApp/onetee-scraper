@@ -12,88 +12,111 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests
-      - name: Recent workflow runs (find the failing scrape)
-        env:
-          GH_TOKEN: ${{ github.token }}
+
+      - name: Find the live API URL from the public site
         run: |
           mkdir -p probe-results
           {
-            gh run list --limit 14 --json displayTitle,workflowName,status,conclusion,createdAt \
-              --template '{{range .}}{{.createdAt}} | {{.workflowName}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}'
-            for WF in scrape.yml scrape-fast.yml; do
-              echo "--- last 4 runs of ${WF} ---"
-              gh run list --workflow "$WF" --limit 4 --json status,conclusion,createdAt,displayTitle \
-                --template '{{range .}}{{.createdAt}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}' || true
-            done
-          } 2>&1 | tee probe-results/runstatus.txt
-      - name: Verify D1 post-migration state (PK, labels, local times, spots)
+            echo "== workers.dev / api hosts referenced by www.oneteeapp.com =="
+            curl -sL --max-time 25 https://www.oneteeapp.com \
+              | grep -oE 'https://[a-z0-9.-]*(workers\.dev|oneteeapp\.com)[^"'"'"' )]*' \
+              | sort -u | head -40
+          } 2>&1 | tee probe-results/apiurl.txt
+
+      - name: Diagnose past tee times (live API + D1), then prune
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           mkdir -p probe-results
-          python - <<'PY' 2>&1 | tee probe-results/postmigration.txt
-          import os, requests, datetime as dt
-          acct, db, tok = os.environ["CLOUDFLARE_ACCOUNT_ID"], os.environ["CLOUDFLARE_D1_DB_ID"], os.environ["CLOUDFLARE_API_TOKEN"]
-          url = f"https://api.cloudflare.com/client/v4/accounts/{acct}/d1/database/{db}/query"
-          def q(sql, params=None):
-              r = requests.post(url, json={"sql": sql, "params": params or []},
-                                headers={"Authorization": f"Bearer {tok}"}, timeout=30).json()
-              if not r.get("success"): raise RuntimeError(r.get("errors"))
-              return r["result"][0].get("results", [])
-          # one-off tidy: strip parenthetical metro hints on legacy rows (new
-          # inserts are already clean; existing rows only update spots/price)
-          q("UPDATE tee_times SET city = TRIM(substr(city, 1, instr(city,'(')-1)) WHERE city LIKE '%(%'")
-          q("UPDATE tee_times SET booking_url='https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d' WHERE course_slug='broadlands-golf-course' AND booking_url LIKE '%chronogolf%'")
-          print("== PK columns ==")
-          print([x["name"] for x in q("PRAGMA table_info(tee_times)") if x.get("pk")])
-          print("== row counts ==")
-          print(q("SELECT COUNT(*) total, SUM(active) act FROM tee_times"))
-          print("== hyland: same-time sub-course rows (want n up to 3 with labels) ==")
-          for r in q("""SELECT teetime, COUNT(*) n, GROUP_CONCAT(course_label,' | ') labels
-                        FROM tee_times WHERE course_slug LIKE '%hyland%' AND active=1
-                        GROUP BY teetime HAVING n>1 LIMIT 4"""): print(" ", r)
-          print("== hyland label histogram ==")
-          for r in q("""SELECT course_label, COUNT(*) n FROM tee_times
-                        WHERE course_slug LIKE '%hyland%' AND active=1 GROUP BY 1"""): print(" ", r)
-          print("== kennedy label histogram ==")
-          for r in q("""SELECT course_label, COUNT(*) n FROM tee_times
-                        WHERE course_slug LIKE '%kennedy%' AND active=1 GROUP BY 1"""): print(" ", r)
-          print("== teeitup teetime format (want local, no Z) ==")
-          for r in q("SELECT teetime FROM tee_times WHERE platform='teeitup' AND active=1 ORDER BY last_seen_at DESC LIMIT 3"): print(" ", r)
-          print("== teeitup rows still carrying Z (want 0) ==")
-          print(q("SELECT COUNT(*) n FROM tee_times WHERE platform='teeitup' AND teetime LIKE '%Z'"))
-          print("== chronogolf open_spots histogram (want a 1-4 spread, not all 4) ==")
-          for r in q("SELECT open_spots, COUNT(*) n FROM tee_times WHERE platform='chronogolf' AND active=1 GROUP BY 1"): print(" ", r)
-          print("== broadlands booking_url (want noteefy) ==")
-          for r in q("SELECT DISTINCT booking_url FROM tee_times WHERE course_slug='broadlands-golf-course' AND active=1 LIMIT 2"): print(" ", r)
-          print("== cities with parentheses (want 0) ==")
-          print(q("SELECT COUNT(*) n FROM tee_times WHERE active=1 AND city LIKE '%(%'"))
-          print("== labels present per platform ==")
-          for r in q("""SELECT platform, COUNT(*) n FROM tee_times
-                        WHERE active=1 AND course_label<>'' GROUP BY 1"""): print(" ", r)
-          print("== active rows per platform ==")
-          for r in q("SELECT platform, COUNT(*) n FROM tee_times WHERE active=1 GROUP BY 1"): print(" ", r)
-          print("== recent runs (inserted/updated/errors) ==")
-          import json as _j
-          for r in q("SELECT id, generated_at, date, courses_queried, courses_ok, tee_times, rows_inserted, errors FROM runs ORDER BY id DESC LIMIT 10"):
-              errs = _j.loads(r.pop("errors") or "[]")
-              tee_errs = [e for e in errs if "teeitup" in str(e.get("platform",""))][:3]
-              print(" ", r, "| teeitup errors:", tee_errs if tee_errs else len(errs))
+          python - <<'PY' 2>&1 | tee probe-results/pasttimes.txt
+          import os, datetime as dt, zoneinfo, requests
+          from scraper.d1 import D1Rest, prune_past
+
+          db = D1Rest()
+          q = db.execute
+          den = dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).replace(tzinfo=None)
+          phx = dt.datetime.now(zoneinfo.ZoneInfo("America/Phoenix")).replace(tzinfo=None)
+          NOW_CO, NOW_AZ = den.isoformat(timespec="seconds"), phx.isoformat(timespec="seconds")
+          print("now Denver:", NOW_CO, "| now Phoenix:", NOW_AZ)
+
+          print("\n== BEFORE: active rows already elapsed, by platform ==")
+          for r in q("""SELECT platform, COUNT(*) n, MIN(teetime) oldest, MAX(teetime) newest
+                          FROM tee_times
+                         WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END
+                      GROUP BY 1 ORDER BY n DESC""", [NOW_AZ, NOW_CO]):
+              print("  ", r)
+          print("== BEFORE: totals ==")
+          print("  ", q("""SELECT COUNT(*) elapsed_active FROM tee_times
+                            WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
+                        [NOW_AZ, NOW_CO])[0],
+                q("SELECT COUNT(*) total_active FROM tee_times WHERE active=1")[0])
+
+          print("\n== BEFORE: worst offenders (most elapsed rows still active) ==")
+          for r in q("""SELECT course_slug, state, COUNT(*) n, MIN(teetime) oldest,
+                               MAX(last_seen_at) last_scrape
+                          FROM tee_times
+                         WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END
+                      GROUP BY 1,2 ORDER BY n DESC LIMIT 15""", [NOW_AZ, NOW_CO]):
+              print("  ", r)
+
+          print("\n== Coal Creek rows (today) ==")
+          for r in q("""SELECT teetime, active, open_spots, last_seen_at
+                          FROM tee_times WHERE course_slug LIKE '%coal-creek%'
+                           AND substr(teetime,1,10)=? ORDER BY teetime LIMIT 20""",
+                     [den.date().isoformat()]):
+              print("  ", r)
+
+          print("\n== dates present among ACTIVE rows (is local-today even scraped?) ==")
+          for r in q("""SELECT substr(teetime,1,10) d, COUNT(*) n, MAX(last_seen_at) last_scrape
+                          FROM tee_times WHERE active=1 GROUP BY 1 ORDER BY 1"""):
+              print("  ", r)
+
+          print("\n== PRUNE ==")
+          print("  ", prune_past(db))
+
+          print("\n== AFTER: elapsed rows still active (want 0) ==")
+          print("  ", q("""SELECT COUNT(*) elapsed_active FROM tee_times
+                            WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
+                        [NOW_AZ, NOW_CO])[0],
+                q("SELECT COUNT(*) total_active FROM tee_times WHERE active=1")[0])
           PY
+
+      - name: Live API check (before/after prune is already applied above)
+        run: |
+          {
+            echo "== live API: coal creek today =="
+            for HOST in $(grep -oE 'https://[a-z0-9.-]*workers\.dev' probe-results/apiurl.txt | sort -u); do
+              echo "--- ${HOST} ---"
+              curl -sL --max-time 20 "${HOST}/api/health" | head -c 400; echo
+              curl -sL --max-time 20 "${HOST}/api/tee-times?course=coal-creek-golf-course&limit=8" | head -c 1200; echo
+            done
+          } 2>&1 | tee probe-results/liveapi.txt
+
+      - name: Recent workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            for WF in scrape.yml scrape-fast.yml prune-past.yml deploy-worker.yml; do
+              echo "--- last 5 runs of ${WF} ---"
+              gh run list --workflow "$WF" --limit 5 --json status,conclusion,createdAt,displayTitle \
+                --template '{{range .}}{{.createdAt}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}' || true
+            done
+          } 2>&1 | tee probe-results/runstatus.txt
+
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
-          git add probe-results/postmigration.txt probe-results/runstatus.txt
-          git commit -m "post-migration probe [skip ci]" || exit 0
+          git add probe-results/
+          git commit -m "probe: past-time diagnosis [skip ci]" || exit 0
           git push
-# re-fire 2110

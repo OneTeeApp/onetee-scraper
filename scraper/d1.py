@@ -200,6 +200,90 @@ def migrate(db, registry_path: str | None = None) -> dict:
     return {"backfilled_courses": backfilled}
 
 
+# --------------------------------------------------------------------------- #
+# past-slot pruning
+# --------------------------------------------------------------------------- #
+
+# A tee time that has already started can't be booked. Two things let elapsed
+# slots linger as active=1:
+#   * sync() only deactivates rows for courses present in THAT scrape, so a
+#     course that errored (or sat in a shard that failed) keeps its old rows;
+#   * between runs, time simply passes — a 7:20am slot is stale by 7:21am even
+#     though the 7:06am scrape that wrote it was perfectly correct.
+# The read API also filters past slots, but that only helps once the Worker is
+# deployed. Pruning at the DATA layer makes every consumer correct.
+#
+# Times are stored as naive LOCAL course time, so "past" must be evaluated in
+# each course's own timezone.
+_STATE_TZ = {
+    "CT": "America/New_York", "DE": "America/New_York", "DC": "America/New_York",
+    "FL": "America/New_York", "GA": "America/New_York", "ME": "America/New_York",
+    "MD": "America/New_York", "MA": "America/New_York", "MI": "America/New_York",
+    "NH": "America/New_York", "NJ": "America/New_York", "NY": "America/New_York",
+    "NC": "America/New_York", "OH": "America/New_York", "PA": "America/New_York",
+    "RI": "America/New_York", "SC": "America/New_York", "VT": "America/New_York",
+    "VA": "America/New_York", "WV": "America/New_York", "IN": "America/New_York",
+    "KY": "America/New_York",
+    "AL": "America/Chicago", "AR": "America/Chicago", "IL": "America/Chicago",
+    "IA": "America/Chicago", "KS": "America/Chicago", "LA": "America/Chicago",
+    "MN": "America/Chicago", "MS": "America/Chicago", "MO": "America/Chicago",
+    "NE": "America/Chicago", "ND": "America/Chicago", "OK": "America/Chicago",
+    "SD": "America/Chicago", "TN": "America/Chicago", "TX": "America/Chicago",
+    "WI": "America/Chicago",
+    "CO": "America/Denver", "MT": "America/Denver", "NM": "America/Denver",
+    "UT": "America/Denver", "WY": "America/Denver", "ID": "America/Denver",
+    "AZ": "America/Phoenix",          # no DST
+    "CA": "America/Los_Angeles", "NV": "America/Los_Angeles",
+    "OR": "America/Los_Angeles", "WA": "America/Los_Angeles",
+    "AK": "America/Anchorage", "HI": "Pacific/Honolulu",
+}
+# Rows with no state yet (legacy inserts) are pruned only once the slot is past
+# in the LAST US timezone to get there — conservative: never hides a bookable
+# slot, at the cost of leaving a few stale ones visible a bit longer.
+_FALLBACK_TZ = "Pacific/Honolulu"
+
+
+def _local_now(tz_name: str) -> str:
+    import zoneinfo
+    return (dt.datetime.now(zoneinfo.ZoneInfo(tz_name))
+            .replace(tzinfo=None).isoformat(timespec="seconds"))
+
+
+def prune_past(db, dry_run: bool = False) -> dict:
+    """Set active=0 on every active row whose tee time already elapsed in the
+    course's local timezone. Idempotent and cheap — when nothing is stale it
+    costs one read per timezone group and zero writes."""
+    by_tz: dict[str, list[str]] = {}
+    for st, tz in _STATE_TZ.items():
+        by_tz.setdefault(tz, []).append(st)
+
+    total, per_tz = 0, {}
+    for tz, states in sorted(by_tz.items()):
+        now = _local_now(tz)
+        marks = ",".join("?" * len(states))
+        where = f"active = 1 AND state IN ({marks}) AND teetime < ?"
+        n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+                       [*states, now])[0]["n"]
+        if n:
+            if not dry_run:
+                db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
+                           [*states, now])
+            per_tz[tz] = n
+            total += n
+
+    now = _local_now(_FALLBACK_TZ)          # unknown / blank state
+    where = "active = 1 AND (state IS NULL OR state = '') AND teetime < ?"
+    n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+                   [now])[0]["n"]
+    if n:
+        if not dry_run:
+            db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}", [now])
+        per_tz["(no state)"] = n
+        total += n
+
+    return {"deactivated": total, "by_tz": per_tz, "dry_run": dry_run}
+
+
 def _key(t: dict) -> tuple[str, str, str]:
     return (t["course_slug"], t["teetime"], t.get("course_label") or "")
 
@@ -302,7 +386,9 @@ def sync(db, doc: dict) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Cloudflare D1 tee-time store")
-    p.add_argument("cmd", choices=["init", "migrate", "push", "stats"])
+    p.add_argument("cmd", choices=["init", "migrate", "push", "prune", "stats"])
+    p.add_argument("--dry-run", action="store_true",
+                   help="prune: report what would be deactivated, write nothing")
     p.add_argument("--data", default="output/tee_times.json")
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--local", metavar="SQLITE_FILE",
@@ -326,6 +412,14 @@ def main() -> int:
               f"+{s['rows_inserted']} inserted, ~{s['rows_updated']} updated, "
               f"-{s['rows_deactivated']} deactivated "
               f"(total writes ≈ {sum(s.values()) + 1})")
+        # Elapsed slots can't be booked. Prune on every push so the data is
+        # correct for any consumer, not just a Worker build that filters.
+        pr = prune_past(db)
+        print(f"pruned {pr['deactivated']} elapsed rows {pr['by_tz']}")
+    elif a.cmd == "prune":
+        pr = prune_past(db, dry_run=a.dry_run)
+        print(f"{'would deactivate' if a.dry_run else 'deactivated'} "
+              f"{pr['deactivated']} elapsed rows {pr['by_tz']}")
     elif a.cmd == "stats":
         total = db.execute("SELECT COUNT(*) AS n, SUM(active) AS act FROM tee_times")
         runs = db.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 5")
