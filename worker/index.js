@@ -39,6 +39,61 @@ const json = (data, status = 200) =>
 const localNowISO = (tz) =>
   new Date().toLocaleString("sv-SE", { timeZone: tz }).replace(" ", "T");
 
+// State → IANA timezone, mirroring scraper/d1.py's _STATE_TZ. The registry is
+// CO+AZ today, but hard-coding "AZ or else Denver" silently breaks the moment a
+// third state lands: an Eastern course would be filtered against Mountain time
+// (elapsed slots stay visible for two hours) and a Pacific one likewise loses
+// an hour of bookable slots. Grouping by tz keeps the SQL to one CASE arm per
+// distinct zone — seven, not fifty.
+const STATE_TZ = {
+  CT: "America/New_York", DE: "America/New_York", FL: "America/New_York",
+  GA: "America/New_York", IN: "America/New_York", KY: "America/New_York",
+  ME: "America/New_York", MD: "America/New_York", MA: "America/New_York",
+  MI: "America/New_York", NH: "America/New_York", NJ: "America/New_York",
+  NY: "America/New_York", NC: "America/New_York", OH: "America/New_York",
+  PA: "America/New_York", RI: "America/New_York", SC: "America/New_York",
+  VT: "America/New_York", VA: "America/New_York", WV: "America/New_York",
+  DC: "America/New_York",
+  AL: "America/Chicago", AR: "America/Chicago", IL: "America/Chicago",
+  IA: "America/Chicago", KS: "America/Chicago", LA: "America/Chicago",
+  MN: "America/Chicago", MS: "America/Chicago", MO: "America/Chicago",
+  NE: "America/Chicago", ND: "America/Chicago", OK: "America/Chicago",
+  SD: "America/Chicago", TN: "America/Chicago", TX: "America/Chicago",
+  WI: "America/Chicago",
+  CO: "America/Denver", MT: "America/Denver", NM: "America/Denver",
+  UT: "America/Denver", WY: "America/Denver", ID: "America/Denver",
+  AZ: "America/Phoenix",                       // no DST
+  CA: "America/Los_Angeles", NV: "America/Los_Angeles",
+  OR: "America/Los_Angeles", WA: "America/Los_Angeles",
+  AK: "America/Anchorage", HI: "Pacific/Honolulu",
+};
+
+// Rows whose state is null/blank are judged by the LAST US zone to reach a
+// given clock time. Conservative on purpose: it can leave a stale slot up a few
+// extra hours, but it will never hide one that is still bookable.
+const FALLBACK_TZ = "Pacific/Honolulu";
+
+const tzGroups = () => {
+  const g = {};
+  for (const [st, tz] of Object.entries(STATE_TZ)) (g[tz] ||= []).push(st);
+  return g;
+};
+
+// `teetime >= <local now for that row's state>`, as a CASE over tz groups.
+//
+// The state lists are inlined as SQL literals rather than bound. They come from
+// the constant above — never from a request — and binding all 51 would eat 59
+// of D1's 100-parameter-per-query ceiling, leaving almost nothing for the
+// actual filters. Inlining keeps it at 8 binds: one clock per zone.
+const TZ_ORDER = Object.entries(tzGroups());
+const PAST_CLAUSE = `teetime >= CASE ${TZ_ORDER
+  .map(([, states]) => `WHEN state IN (${states.map((s) => `'${s}'`).join(",")}) THEN ?`)
+  .join(" ")} ELSE ? END`;
+const pastFilter = () => ({
+  clause: PAST_CLAUSE,
+  binds: [...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
+});
+
 // Merge facility name + sub-course label into one display name. If the label
 // shares a significant word with the facility name it stands alone ("Hyland
 // Hills Gold Course"); otherwise append it ("Legacy Ridge … · LR Back 9").
@@ -56,10 +111,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(request.url);
 
-    // course-local "now" per supported state (CO observes DST, AZ doesn't)
-    const NOW_BY_STATE = { CO: localNowISO("America/Denver"), AZ: localNowISO("America/Phoenix") };
-    const pastClause = `teetime >= CASE WHEN state = 'AZ' THEN ? ELSE ? END`;
-    const pastBinds = [NOW_BY_STATE.AZ, NOW_BY_STATE.CO];
+    const { clause: pastClause, binds: pastBinds } = pastFilter();
 
     try {
       if (url.pathname === "/api/health") {
@@ -151,5 +203,39 @@ export default {
     } catch (e) {
       return json({ error: String(e) }, 500);
     }
+  },
+
+  // Cron trigger (see wrangler.toml [triggers]) — deactivate rows whose tee
+  // time has already elapsed in the course's own timezone.
+  //
+  // The read filter above already hides these, so this is about the DATA rather
+  // than the site: anything else reading D1 (exports, the OneTee post job, ad
+  // hoc queries, a future second consumer) sees the truth too, and `active`
+  // stops drifting upward forever.
+  //
+  // This lives in the Worker rather than in GitHub Actions because Actions
+  // could not be relied on to run it. The equivalent workflow with a */10 cron
+  // was on main for over an hour without firing once, and the */5 fast scrape
+  // actually executes roughly every five HOURS — GitHub's scheduler is
+  // best-effort and deprioritises frequent crons under load. Cloudflare's runs
+  // on time, has the D1 binding already, and costs nothing.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      const stmts = [];
+      for (const [tz, states] of Object.entries(tzGroups())) {
+        const marks = states.map(() => "?").join(",");
+        stmts.push(env.DB.prepare(
+          `UPDATE tee_times SET active = 0
+            WHERE active = 1 AND state IN (${marks}) AND teetime < ?`)
+          .bind(...states, localNowISO(tz)));
+      }
+      stmts.push(env.DB.prepare(
+        `UPDATE tee_times SET active = 0
+          WHERE active = 1 AND (state IS NULL OR state = '') AND teetime < ?`)
+        .bind(localNowISO(FALLBACK_TZ)));
+      const res = await env.DB.batch(stmts);
+      const n = res.reduce((a, r) => a + (r.meta?.changes || 0), 0);
+      console.log(`prune: deactivated ${n} elapsed rows`);
+    })());
   },
 };

@@ -32,7 +32,7 @@ jobs:
           mkdir -p probe-results
           python - <<'PY' 2>&1 | tee probe-results/liveapi.txt
           import os, datetime as dt, zoneinfo, requests
-          from scraper.d1 import D1Rest, prune_past
+          from scraper.d1 import D1Rest
 
           API = os.environ["API"]
           def get(path):
@@ -105,13 +105,20 @@ jobs:
           b = get("/api/tee-times?course=broadlands-golf-course&limit=3")["tee_times"]
           print("   ", {t["booking_url"] for t in b} or "(no upcoming rows)")
 
-          print("\n== 8. D1 backstop: elapsed rows still active (want ~0) ==")
+          print("\n== 8. D1 elapsed-active rows (the Worker cron should keep this small) ==")
+          # Deliberately does NOT prune first. The Worker's */5 cron owns this
+          # now; pruning here would mask a cron that isn't firing. A count in
+          # the low hundreds means up to 5 minutes of drift and is healthy; a
+          # count that keeps climbing means the cron trigger didn't take.
           db = D1Rest()
           print("   ", db.execute(
               """SELECT COUNT(*) elapsed_active FROM tee_times
                    WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
               [NOW["AZ"], NOW["CO"]])[0])
-          print("   prune:", prune_past(db))
+          print("   oldest elapsed-active row:", db.execute(
+              """SELECT teetime, state, course_slug FROM tee_times
+                   WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END
+                   ORDER BY teetime LIMIT 1""", [NOW["AZ"], NOW["CO"]]) or "(none)")
           PY
 
       - name: Recent workflow runs

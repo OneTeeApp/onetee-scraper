@@ -1,23 +1,27 @@
 name: Prune elapsed tee times
 
-# Safety net for stale availability.
+# BACKSTOP ONLY. The primary pruner is the Worker's own cron trigger
+# (worker/wrangler.toml [triggers] + the `scheduled` handler in
+# worker/index.js), which runs every 5 minutes on Cloudflare's scheduler.
 #
-# A tee time that has already started can't be booked, but two things kept
-# elapsed slots on the site as active=1:
-#   * d1.sync only deactivates rows for courses present in THAT scrape, so a
-#     course that errors keeps its old rows alive indefinitely;
-#   * time passes between runs — the scrape that wrote a 7:20am slot was
-#     correct at 7:06am and wrong by 7:21am.
-# The read API filters past times too, but only once the Worker is deployed.
-# This job fixes the DATA, so every consumer is correct regardless.
+# This workflow was written first, with a */10 cron, and GitHub did not fire it
+# a single time in the 80 minutes it sat on main — consistent with the fast
+# scrape, whose */5 cron actually executes about every 5 HOURS. GitHub's
+# scheduler is explicitly best-effort and deprioritises frequent crons under
+# load, so it cannot be the thing standing between a golfer and a tee time that
+# started an hour ago. Kept at an hourly cadence as a second pair of eyes and
+# for manual dispatch when something looks stale.
 #
-# It is deliberately independent of the scrapers: it still runs when a scrape
-# fails, when a platform is down, and when GitHub throttles the fast scan. It
-# needs no network access to any golf host and finishes in seconds.
+# Why pruning is needed at all: a tee time that has already started can't be
+# booked, but nothing deactivates it. d1.sync only touches courses present in
+# THAT scrape, so a course that errors keeps its rows alive indefinitely; and
+# time simply passes between runs — the scrape that wrote a 7:20am slot was
+# correct at 7:06am and wrong by 7:21am. The read API hides past slots, but
+# pruning fixes the DATA, so every consumer is correct, not just the website.
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "23 * * * *"
   workflow_dispatch: {}
 
 permissions:

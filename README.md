@@ -20,10 +20,14 @@ Key files:
   `.github/workflows/deploy-worker.yml`, which needs the `CLOUDFLARE_DEPLOY_TOKEN`
   secret (Workers Scripts:Edit — the scraper's `CLOUDFLARE_API_TOKEN` is D1-only
   and cannot deploy).
-- `.github/workflows/prune-past.yml` — deactivates tee times that have already
-  elapsed in the course's local timezone. Booking engines keep the whole day's
-  grid visible, so "already started" is never signalled by the source; without
-  this, unbookable morning slots sat on the site all afternoon.
+- **Elapsed slots** are deactivated by the Worker's own cron trigger (every 5
+  minutes — see `[triggers]` in `worker/wrangler.toml` and the `scheduled`
+  handler in `worker/index.js`), with `.github/workflows/prune-past.yml` as an
+  hourly backstop. Booking engines keep the whole day's grid visible, so
+  "already started" is never signalled by the source; without this, unbookable
+  morning slots sat on the site all afternoon. Don't move this back onto
+  GitHub's scheduler: its crons fire hours late (a `*/5` scrape runs roughly
+  every 5 hours) or, as with the original `*/10` prune, not at all.
 
 Quick start (Python 3.10+, `pip install requests`):
 
