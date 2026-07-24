@@ -1,0 +1,42 @@
+name: CO empties confirmation
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/co_verify_empties.py"
+      - ".github/workflows/co-verify-empties.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: co-verify-empties
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests beautifulsoup4 playwright
+          python -m playwright install --with-deps chromium
+      - name: Multi-date confirmation of flagged CO courses
+        run: |
+          mkdir -p probe-results output
+          python scripts/co_verify_empties.py 2>&1 | tee probe-results/co_empties.txt
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/co_empties.txt
+          git commit -m "CO empties confirmation [skip ci]" || exit 0
+          git push
