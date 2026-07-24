@@ -1,6 +1,6 @@
-"""Probe v2: drive the DTP material datepicker properly.
-Day cells are span.dtp-select-day. Open picker, click the target day, confirm,
-Search, and capture the network response that carries the tee times.
+"""Probe v3: capture the /webapi/TeeTimes request (full URL, method, params,
+headers) and its HTML response, then replay it in-page for tomorrow. This is
+the endpoint the widget fetches on load — the real data source.
 """
 from __future__ import annotations
 
@@ -15,100 +15,76 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 TOMORROW = dt.date.today() + dt.timedelta(days=1)
 
-COUNT_JS = r"""() => {
-  const all=[...document.querySelectorAll("*")];
-  return all.filter(e=>e.children.length===0 && /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||"")).length;
-}"""
 
-DTP_JS = r"""() => {
-  const dtp=[...document.querySelectorAll(".dtp,[class*=dtp]")].filter(e=>e.offsetParent!==null);
-  return dtp.slice(0,1).map(e=>e.outerHTML.replace(/\s+/g," ").slice(0,1200));
-}"""
-
-
-def run(pw, c, day_num):
+def run(pw, c):
     base = f"https://apimanager-{c['ids']['shard']}.clubcaddie.com"
     token = c["ids"]["view_token"]
     b = pw.chromium.launch(args=["--no-sandbox"])
-    data_resps = []
+    seen = {}
     try:
         ctx = b.new_context(user_agent=UA)
         pg = ctx.new_page()
 
         def on_resp(resp):
-            u = resp.url
-            if "clubcaddie" in u and resp.request.method in ("GET", "POST") \
-                    and not u.endswith((".js", ".css", ".png", ".woff2", ".jpg", ".svg")):
+            if "/webapi/TeeTimes" in resp.url:
+                req = resp.request
                 try:
-                    t = resp.text()
+                    body = resp.text()
                 except Exception:
-                    return
-                # does this response carry tee-time strings?
-                import re
-                n = len(re.findall(r"\d?\d:\d\d\s*[AP]M", t))
-                if n >= 3:
-                    data_resps.append({"url": u.split(".com", 1)[-1][:110],
-                                       "status": resp.status, "times": n,
-                                       "ct": (resp.headers.get("content-type") or "")[:20]})
+                    body = ""
+                seen.update({
+                    "url": resp.url,
+                    "method": req.method,
+                    "post": (req.post_data or "")[:400],
+                    "req_headers": {k: v for k, v in req.headers.items()
+                                    if k.lower() in ("x-requested-with", "accept",
+                                    "referer", "content-type")},
+                    "status": resp.status,
+                    "body": body,
+                })
 
         pg.on("response", on_resp)
-        pg.goto(f"{base}/webapi/view/{token}", wait_until="domcontentloaded", timeout=40000)
-        pg.wait_for_timeout(7000)
-        print(f"RESULT {c['slug']} (day {day_num}): baseline={pg.evaluate(COUNT_JS)}", flush=True)
+        pg.goto(f"{base}/webapi/view/{token}", wait_until="networkidle", timeout=40000)
+        pg.wait_for_timeout(6000)
 
-        # open picker
-        for opener in ("#datechange", "#dateinput"):
-            try:
-                pg.click(opener, timeout=4000)
-                pg.wait_for_timeout(1200)
-                break
-            except Exception:  # noqa: BLE001
-                continue
-        print(f"  DTP overlay: {json.dumps(pg.evaluate(DTP_JS))[:600]}", flush=True)
+        print(f"RESULT {c['slug']}:", flush=True)
+        if not seen:
+            print("  /webapi/TeeTimes NOT observed", flush=True)
+            return
+        print(f"  URL: {seen['url'][:200]}", flush=True)
+        print(f"  method={seen['method']} post={seen['post']!r}", flush=True)
+        print(f"  req_headers={json.dumps(seen['req_headers'])}", flush=True)
+        body = seen["body"]
+        import re
+        times = re.findall(r"\d?\d:\d\d\s*[AP]M", body)
+        print(f"  resp: status={seen['status']} len={len(body)} times={len(times)}",
+              flush=True)
+        # show a chunk of HTML around the first time to design the parser
+        m = re.search(r"\d?\d:\d\d\s*[AP]M", body)
+        if m:
+            start = max(0, m.start() - 400)
+            print(f"  HTML around first slot: {body[start:m.start()+500]}", flush=True)
 
-        # click the day span (try unpadded + padded)
-        clicked = False
-        for txt in (str(day_num), f"{day_num:02d}"):
-            for sel in (f"span.dtp-select-day:text-is('{txt}')",
-                        f".dtp-picker-days span:text-is('{txt}')",
-                        f"a.dtp-select-day:text-is('{txt}')"):
-                try:
-                    pg.click(sel, timeout=2500)
-                    clicked = True
-                    print(f"  clicked day via {sel!r}", flush=True)
-                    break
-                except Exception:  # noqa: BLE001
-                    continue
-            if clicked:
-                break
-        pg.wait_for_timeout(1000)
-        # confirm/OK if present
-        for sel in ("a.dtp-btn-ok", ".dtp-btn-ok", "button:has-text('OK')",
-                    ".dtp-buttons a:has-text('OK')"):
-            try:
-                pg.click(sel, timeout=1500)
-                print(f"  clicked OK via {sel!r}", flush=True)
-                break
-            except Exception:  # noqa: BLE001
-                continue
-        pg.wait_for_timeout(800)
-        # value now?
-        val = pg.eval_on_selector("#dateinput", "e=>e.value") if clicked else "?"
-        print(f"  #dateinput value after pick: {val!r}", flush=True)
-
-        # Search
-        try:
-            pg.click("#UpdateFilerButton", timeout=6000)
-        except Exception as e:  # noqa: BLE001
-            print(f"  Search failed: {type(e).__name__}", flush=True)
-        got = 0
-        for _ in range(20):
-            pg.wait_for_timeout(1000)
-            got = pg.evaluate(COUNT_JS)
-            if got:
-                break
-        print(f"  AFTER search: times={got} url={pg.url[:95]}", flush=True)
-        print(f"  data responses w/ times: {json.dumps(data_resps[:6])}", flush=True)
+        # replay for tomorrow: swap the date param in the captured URL
+        url = seen["url"]
+        import urllib.parse as up
+        parsed = up.urlparse(url)
+        q = dict(up.parse_qsl(parsed.query))
+        # find the date-ish param
+        datekeys = [k for k in q if "date" in k.lower()]
+        print(f"  date params: {[(k, q[k]) for k in datekeys]}", flush=True)
+        for k in datekeys:
+            q[k] = TOMORROW.strftime("%m/%d/%Y")
+        newq = up.urlencode(q)
+        replay_url = up.urlunparse(parsed._replace(query=newq))
+        r = pg.evaluate(
+            """async ([u]) => {
+              const r = await fetch(u, {headers:{"X-Requested-With":"XMLHttpRequest"}});
+              const t = await r.text();
+              const n = (t.match(/\\d?\\d:\\d\\d\\s*[AP]M/g)||[]).length;
+              return {status:r.status, len:t.length, times:n, isHtml:t.trim()[0]==="<"};
+            }""", [replay_url])
+        print(f"  REPLAY tomorrow ({TOMORROW.isoformat()}): {json.dumps(r)}", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"RESULT {c['slug']}: ERROR {type(e).__name__} {str(e)[:80]}", flush=True)
     finally:
@@ -121,7 +97,7 @@ def main():
     courses = [x for x in reg if x["slug"] in ("salida-golf-club", "applewood-golf-course")]
     with sync_playwright() as pw:
         for c in courses:
-            run(pw, c, TOMORROW.day)
+            run(pw, c)
 
 
 if __name__ == "__main__":
