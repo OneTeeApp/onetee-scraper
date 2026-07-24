@@ -57,7 +57,6 @@ async ([body, dateStr]) => {
 _TIME = re.compile(r"Tee Time:\s*</span>\s*<br>\s*(\d{1,2}:\d\d\s*[AP]M)", re.I)
 _PRICE = re.compile(r"Price:\s*</span>\s*<br>\s*\$?([\d,]+(?:\.\d+)?)", re.I)
 _HOLES = re.compile(r"Holes:\s*</span>\s*<br>\s*(\d+)", re.I)
-_SPOTS = re.compile(r"(\d+)\s*(?:Player|Spot|Golfer|Available)", re.I)
 
 
 def _parse(course: dict, date: dt.date, html: str) -> list:
@@ -78,21 +77,19 @@ def _parse(course: dict, date: dt.date, html: str) -> list:
         price = float(pm.group(1).replace(",", "")) if pm else None
         hm = _HOLES.search(ch)
         holes = int(hm.group(1)) if hm else None
-        sm = _SPOTS.search(ch)
-        spots = int(sm.group(1)) if sm else None
-        e = by_time.setdefault(iso, {"holes": set(), "prices": [], "spots": 0})
+        e = by_time.setdefault(iso, {"holes": set(), "prices": []})
         if holes in (9, 18):
             e["holes"].add(holes)
         if price and price > 0:
             e["prices"].append(price)
-        if spots:
-            e["spots"] = max(e["spots"], spots)
 
     out = []
     for iso, e in by_time.items():
+        # Club Caddie's tee sheet doesn't expose a reliable open-spots count,
+        # so we leave open_spots unset rather than publish a wrong number.
         out.append(GolfNowAdapter.base_tee_time(
             course, teetime=iso, holes=sorted(e["holes"]) or [18],
-            open_spots=e["spots"] or None,
+            open_spots=None,
             price_min=min(e["prices"]) if e["prices"] else None,
             price_max=max(e["prices"]) if e["prices"] else None,
             raw={}))
