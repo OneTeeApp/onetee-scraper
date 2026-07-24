@@ -26,9 +26,11 @@ jobs:
           {
             gh run list --limit 14 --json displayTitle,workflowName,status,conclusion,createdAt \
               --template '{{range .}}{{.createdAt}} | {{.workflowName}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}'
-            echo "--- failed scrape job log tail ---"
-            RUN_ID=$(gh run list --workflow "Scrape tee times (full, 3 days)" --limit 1 --json databaseId --jq '.[0].databaseId')
-            gh run view "$RUN_ID" --log 2>/dev/null | grep -iE "error|traceback|exception|timed|cancel" | tail -30 || true
+            for WF in scrape.yml scrape-fast.yml; do
+              echo "--- last 4 runs of ${WF} ---"
+              gh run list --workflow "$WF" --limit 4 --json status,conclusion,createdAt,displayTitle \
+                --template '{{range .}}{{.createdAt}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}' || true
+            done
           } 2>&1 | tee probe-results/runstatus.txt
       - name: Verify D1 post-migration state (PK, labels, local times, spots)
         env:

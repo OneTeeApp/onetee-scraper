@@ -22,8 +22,13 @@ on:
 permissions:
   contents: read
 
+# NOTE: matrix context is NOT available in workflow-level concurrency — using
+# ${{ matrix.shard }} here made the whole workflow invalid (startup_failure on
+# every trigger, cron included), which silently killed the full scan. A static
+# group is also the right semantics: one full-scan RUN at a time (its 4 shard
+# jobs still run in parallel inside the run).
 concurrency:
-  group: scrape-full-${{ matrix.shard }}
+  group: scrape-full
   cancel-in-progress: false
 
 jobs:
