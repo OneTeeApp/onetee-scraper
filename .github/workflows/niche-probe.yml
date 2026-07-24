@@ -11,31 +11,48 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - name: Install deps + Chromium
         run: |
-          pip install requests playwright
+          pip install requests beautifulsoup4 playwright
           python -m playwright install --with-deps chromium
-      - name: Browser-fetch SuperSaaS (Spreading Antlers) for next 3 days
+      - name: Verify the 7 re-tagged CO native engines return slots
         run: |
-          mkdir -p probe-results
+          mkdir -p probe-results output
+          D=$(date -u -d "+1 days" +%F)
+          # scope a mini-registry to just the native (primary) sources of the 7
+          python - <<'PY'
+          import json
+          venues={"arrowhead-golf-club","bella-ridge-golf-course","cedaredge-golf-club",
+                  "four-mile-ranch-golf-club","grandote-peaks-golf-club","ironbridge-golf-club",
+                  "the-ridge-at-castle-pines-north"}
+          r=json.load(open("registry.json"))
+          r["courses"]=[c for c in r["courses"] if c["venue_id"] in venues and c["source_role"]=="primary"]
+          json.dump(r,open("reg_native.json","w"))
+          print("native sources:",[(c["slug"],c["platform"]) for c in r["courses"]])
+          PY
           {
-            for OFFSET in 0 1 2; do
-              DATE=$(date -u -d "+${OFFSET} days" +%F)
-              echo "=== ${DATE} ==="
-              python -m scraper.browser_supersaas --date "${DATE}" --out "output/ss_${DATE}.json" 2>&1
-              python -c "import json;d=json.load(open('output/ss_${DATE}.json'));print('slots=',len(d['tee_times']),'errors=',d['errors']);print('sample=',[t['teetime'] for t in d['tee_times'][:5]])"
-            done
-          } 2>&1 | tee probe-results/supersaas.txt
+            echo "=== date ${D} ==="
+            echo "--- foreup + teeitup (plain) ---"
+            python -m scraper.aggregate --registry reg_native.json \
+              --platforms foreup,teeitup --date "${D}" --out output/native_plain.json 2>&1 || true
+            python -c "import json;d=json.load(open('output/native_plain.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
+            echo "--- ezlinks (browser) ---"
+            python -m scraper.browser_ezlinks --registry reg_native.json --date "${D}" --out output/native_ez.json 2>&1 || true
+            python -c "import json;d=json.load(open('output/native_ez.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
+            echo "--- clubcaddie (browser) ---"
+            python -m scraper.browser_clubcaddie --registry reg_native.json --date "${D}" --days 1 --out-dir output 2>&1 || true
+            python -c "import json;d=json.load(open('output/cc_${D}.json'));from collections import Counter;c=Counter(t['course_slug'] for t in d['tee_times']);print('counts',dict(c));print('errors',d['errors'])"
+          } 2>&1 | tee probe-results/native.txt
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
-          git add probe-results/supersaas.txt
-          git commit -m "supersaas probe [skip ci]" || exit 0
+          git add probe-results/native.txt
+          git commit -m "native-engine probe [skip ci]" || exit 0
           git push
