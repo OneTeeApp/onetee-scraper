@@ -1,10 +1,9 @@
-"""Probe v6: Club Caddie /slots is a server-rendered HTML page with the tee
-times in the DOM. Establish session (view page) -> navigate to /slots for the
-target date -> dump ordered card text + one card's HTML to design the parser.
+"""Probe v7: on the Club Caddie view page (auto-renders today's slots), dump
+(a) the first tee-time cards' HTML for parser design, and (b) the date input +
+Search control selectors so the fetcher can drive future dates.
 """
 from __future__ import annotations
 
-import datetime as dt
 import json
 import sys
 
@@ -13,49 +12,54 @@ from scraper.aggregate import load_registry  # noqa: E402
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-TOMORROW = dt.date.today() + dt.timedelta(days=1)
-MDY = TOMORROW.strftime("%m/%d/%Y")
 
 
 def probe(pw, course):
     ids = course["ids"]
-    shard, token = ids.get("shard"), ids.get("view_token")
-    base = f"https://apimanager-{shard}.clubcaddie.com"
+    base = f"https://apimanager-{ids['shard']}.clubcaddie.com"
+    token = ids["view_token"]
     b = pw.chromium.launch(args=["--no-sandbox"])
     try:
         ctx = b.new_context(user_agent=UA)
         pg = ctx.new_page()
-        # 1. establish session
         pg.goto(f"{base}/webapi/view/{token}", wait_until="domcontentloaded",
                 timeout=40000)
-        pg.wait_for_timeout(4000)
-        # 2. navigate to the slots page for tomorrow
-        pg.goto(f"{base}/webapi/view/{token}/slots?date={MDY}&player=1&ratetype=any",
-                wait_until="domcontentloaded", timeout=40000)
-        pg.wait_for_timeout(4000)
+        pg.wait_for_timeout(7000)
         info = pg.evaluate(r"""() => {
-          const out = {url: location.href.slice(0,120)};
-          const txt = document.body ? document.body.innerText : "";
-          out.lines = txt.split("\n").map(s=>s.trim()).filter(Boolean).slice(0, 60);
-          // find the element wrapping the first time, dump its card HTML
+          const out = {};
           const all = [...document.querySelectorAll("*")];
-          const timeEl = all.find(e => /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||"")
-                                    && e.children.length === 0);
-          if (timeEl) {
-            let card = timeEl;
-            for (let i=0;i<5 && card.parentElement;i++){
+          // tee-time cards: leaf element whose text is exactly a time
+          const timeEls = all.filter(e => e.children.length === 0 &&
+              /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||""));
+          out.timeCount = timeEls.length;
+          // climb to a card container that also holds a price
+          const cards = [];
+          for (const te of timeEls.slice(0, 3)) {
+            let card = te;
+            for (let i=0;i<6 && card.parentElement;i++){
               card = card.parentElement;
-              if (card.textContent.match(/\$|\bholes?\b|player/i)) break;
+              if (/\$/.test(card.textContent)) break;
             }
-            out.cardHTML = card.outerHTML.replace(/\s+/g," ").slice(0, 900);
-            out.cardClass = card.className;
+            cards.push(card.outerHTML.replace(/\s+/g," ").slice(0, 700));
           }
+          out.cards = cards;
+          // date input candidates
+          const dateInputs = all.filter(e => e.tagName === "INPUT" &&
+              /date/i.test((e.id||"")+(e.name||"")+(e.className||"")+(e.placeholder||"")));
+          out.dateInputs = dateInputs.slice(0,4).map(e => ({
+            id:e.id, name:e.name, cls:e.className, ph:e.placeholder, val:e.value}));
+          // search button candidates
+          const btns = all.filter(e => /button|^a$/i.test(e.tagName) &&
+              /search/i.test(e.textContent||"") && e.textContent.length < 30);
+          out.searchBtns = btns.slice(0,4).map(e => ({
+            tag:e.tagName, id:e.id, cls:e.className, txt:(e.textContent||"").trim().slice(0,20)}));
           return out;
         }""")
-        print(f"RESULT cc {course['slug']}: url={info.get('url')}", flush=True)
-        print("  LINES: " + json.dumps(info.get("lines"))[:900], flush=True)
-        print(f"  cardClass={info.get('cardClass')!r}", flush=True)
-        print(f"  cardHTML={info.get('cardHTML')}", flush=True)
+        print(f"RESULT cc {course['slug']}: times={info.get('timeCount')}", flush=True)
+        print(f"  dateInputs={json.dumps(info.get('dateInputs'))}", flush=True)
+        print(f"  searchBtns={json.dumps(info.get('searchBtns'))}", flush=True)
+        for i, c in enumerate(info.get("cards") or []):
+            print(f"  CARD{i}: {c}", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"RESULT cc {course['slug']}: ERROR {type(e).__name__} {str(e)[:90]}",
               flush=True)
