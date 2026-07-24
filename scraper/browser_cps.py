@@ -63,6 +63,10 @@ async ([tenant, wid, cids, date]) => {
 
 
 def _teetimes(course: dict, slots: list[dict]) -> list:
+    # Label per sub-course when one tenant query spans several (Fossil Trace's
+    # 3 nines, GVR's sheets) so same-time slots don't collapse in D1.
+    names = {s.get("courseName") for s in slots if s.get("courseName")}
+    multi = len(names) > 1
     out = []
     for s in slots:
         t = s.get("startTime")
@@ -72,6 +76,7 @@ def _teetimes(course: dict, slots: list[dict]) -> list:
         spots = s.get("availableParticipantNo")
         out.append(ClubProphetAdapter.base_tee_time(
             course, teetime=str(t), holes=ClubProphetAdapter._holes(s),
+            course_label=(s.get("courseName") or "") if multi else "",
             open_spots=int(spots) if isinstance(spots, (int, float)) else None,
             price_min=min(prices) if prices else None,
             price_max=max(prices) if prices else None,

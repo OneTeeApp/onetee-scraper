@@ -81,21 +81,34 @@ class ChronogolfAdapter(Adapter):
         if not course_ids:
             raise RuntimeError(f"{course['slug']}: no online-bookable courses")
 
+        multi = len(course_ids) > 1
         out: list[TeeTime] = []
         for cid in course_ids:
-            params = [
-                ("date", date.isoformat()),
-                ("course_id", cid),
-                ("affiliation_type_ids[]", aff),
-                ("affiliation_type_ids[]", aff),
-                ("nb_holes", 18),
-            ]
-            slots = self.get_json(f"{BASE}/marketplace/clubs/{disc['club_id']}/teetimes",
-                                 params=params)
+            # The API has no remaining-spots field — out_of_capacity is relative
+            # to the REQUESTED party size (probe-verified). So ask at party
+            # sizes 4 -> 1: a slot's true remaining seats = the largest party
+            # that still fits. Replaces the old hardcoded "4" guess.
+            by_slot: dict = {}
+            for n in (4, 3, 2, 1):
+                params = [("date", date.isoformat()), ("course_id", cid)]
+                params += [("affiliation_type_ids[]", aff)] * n
+                params.append(("nb_holes", 18))
+                try:
+                    slots = self.get_json(
+                        f"{BASE}/marketplace/clubs/{disc['club_id']}/teetimes",
+                        params=params)
+                except Exception:  # noqa: BLE001 — one size failing shouldn't
+                    slots = []     # kill the whole course
+                for slot in slots or []:
+                    if slot.get("out_of_capacity"):
+                        continue
+                    sid = slot.get("id") or slot.get("uuid") or slot.get("start_time")
+                    e = by_slot.setdefault(sid, {"slot": slot, "spots": n})
+                    e["spots"] = max(e["spots"], n)
+
             cname = disc["course_names"].get(cid, course["name"])
-            for slot in slots or []:
-                if slot.get("out_of_capacity"):
-                    continue
+            for e in by_slot.values():
+                slot = e["slot"]
                 fees = [f.get("green_fee") for f in slot.get("green_fees", [])
                         if isinstance(f.get("green_fee"), (int, float))]
                 start = slot.get("start_time", "")
@@ -103,9 +116,9 @@ class ChronogolfAdapter(Adapter):
                     course,
                     teetime=f"{slot.get('date', date.isoformat())}T{start}"
                             + ("" if len(start) > 5 else ":00"),
+                    course_label=cname if multi else "",
                     holes=[18],
-                    open_spots=slot.get("open_slots") or (
-                        None if slot.get("out_of_capacity") else 4),
+                    open_spots=e["spots"],
                     price_min=min(fees) if fees else None,
                     price_max=max(fees) if fees else None,
                     raw={"course_name": cname, **{k: slot.get(k) for k in

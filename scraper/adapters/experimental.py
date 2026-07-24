@@ -64,36 +64,50 @@ class MemberSportsAdapter(Adapter):
             raise RuntimeError(f"{course['slug']}: unexpected MemberSports "
                                f"response type {type(data).__name__}")
 
+        # A club's response can span multiple sub-courses (Kennedy: 18-hole
+        # sheets + "Kennedy Par 3 or Footgolf"), distinguished per item by
+        # golfCourseId/name. Group items per (teeTime, golfCourseId) so each
+        # sub-course keeps its own slot instead of maxing across them; label
+        # only when the day actually spans more than one sub-course.
+        course_ids_seen = {it.get("golfCourseId")
+                           for row in data for it in row.get("items", [])
+                           if it.get("golfCourseId") is not None}
+        multi = len(course_ids_seen) > 1
+
         out: list[TeeTime] = []
         for row in data:
             tee_min = row.get("teeTime")
             if tee_min is None:
                 continue
-            prices, spots_max, holes = [], 0, set()
+            groups: dict = {}
             for it in row.get("items", []):
                 if it.get("bookingNotAllowed") or it.get("hide"):
                     continue
                 spots = max(0, 4 - int(it.get("playerCount") or 0))
                 if spots <= 0:
                     continue
-                spots_max = max(spots_max, spots)
+                g = groups.setdefault(it.get("golfCourseId"), {
+                    "prices": [], "spots": 0, "holes": set(), "name": ""})
+                g["spots"] = max(g["spots"], spots)
                 p = float(it.get("price") or 0)
                 if p > 0:
-                    prices.append(p)
+                    g["prices"].append(p)
                 if it.get("golfCourseNumberOfHoles"):
-                    holes.add(int(it["golfCourseNumberOfHoles"]))
-            if spots_max <= 0:
-                continue
+                    g["holes"].add(int(it["golfCourseNumberOfHoles"]))
+                if not g["name"] and it.get("name"):
+                    g["name"] = str(it["name"])
             hh, mm = divmod(int(tee_min), 60)
-            out.append(self.base_tee_time(
-                course,
-                teetime=f"{date.isoformat()}T{hh:02d}:{mm:02d}:00",
-                holes=sorted(holes),
-                open_spots=spots_max,
-                price_min=min(prices) if prices else None,
-                price_max=max(prices) if prices else None,
-                raw={"teeTime": tee_min, "items": len(row.get("items", []))},
-            ))
+            for gid, g in groups.items():
+                out.append(self.base_tee_time(
+                    course,
+                    teetime=f"{date.isoformat()}T{hh:02d}:{mm:02d}:00",
+                    course_label=g["name"] if multi else "",
+                    holes=sorted(g["holes"]),
+                    open_spots=g["spots"],
+                    price_min=min(g["prices"]) if g["prices"] else None,
+                    price_max=max(g["prices"]) if g["prices"] else None,
+                    raw={"teeTime": tee_min, "golfCourseId": gid},
+                ))
         return out
 
 

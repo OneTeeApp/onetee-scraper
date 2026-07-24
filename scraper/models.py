@@ -14,6 +14,11 @@ class TeeTime:
     city: str
     platform: str               # foreup | teeitup | chronogolf | clubprophet | ...
     teetime: str                # ISO 8601 local course time, e.g. "2026-07-24T07:30:00"
+    course_label: str = ""      # sub-course within a multi-course facility
+                                # ("Hyland Hills Gold Course", "Kennedy Par 3");
+                                # "" for single-course facilities. Part of the D1
+                                # primary key so same-time slots on different
+                                # sub-courses never collapse into one row.
     state: str = ""             # two-letter state, e.g. "CO" | "AZ" (frontend filter)
     venue_id: str = ""          # stable id for the physical course; groups the
                                 # multiple booking SOURCES (native engine + GolfNow

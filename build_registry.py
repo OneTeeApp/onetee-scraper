@@ -55,6 +55,12 @@ EXTRA_IDS = {
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
     "rollingstone ranch golf club":      {"alias": "rollingstone-ranch"},
 
+    # Broadlands: the public booking front door is Noteefy (that's what the
+    # Booking URL must point users to), but the tee sheet is scraped from the
+    # Chronogolf marketplace API that mirrors it — so pin the chronogolf slug
+    # here since it's no longer extractable from the (Noteefy) booking URL.
+    "broadlands golf course": {"slug": "broadlands-golf-course"},
+
     # Club Prophet (cps.golf): the adapter discovers courseIds + websiteId at
     # runtime via OnlineCourses from just the tenant subdomain. Indian Peaks is
     # pinned (captured live) as a guaranteed anchor in case discovery ever fails
@@ -180,7 +186,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     return {
         "slug": slug,
         "name": row["Course Name"],
-        "city": row["City"],
+        # "Ahwatukee (Phoenix)" -> "Ahwatukee": the parenthetical metro hint is
+        # directory metadata; the clean primary place name is what the frontend
+        # displays and matches against its city list.
+        "city": re.sub(r"\s*\([^)]*\)", "", row["City"]).strip(),
         "state": state,
         # venue_id groups every booking SOURCE for one physical course. The
         # primary (native engine, or the only source) owns the clean venue slug;

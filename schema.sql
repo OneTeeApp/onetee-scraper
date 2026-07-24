@@ -4,6 +4,9 @@
 CREATE TABLE IF NOT EXISTS tee_times (
   course_slug  TEXT NOT NULL,
   teetime      TEXT NOT NULL,            -- ISO local course time
+  course_label TEXT NOT NULL DEFAULT '', -- sub-course within a multi-course
+                                         -- facility (Hyland Hills Gold/Blue/Par 3);
+                                         -- '' when the facility has one course
   course_name  TEXT NOT NULL,
   city         TEXT,
   state        TEXT,                     -- two-letter state (CO, AZ, ...) for frontend filtering
@@ -21,7 +24,9 @@ CREATE TABLE IF NOT EXISTS tee_times (
   active       INTEGER DEFAULT 1,        -- 0 = slot disappeared (booked/closed)
   first_seen_at TEXT NOT NULL,
   last_seen_at  TEXT NOT NULL,
-  PRIMARY KEY (course_slug, teetime)
+  -- course_label is in the PK: a 3-course facility (Hyland Hills) has three
+  -- legitimate 7:00 slots; a 2-column key made them overwrite each other.
+  PRIMARY KEY (course_slug, teetime, course_label)
 );
 
 -- Frontend reads: active slots for a state on a given day. The composite index

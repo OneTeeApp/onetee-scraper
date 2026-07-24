@@ -207,6 +207,8 @@ class ClubProphetAdapter(Adapter):
         body = r.json()
         slots = body.get("content", []) if isinstance(body, dict) else (body or [])
 
+        names = {s.get("courseName") for s in slots if s.get("courseName")}
+        multi = len(names) > 1
         out: list[TeeTime] = []
         for s in slots:
             t = s.get("startTime")
@@ -217,6 +219,7 @@ class ClubProphetAdapter(Adapter):
             out.append(self.base_tee_time(
                 course,
                 teetime=str(t),
+                course_label=(s.get("courseName") or "") if multi else "",
                 holes=self._holes(s),
                 open_spots=int(spots) if isinstance(spots, (int, float)) else None,
                 price_min=min(prices) if prices else None,

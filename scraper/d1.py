@@ -37,12 +37,12 @@ import requests
 
 SCHEMA = (pathlib.Path(__file__).parent.parent / "schema.sql").read_text()
 
-COLS = ["course_slug", "teetime", "course_name", "city", "state",
+COLS = ["course_slug", "teetime", "course_label", "course_name", "city", "state",
         "venue_id", "source_role", "platform",
         "holes", "open_spots", "price_min", "price_max", "currency",
         "booking_url", "simulated", "active", "first_seen_at", "last_seen_at"]
 CHUNK = 5   # rows per INSERT — D1's HTTP API caps bound params at 100/query
-            # (5 rows × 18 cols = 90). Local SQLite would allow far more, but
+            # (5 rows × 19 cols = 95). Local SQLite would allow far more, but
             # correctness on D1 wins; initial full load is a one-time cost.
 SLUG_CHUNK = 90   # slugs per read query (stays under D1's 100 bound-param cap)
 
@@ -111,12 +111,70 @@ def init_schema(db) -> None:
         "ALTER TABLE tee_times ADD COLUMN state TEXT",
         "ALTER TABLE tee_times ADD COLUMN venue_id TEXT",
         "ALTER TABLE tee_times ADD COLUMN source_role TEXT DEFAULT 'primary'",
+        "ALTER TABLE tee_times ADD COLUMN course_label TEXT NOT NULL DEFAULT ''",
     ):
         try:
             db.execute(ddl)
         except Exception:  # noqa: BLE001 — column already exists, or fresh DB
             pass
+    _rebuild_pk_if_legacy(db)
     db.executescript(SCHEMA)
+
+
+def _rebuild_pk_if_legacy(db) -> None:
+    """One-time table rebuild when the PK is the legacy (course_slug, teetime).
+
+    A 3-course facility has three real 7:00 slots; the 2-column key collapsed
+    them via INSERT OR REPLACE. SQLite can't ALTER a PK, so detect via
+    PRAGMA table_info (pk column count) and rebuild: create the new-shape
+    table, copy rows, swap. Legacy teeitup rows are NOT copied — they carry
+    raw-UTC timestamps (".000Z", hours off local) and are fully rewritten by
+    the next scrape anyway. Idempotent: after the rebuild pk count is 3.
+    """
+    try:
+        info = db.execute("PRAGMA table_info(tee_times)")
+    except Exception:  # noqa: BLE001 — fresh DB, no table yet
+        return
+    pk_cols = [r["name"] for r in info if r.get("pk")]
+    if not pk_cols or len(pk_cols) >= 3:
+        return                            # fresh (SCHEMA will create) or done
+    cols = ",".join(COLS)
+    db.executescript(f"""
+        CREATE TABLE IF NOT EXISTS tee_times_v2 (
+          course_slug  TEXT NOT NULL,
+          teetime      TEXT NOT NULL,
+          course_label TEXT NOT NULL DEFAULT '',
+          course_name  TEXT NOT NULL,
+          city         TEXT,
+          state        TEXT,
+          venue_id     TEXT,
+          source_role  TEXT DEFAULT 'primary',
+          platform     TEXT,
+          holes        TEXT,
+          open_spots   INTEGER,
+          price_min    REAL,
+          price_max    REAL,
+          currency     TEXT DEFAULT 'USD',
+          booking_url  TEXT,
+          simulated    INTEGER DEFAULT 0,
+          active       INTEGER DEFAULT 1,
+          first_seen_at TEXT NOT NULL,
+          last_seen_at  TEXT NOT NULL,
+          PRIMARY KEY (course_slug, teetime, course_label)
+        );
+        INSERT OR IGNORE INTO tee_times_v2 ({cols})
+          SELECT course_slug, teetime, COALESCE(course_label,''), course_name,
+                 city, state, venue_id, COALESCE(source_role,'primary'),
+                 platform, holes, open_spots, price_min, price_max,
+                 COALESCE(currency,'USD'), booking_url,
+                 COALESCE(simulated,0), COALESCE(active,1),
+                 first_seen_at, last_seen_at
+            FROM tee_times
+           WHERE NOT (platform = 'teeitup' AND teetime LIKE '%Z')
+             AND teetime >= strftime('%Y-%m-%dT00:00:00', 'now', '-1 day');
+        DROP TABLE tee_times;
+        ALTER TABLE tee_times_v2 RENAME TO tee_times;
+    """)
 
 
 def migrate(db, registry_path: str | None = None) -> dict:
@@ -142,8 +200,8 @@ def migrate(db, registry_path: str | None = None) -> dict:
     return {"backfilled_courses": backfilled}
 
 
-def _key(t: dict) -> tuple[str, str]:
-    return (t["course_slug"], t["teetime"])
+def _key(t: dict) -> tuple[str, str, str]:
+    return (t["course_slug"], t["teetime"], t.get("course_label") or "")
 
 
 def sync(db, doc: dict) -> dict:
@@ -154,6 +212,7 @@ def sync(db, doc: dict) -> dict:
     for t in doc["tee_times"]:
         scraped[_key(t)] = {
             "course_slug": t["course_slug"], "teetime": t["teetime"],
+            "course_label": t.get("course_label") or "",
             "course_name": t["course_name"], "city": t.get("city"),
             "state": t.get("state"),
             "venue_id": t.get("venue_id") or t["course_slug"],
@@ -183,10 +242,12 @@ def sync(db, doc: dict) -> dict:
         batch = slugs[i:i + SLUG_CHUNK]
         ph = ",".join("?" * len(batch))
         for r in db.execute(
-                "SELECT course_slug, teetime, open_spots, price_min, price_max, "
-                f"active FROM tee_times WHERE substr(teetime,1,10) = ? "
+                "SELECT course_slug, teetime, course_label, open_spots, "
+                f"price_min, price_max, active FROM tee_times "
+                f"WHERE substr(teetime,1,10) = ? "
                 f"AND course_slug IN ({ph})", [date, *batch]):
-            existing[(r["course_slug"], r["teetime"])] = r
+            existing[(r["course_slug"], r["teetime"],
+                      r.get("course_label") or "")] = r
 
     to_insert = [v for k, v in scraped.items() if k not in existing]
     to_update = []
@@ -212,13 +273,15 @@ def sync(db, doc: dict) -> dict:
     for row in to_update:
         db.execute(
             "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
-            "active=1, last_seen_at=? WHERE course_slug=? AND teetime=?",
+            "active=1, last_seen_at=? "
+            "WHERE course_slug=? AND teetime=? AND course_label=?",
             [row["open_spots"], row["price_min"], row["price_max"],
-             now, row["course_slug"], row["teetime"]])
+             now, row["course_slug"], row["teetime"], row["course_label"]])
 
-    for slug, teetime in to_deactivate:
+    for slug, teetime, label in to_deactivate:
         db.execute("UPDATE tee_times SET active=0, last_seen_at=? "
-                   "WHERE course_slug=? AND teetime=?", [now, slug, teetime])
+                   "WHERE course_slug=? AND teetime=? AND course_label=?",
+                   [now, slug, teetime, label])
 
     stats = {"rows_inserted": len(to_insert), "rows_updated": len(to_update),
              "rows_deactivated": len(to_deactivate)}

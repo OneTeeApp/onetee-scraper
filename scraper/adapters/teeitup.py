@@ -24,12 +24,19 @@ import datetime as dt
 import os
 import threading
 import time as _time
+import zoneinfo
 from typing import Any
 
 from .base import Adapter
 from ..models import TeeTime
 
 API_BASE = "https://phx-api-be-east-1b.kenna.io"
+
+# kenna's `teetime` strings are true UTC ("2026-07-25T18:40:00.000Z" = 12:40 PM
+# Denver — probe-verified). They MUST be converted to course-local time or the
+# site shows times ~6-7h in the future (which also read as bookable-past slots).
+# Facility metadata carries the IANA timeZone; fall back by state.
+_STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix"}
 
 # All TeeItUp courses hit one shared kenna host, so the WHOLE fleet — across
 # every parallel shard — must stay under its burst 429 limit. Within a process
@@ -62,8 +69,45 @@ def _kenna_throttle():
 class TeeItUpAdapter(Adapter):
     platform = "teeitup"
 
+    # alias -> {courseId: {"name": str, "tz": str}} — one kenna call per alias
+    # per process, shared across threads.
+    _META: dict[str, dict] = {}
+    _META_LOCK = threading.Lock()
+
     def _headers(self, alias: str) -> dict:
         return {"x-be-alias": alias}
+
+    def _facility_meta(self, alias: str) -> dict:
+        """courseId -> {name, tz} for an alias (cached; empty dict on failure)."""
+        with self._META_LOCK:
+            if alias in self._META:
+                return self._META[alias]
+        meta: dict = {}
+        try:
+            with _KENNA_SEM:
+                _kenna_throttle()
+                for f in self.discover_facilities(alias):
+                    cid = f.get("courseId") or f.get("id")
+                    if cid is not None:
+                        meta[str(cid)] = {"name": f.get("name") or "",
+                                          "tz": f.get("timeZone") or ""}
+        except Exception:  # noqa: BLE001 — fall back to state tz, no labels
+            pass
+        with self._META_LOCK:
+            self._META[alias] = meta
+        return meta
+
+    @staticmethod
+    def _to_local(utc_iso: str, tz_name: str) -> str:
+        """'2026-07-25T18:40:00.000Z' + America/Denver -> '2026-07-25T12:40:00'."""
+        try:
+            t = dt.datetime.fromisoformat(utc_iso.replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                return utc_iso                    # already naive/local: keep
+            local = t.astimezone(zoneinfo.ZoneInfo(tz_name))
+            return local.replace(tzinfo=None).isoformat(timespec="seconds")
+        except Exception:  # noqa: BLE001 — malformed input: keep raw
+            return utc_iso
 
     def discover_facilities(self, alias: str) -> list[dict]:
         """Return facility metadata (ids, names) for an alias.
@@ -124,8 +168,16 @@ class TeeItUpAdapter(Adapter):
                 data = self._teetimes(alias, date, fids)
                 blocks = data if isinstance(data, list) else [data]
 
-        out: list[TeeTime] = []
+        meta = self._facility_meta(alias)
+        state_tz = _STATE_TZ.get(course.get("state", ""), "America/Denver")
         blocks = data if isinstance(data, list) else [data]
+        # label slots per sub-course only when this response actually spans
+        # multiple courses (multi-course facility like Hyland Hills)
+        seen_cids = {str(s.get("courseId")) for b in blocks
+                     for s in b.get("teetimes", []) if s.get("courseId")}
+        multi = len(seen_cids) > 1
+
+        out: list[TeeTime] = []
         for block in blocks:
             for slot in block.get("teetimes", []):
                 rates = slot.get("rates") or []
@@ -134,10 +186,15 @@ class TeeItUpAdapter(Adapter):
                          if isinstance(r.get(k), (int, float))]
                 holes = sorted({r.get("holes") for r in rates
                                 if r.get("holes")})
+                fmeta = meta.get(str(slot.get("courseId")), {})
                 out.append(self.base_tee_time(
                     course,
-                    teetime=slot.get("teetime", ""),  # UTC ISO; convert downstream
+                    teetime=self._to_local(slot.get("teetime", ""),
+                                           fmeta.get("tz") or state_tz),
+                    course_label=(fmeta.get("name") or "") if multi else "",
                     holes=[h for h in holes if h],
+                    # maxPlayers reflects how many can still book (probe: with
+                    # bookedPlayers=2 it reads 2, i.e. remaining seats)
                     open_spots=slot.get("maxPlayers"),
                     price_min=min(cents) / 100 if cents else None,
                     price_max=max(cents) / 100 if cents else None,

@@ -81,6 +81,7 @@ class TeesnapAdapter(Adapter):
             raise RuntimeError(f"{course['slug']}: no Teesnap course id in "
                                "window.courses")
 
+        multi = len(course_ids) > 1
         out: list[TeeTime] = []
         for cid in course_ids:
             data = self.get_json(
@@ -110,6 +111,7 @@ class TeesnapAdapter(Adapter):
                     out.append(self.base_tee_time(
                         course,
                         teetime=str(t),
+                        course_label=(names.get(cid) or "") if multi else "",
                         holes=holes,
                         open_spots=None,  # derive from bookings if needed later
                         price_min=min(prices) if prices else None,
