@@ -17,8 +17,6 @@ import datetime as dt
 import re
 from typing import Any
 
-from bs4 import BeautifulSoup
-
 from .base import Adapter
 from ..models import TeeTime
 
@@ -35,6 +33,7 @@ class SuperSaasAdapter(Adapter):
         if not (acct and sched):
             raise ValueError(f"{course['slug']}: supersaas needs account + schedule")
         url = f"{BASE}/schedule/{acct}/{sched}"
+        from bs4 import BeautifulSoup   # lazy: only the plain scrape installs bs4
         html = self.session.get(url, params={
             "year": date.year, "month": date.month, "day": date.day,
             "view": "day"}, timeout=25).text
