@@ -1,23 +1,15 @@
-=== date 2026-07-25 ===
---- foreup + teeitup (plain) ---
-fetching 3 courses for 2026-07-25
-  ironbridge-golf-club         0 times
-  four-mile-ranch-golf-club    23 times
-  cedaredge-golf-club          34 times
-wrote output/native_plain.json (57 tee times, 0 errors)
-counts {'four-mile-ranch-golf-club': 23, 'cedaredge-golf-club': 34}
-errors []
---- ezlinks (browser) ---
-browser-fetching 3 ezlinks portals (3 courses) for 2026-07-25
-  arrowhead-golf-club                0 times
-  bella-ridge-golf-course            13 times
-  the-ridge-at-castle-pines-north    8 times
-wrote output/native_ez.json (21 tee times, 0 errors)
-counts {'bella-ridge-golf-course': 13, 'the-ridge-at-castle-pines-north': 8}
-errors []
---- clubcaddie (browser) ---
-browser-fetching 1 clubcaddie courses for 1 dates
-  grandote-peaks-golf-club         63 times (1 dates)
-wrote output/cc_2026-07-25.json (63 tee times, 0 errors)
-counts {'grandote-peaks-golf-club': 63}
-errors []
+### Ironbridge foreUP: what IDs does course 20595's booking page expose? ###
+  discover_ids(20595): {'schedule_id': ['5045'], 'booking_class': ['4976', '51064', '5899'], 'teesheet_id': ['5045']}
+  registry ids: {'course_id': '20595', 'schedule_id': '5045'}
+    2026-07-25: 0 times
+    2026-07-26: 48 times
+    2026-07-27: 49 times
+    2026-07-29: 43 times
+    2026-07-31: 54 times
+    2026-08-07: 50 times
+
+### Arrowhead ezlinks portal probe (arrowheadpp vs alternates) over 7 days ###
+  portal=arrowheadpp: {'2026-07-25': 0, '2026-07-26': 18, '2026-07-27': 0, '2026-07-29': 0, '2026-07-31': 0}
+  portal=arrowhead: {'2026-07-25': 0, '2026-07-26': 0, '2026-07-27': 0, '2026-07-29': 0, '2026-07-31': 0}
+  portal=arrowheadsunpp: {'2026-07-25': 0, '2026-07-26': 10, '2026-07-27': 0, '2026-07-29': 0, '2026-07-31': 0}
+  portal=arrowheadgc: {'2026-07-25': 0, '2026-07-26': 0, '2026-07-27': 0, '2026-07-29': 0, '2026-07-31': 0}
