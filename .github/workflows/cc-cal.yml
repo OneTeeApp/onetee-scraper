@@ -1,0 +1,42 @@
+name: Club Caddie calendar probe
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/cc_cal.py"
+      - ".github/workflows/cc-cal.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cc-cal
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Run probe
+        run: |
+          mkdir -p probe-results
+          python scripts/cc_cal.py 2>&1 | tee probe-results/cc-cal.txt
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/cc-cal.txt
+          git commit -m "cc-cal probe [skip ci]" || { echo "no changes"; exit 0; }
+          git push
