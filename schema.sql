@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS tee_times (
   course_name  TEXT NOT NULL,
   city         TEXT,
   state        TEXT,                     -- two-letter state (CO, AZ, ...) for frontend filtering
+  venue_id     TEXT,                     -- stable physical-course id; groups the booking sources
+                                         -- (native engine + GolfNow overflow, ...) that are one course
+  source_role  TEXT DEFAULT 'primary',   -- 'primary' (native/only) | 'supplement' (extra inventory)
   platform     TEXT,
   holes        TEXT,                     -- e.g. "18" or "9/18"
   open_spots   INTEGER,
@@ -29,6 +32,10 @@ CREATE INDEX IF NOT EXISTS idx_teetimes_active ON tee_times (active);
 CREATE INDEX IF NOT EXISTS idx_teetimes_state_date
   ON tee_times (state, substr(teetime, 1, 10), active);
 CREATE INDEX IF NOT EXISTS idx_teetimes_course ON tee_times (course_slug);
+-- Group a physical course's sources together on a given day (native + supplement)
+-- so the frontend can union + dedupe times per venue without a full scan.
+CREATE INDEX IF NOT EXISTS idx_teetimes_venue
+  ON tee_times (venue_id, substr(teetime, 1, 10), active);
 
 CREATE TABLE IF NOT EXISTS runs (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,

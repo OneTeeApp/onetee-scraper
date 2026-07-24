@@ -159,7 +159,8 @@ SOURCES = [
 ]
 
 
-def _course_from_row(row: dict, state: str, taken: set) -> dict:
+def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
+                     source_role: str) -> dict:
     platform = row["Booking Platform"]
     ids = extract_ids(platform, row["Booking URL"])
     name_key = re.sub(r"\([^)]*\)", "", row["Course Name"]).strip().lower()
@@ -176,15 +177,17 @@ def _course_from_row(row: dict, state: str, taken: set) -> dict:
         status = "needs_ids"             # e.g. Troon wrapper, no direct alias
     else:
         status = "ready"
-    slug = slugify(row["Course Name"])
-    if slug in taken:                    # keep course_slug globally unique
-        slug = f"{slug}-{state.lower()}"
-    taken.add(slug)
     return {
         "slug": slug,
         "name": row["Course Name"],
         "city": row["City"],
         "state": state,
+        # venue_id groups every booking SOURCE for one physical course. The
+        # primary (native engine, or the only source) owns the clean venue slug;
+        # supplemental sources (GolfNow overflow, ...) get a platform-suffixed
+        # slug so course-scoped D1 sync never clobbers, but share this venue_id.
+        "venue_id": venue_id,
+        "source_role": source_role,
         "platform": platform,
         "booking_url": row["Booking URL"],
         "ids": ids,
@@ -195,8 +198,11 @@ def _course_from_row(row: dict, state: str, taken: set) -> dict:
 
 
 def main() -> None:
-    courses = []
-    taken: set = set()
+    from collections import OrderedDict, Counter
+    # Group rows into physical courses (venues). A venue is (state, base-slug);
+    # most have one row, but a course with a native engine PLUS a GolfNow
+    # overflow listing has two rows that must merge into one venue.
+    groups: "OrderedDict[tuple, list]" = OrderedDict()
     for src, state in SOURCES:
         try:
             f = open(src)
@@ -206,16 +212,42 @@ def main() -> None:
             for row in csv.DictReader(f):
                 if row["Online Booking"] != "yes" or not row["Booking Platform"]:
                     continue
-                courses.append(_course_from_row(row, state, taken))
+                vb = slugify(row["Course Name"])
+                groups.setdefault((state, vb), []).append(row)
+
+    courses = []
+    taken: set = set()
+    multi = 0
+    for (state, vb), rows in groups.items():
+        # Native engine(s) first, GolfNow last, so the native source becomes the
+        # primary (canonical booking link + full inventory) and GolfNow — which
+        # only carries a course's overflow — is a deduped supplement.
+        rows_sorted = sorted(rows, key=lambda r: r["Booking Platform"] == "golfnow")
+        base = vb if vb not in taken else f"{vb}-{state.lower()}"
+        while base in taken:             # extremely rare same-state base clash
+            base += "-x"
+        venue_id = base
+        if len(rows_sorted) > 1:
+            multi += 1
+        for idx, row in enumerate(rows_sorted):
+            if idx == 0:
+                slug, role = base, "primary"
+            else:
+                plat = row["Booking Platform"].split(":")[0]
+                slug, role = f"{base}-{plat}", "supplement"
+                while slug in taken:
+                    slug += "-x"
+            taken.add(slug)
+            courses.append(_course_from_row(row, state, slug, venue_id, role))
+
     with open(OUT, "w") as f:
         json.dump({"generated_from": [s for s, _ in SOURCES], "courses": courses}, f,
                   indent=1)
-    from collections import Counter
-    print(f"wrote {OUT}: {len(courses)} bookable courses")
+    print(f"wrote {OUT}: {len(courses)} booking sources across "
+          f"{len(groups)} venues ({multi} multi-source)")
     print("by state:", dict(Counter(c["state"] for c in courses)))
     print("by status:", dict(Counter(c["status"] for c in courses)))
-    print("AZ by platform:",
-          dict(Counter(c["platform"] for c in courses if c["state"] == "AZ")))
+    print("by source_role:", dict(Counter(c["source_role"] for c in courses)))
 
 
 if __name__ == "__main__":
