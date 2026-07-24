@@ -12,124 +12,61 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests
-      - name: Raw data-quality probe (labels, spots, timezones, D1 rows)
+      - name: Verify D1 post-migration state (PK, labels, local times, spots)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           mkdir -p probe-results
-          python - <<'PY' 2>&1 | tee probe-results/dataquality.txt
-          import datetime as dt, json, os, sys
-          sys.path.insert(0, ".")
-          from scraper.adapters.teeitup import TeeItUpAdapter
-          from scraper.adapters.chronogolf import ChronogolfAdapter
-          from scraper.adapters.experimental import MemberSportsAdapter
-
-          D = dt.date.today() + dt.timedelta(days=1)
-
-          print("##### 1) TEEITUP Hyland Hills: facilities + one raw slot per facility #####")
-          try:
-              a = TeeItUpAdapter()
-              alias = "hyland-hills-park-recreation-district"
-              facs = a.discover_facilities(alias)
-              for f in facs:
-                  print(" facility:", {k: f.get(k) for k in ("id","facilityId","courseId","name","courseName","timezone","timeZone") if f.get(k) is not None})
-              data = a._teetimes(alias, D)
-              blocks = data if isinstance(data, list) else [data]
-              seen = set()
-              for b in blocks:
-                  di = b.get("dayInfo") or {}
-                  if di: print(" dayInfo keys:", sorted(di.keys()), "| tz-ish:", {k:v for k,v in di.items() if "ime" in k or "one" in k})
-                  for s in b.get("teetimes", []):
-                      fid = s.get("facilityId")
-                      if fid in seen: continue
-                      seen.add(fid)
-                      print(f" RAW SLOT (facility {fid}): keys={sorted(s.keys())}")
-                      print("   sample:", json.dumps({k: s.get(k) for k in ("teetime","facilityId","courseId","maxPlayers","minPlayers","availableSpots","bookedPlayers","openSlots","players")}, default=str))
-                      r = (s.get("rates") or [{}])[0]
-                      print("   rate0 keys:", sorted(r.keys()))
-          except Exception as e:
-              print(" ERR", type(e).__name__, e)
-
-          print()
-          print("##### 2) CHRONOGOLF Broadlands: full raw slot (spots field hunt) #####")
-          try:
-              c = ChronogolfAdapter()
-              disc = c.discover("broadlands-golf-course")
-              print(" discover:", disc)
-              aff = disc["affiliation_type_id"]
-              slots = c.get_json("https://www.chronogolf.com/marketplace/clubs/%d/teetimes" % disc["club_id"],
-                                 params=[("date", D.isoformat()), ("course_id", disc["course_ids"][0]),
-                                         ("affiliation_type_ids[]", aff), ("affiliation_type_ids[]", aff), ("nb_holes", 18)])
-              for s in (slots or [])[:3]:
-                  print(" RAW SLOT keys:", sorted(s.keys()))
-                  print("  ", json.dumps(s, default=str)[:500])
-          except Exception as e:
-              print(" ERR", type(e).__name__, e)
-
-          print()
-          print("##### 3) MEMBERSPORTS Kennedy: raw rows + item names (sub-courses) #####")
-          try:
-              m = MemberSportsAdapter()
-              body = {"configurationTypeId": 0, "date": D.isoformat(), "golfClubGroupId": 0,
-                      "golfClubId": 3629, "golfCourseId": 20573, "groupSheetTypeId": 0}
-              data = m.post_json(f"{m.API}/golfclubs/onlineBookingTeeTimes", json=body, headers=m._headers(), timeout=25)
-              print(" rows:", len(data))
-              names = {}
-              for row in data[:60]:
-                  for it in row.get("items", []):
-                      nm = it.get("name")
-                      names.setdefault(nm, 0)
-                      names[nm] += 1
-              print(" item name histogram:", names)
-              if data:
-                  r0 = data[0]
-                  print(" row0 keys:", sorted(r0.keys()))
-                  print(" row0 teeTime:", r0.get("teeTime"), "| item0:", json.dumps((r0.get("items") or [{}])[0], default=str)[:400])
-          except Exception as e:
-              print(" ERR", type(e).__name__, e)
-
-          print()
-          print("##### 4) D1: real stored rows per platform (teetime format, spots, city) #####")
-          try:
-              import requests
-              acct, db, tok = os.environ["CLOUDFLARE_ACCOUNT_ID"], os.environ["CLOUDFLARE_D1_DB_ID"], os.environ["CLOUDFLARE_API_TOKEN"]
-              url = f"https://api.cloudflare.com/client/v4/accounts/{acct}/d1/database/{db}/query"
-              def q(sql, params=None):
-                  r = requests.post(url, json={"sql": sql, "params": params or []},
-                                    headers={"Authorization": f"Bearer {tok}"}, timeout=30).json()
-                  if not r.get("success"): raise RuntimeError(r.get("errors"))
-                  return r["result"][0].get("results", [])
-              rows = q("""SELECT platform, course_slug, teetime, open_spots, city, state, venue_id, active, last_seen_at
-                          FROM tee_times WHERE rowid IN (
-                            SELECT MIN(rowid) FROM tee_times WHERE active=1 GROUP BY platform)""")
-              for r in rows: print(" ", r)
-              print(" -- hyland same-time check (how many rows share one teetime?):")
-              for r in q("""SELECT teetime, COUNT(*) n FROM tee_times
-                            WHERE course_slug LIKE '%hyland%' AND active=1 GROUP BY teetime
-                            ORDER BY teetime LIMIT 5"""): print("  ", r)
-              print(" -- teeitup teetime format sample:")
-              for r in q("""SELECT teetime FROM tee_times WHERE platform='teeitup' AND active=1 LIMIT 3"""): print("  ", r)
-              print(" -- past-times: active rows with teetime older than 6h ago (UTC naive compare):")
-              cutoff = (dt.datetime.utcnow() - dt.timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%S")
-              for r in q("SELECT platform, COUNT(*) n FROM tee_times WHERE active=1 AND teetime < ? GROUP BY platform", [cutoff]): print("  ", r)
-              print(" -- city null/empty check:")
-              for r in q("SELECT COUNT(*) n FROM tee_times WHERE active=1 AND (city IS NULL OR city='')"): print("  ", r)
-          except Exception as e:
-              print(" ERR", type(e).__name__, e)
+          python - <<'PY' 2>&1 | tee probe-results/postmigration.txt
+          import os, requests, datetime as dt
+          acct, db, tok = os.environ["CLOUDFLARE_ACCOUNT_ID"], os.environ["CLOUDFLARE_D1_DB_ID"], os.environ["CLOUDFLARE_API_TOKEN"]
+          url = f"https://api.cloudflare.com/client/v4/accounts/{acct}/d1/database/{db}/query"
+          def q(sql, params=None):
+              r = requests.post(url, json={"sql": sql, "params": params or []},
+                                headers={"Authorization": f"Bearer {tok}"}, timeout=30).json()
+              if not r.get("success"): raise RuntimeError(r.get("errors"))
+              return r["result"][0].get("results", [])
+          print("== PK columns ==")
+          print([x["name"] for x in q("PRAGMA table_info(tee_times)") if x.get("pk")])
+          print("== row counts ==")
+          print(q("SELECT COUNT(*) total, SUM(active) act FROM tee_times"))
+          print("== hyland: same-time sub-course rows (want n up to 3 with labels) ==")
+          for r in q("""SELECT teetime, COUNT(*) n, GROUP_CONCAT(course_label,' | ') labels
+                        FROM tee_times WHERE course_slug LIKE '%hyland%' AND active=1
+                        GROUP BY teetime HAVING n>1 LIMIT 4"""): print(" ", r)
+          print("== hyland label histogram ==")
+          for r in q("""SELECT course_label, COUNT(*) n FROM tee_times
+                        WHERE course_slug LIKE '%hyland%' AND active=1 GROUP BY 1"""): print(" ", r)
+          print("== kennedy label histogram ==")
+          for r in q("""SELECT course_label, COUNT(*) n FROM tee_times
+                        WHERE course_slug LIKE '%kennedy%' AND active=1 GROUP BY 1"""): print(" ", r)
+          print("== teeitup teetime format (want local, no Z) ==")
+          for r in q("SELECT teetime FROM tee_times WHERE platform='teeitup' AND active=1 ORDER BY last_seen_at DESC LIMIT 3"): print(" ", r)
+          print("== teeitup rows still carrying Z (want 0) ==")
+          print(q("SELECT COUNT(*) n FROM tee_times WHERE platform='teeitup' AND teetime LIKE '%Z'"))
+          print("== chronogolf open_spots histogram (want a 1-4 spread, not all 4) ==")
+          for r in q("SELECT open_spots, COUNT(*) n FROM tee_times WHERE platform='chronogolf' AND active=1 GROUP BY 1"): print(" ", r)
+          print("== broadlands booking_url (want noteefy) ==")
+          for r in q("SELECT DISTINCT booking_url FROM tee_times WHERE course_slug='broadlands-golf-course' AND active=1 LIMIT 2"): print(" ", r)
+          print("== cities with parentheses (want 0) ==")
+          print(q("SELECT COUNT(*) n FROM tee_times WHERE active=1 AND city LIKE '%(%'"))
+          print("== labels present per platform ==")
+          for r in q("""SELECT platform, COUNT(*) n FROM tee_times
+                        WHERE active=1 AND course_label<>'' GROUP BY 1"""): print(" ", r)
           PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
-          git add probe-results/dataquality.txt
-          git commit -m "data-quality probe [skip ci]" || exit 0
+          git add probe-results/postmigration.txt
+          git commit -m "post-migration probe [skip ci]" || exit 0
           git push
