@@ -12,6 +12,12 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
+    # Only re-scan when the course list or scraper code changes — not on every
+    # doc/workflow/probe commit (each was spawning a full 4-shard scan and
+    # saturating the runners).
+    paths:
+      - "registry.json"
+      - "scraper/**"
 
 permissions:
   contents: read
