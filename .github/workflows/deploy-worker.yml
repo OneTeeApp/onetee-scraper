@@ -47,8 +47,11 @@ jobs:
         run: |
           cd worker
           sed -i "s/REPLACE_WITH_YOUR_D1_DATABASE_ID/${CLOUDFLARE_D1_DB_ID}/" wrangler.toml
+          echo "=== wrangler whoami (token scopes) ===" | tee ../deploy.log
+          npx --yes wrangler@3 whoami 2>&1 | tee -a ../deploy.log || true
+          echo "=== wrangler deploy ===" | tee -a ../deploy.log
           # deploy; capture all output (incl. the published workers.dev URL)
-          npx --yes wrangler@3 deploy 2>&1 | tee ../deploy.log
+          npx --yes wrangler@3 deploy 2>&1 | tee -a ../deploy.log
 
       - name: Verify live venue fix + record result
         if: always()

@@ -30,44 +30,55 @@ jobs:
           TENANT="indianpeaks"
           D=(dt.date.today()+dt.timedelta(days=1)).strftime("%a %b %d %Y")
 
-          DISCOVER=r"""
-          async ([tenant]) => {
+          ZERO="00000000-0000-0000-0000-000000000000"
+          # Full onlineresweb header profile (matches adapters/clubprophet._headers).
+          FLOW=r"""
+          async ([tenant, wid, cids, date, pinnedWid, pinnedCids]) => {
             const base="https://"+tenant+".cps.golf";
+            const api=base+"/onlineres/onlineapi/api/v1/onlinereservation";
+            const ZERO="00000000-0000-0000-0000-000000000000";
             const tr=await fetch(base+"/identityapi/myconnect/token/short",
               {method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
                body:"client_id=onlinereswebshortlived"});
             if(tr.status!==200) return {stage:"token",status:tr.status};
             const token=(await tr.json()).access_token;
-            const H={Authorization:"Bearer "+token,"client-id":"onlineresweb",
-              "x-timezoneid":"America/Denver","x-timezone-offset":"360","Accept":"application/json"};
-            const go=await fetch(base+"/onlineres/onlineapi/api/v1/onlinereservation/GetAllOptions/"+tenant,{headers:H});
+            const H=(websiteId)=>({Authorization:"Bearer "+token,
+              "Accept":"application/json, text/plain, */*","Accept-Language":"en-US,en;q=0.9",
+              "client-id":"onlineresweb","x-terminalid":"3","x-websiteid":websiteId||ZERO,
+              "x-ismobile":"false","x-productid":"1","x-componentid":"1","x-siteid":"1",
+              "x-moduleid":"7","x-timezoneid":"America/Denver","x-timezone-offset":"360",
+              "x-requestid":crypto.randomUUID(),"Origin":base,
+              "Referer":base+"/onlineresweb/search-teetime"});
+            // 1) discovery
+            const go=await fetch(api+"/GetAllOptions/"+tenant,{headers:H(ZERO)});
             let b={}; try{b=await go.json();}catch(e){}
             const co=(b.courseOptions||[]).map(c=>({courseId:c.courseId!==undefined?c.courseId:c.id,
               name:c.courseName||c.name, holes:c.holes}));
-            return {stage:"getalloptions", status:go.status, token,
-                    webSiteId: b.webSiteId||(b.reservationOptions||{}).webSiteId, courseOptions: co};
+            const discWid=b.webSiteId||(b.reservationOptions||{}).webSiteId;
+            const realIds=co.map(c=>c.courseId).filter(x=>x!==undefined&&x!==null);
+            // helper to query TeeTimes for a (wid,cids)
+            const teetimes=async(useWid,useCids)=>{
+              const txid=crypto.randomUUID();
+              await fetch(api+"/RegisterTransactionId",{method:"POST",
+                headers:{...H(useWid),"Content-Type":"application/json"},
+                body:JSON.stringify({transactionId:txid})});
+              const url=api+`/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0&numberOfPlayer=0`
+                +`&courseIds=${useCids}&searchTimeType=0&transactionId=${txid}&teeOffTimeMin=0&teeOffTimeMax=23`
+                +`&isChangeTeeOffTime=true&teeSheetSearchView=5&classCode=R&defaultOnlineRate=N`
+                +`&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
+              const tt=await fetch(url,{headers:H(useWid)});
+              let c=[]; try{c=(await tt.json()).content||[];}catch(e){}
+              return {status:tt.status,n:c.length,sample:c.slice(0,3).map(s=>({t:s.startTime,cid:s.courseId,name:s.courseName}))};
+            };
+            const out={stage:"ok", getAllOptionsStatus:go.status, discWebSiteId:discWid, courseOptions:co, realIds};
+            // 2) pinned registry ids (what the scraper currently uses)
+            out.pinned = await teetimes(pinnedWid, pinnedCids);
+            // 3) discovered ids
+            if(realIds.length) out.discovered = await teetimes(discWid||pinnedWid, realIds.join(","));
+            return out;
           }
           """
-          TEETIMES=r"""
-          async ([tenant, wid, cids, date, token]) => {
-            const base="https://"+tenant+".cps.golf";
-            const api=base+"/onlineres/onlineapi/api/v1/onlinereservation";
-            const H=()=>({Authorization:"Bearer "+token,"client-id":"onlineresweb","x-terminalid":"3",
-              "x-websiteid":wid,"x-ismobile":"false","x-productid":"1","x-componentid":"1","x-siteid":"1",
-              "x-moduleid":"7","x-timezoneid":"America/Denver","x-timezone-offset":"360",
-              "x-requestid":crypto.randomUUID(),"Accept":"application/json"});
-            const txid=crypto.randomUUID();
-            await fetch(api+"/RegisterTransactionId",{method:"POST",
-              headers:{...H(),"Content-Type":"application/json"},body:JSON.stringify({transactionId:txid})});
-            const url=api+`/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0&numberOfPlayer=0`
-              +`&courseIds=${cids}&searchTimeType=0&transactionId=${txid}&teeOffTimeMin=0&teeOffTimeMax=23`
-              +`&isChangeTeeOffTime=true&teeSheetSearchView=5&classCode=R&defaultOnlineRate=N`
-              +`&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
-            const tt=await fetch(url,{headers:H()});
-            let c=[]; try{c=(await tt.json()).content||[];}catch(e){}
-            return {status:tt.status, n:c.length, sample:c.slice(0,3).map(s=>({t:s.startTime,cid:s.courseId,name:s.courseName}))};
-          }
-          """
+          PINNED_WID="f04abbc1-368f-40f4-096d-08d89aea9574"
           with sync_playwright() as pw:
             for attempt in range(3):
               br=pw.chromium.launch(args=["--no-sandbox"])
@@ -75,19 +86,11 @@ jobs:
                 pg=br.new_page()
                 pg.goto(f"https://{TENANT}.cps.golf/onlineresweb/search-teetime",wait_until="domcontentloaded",timeout=35000)
                 pg.wait_for_timeout(6000)
-                disc=pg.evaluate(DISCOVER,[TENANT])
-                print("DISCOVER:",{k:v for k,v in disc.items() if k!="token"})
-                if disc.get("status")!=200:
-                  br.close(); continue
-                wid=disc.get("webSiteId") or ""
-                real_ids=[c["courseId"] for c in disc.get("courseOptions",[]) if c.get("courseId") is not None]
-                print("REAL courseIds:",real_ids," | pinned in registry: [10, 11]")
-                tok=disc["token"]
-                for label,cids in [("discovered",",".join(str(x) for x in real_ids)),("pinned-10,11","10,11")]:
-                  if not cids: print(f"  {label}: (no ids)"); continue
-                  res=pg.evaluate(TEETIMES,[TENANT,wid,cids,D,tok])
-                  print(f"  TeeTimes[{label}] cids={cids}: status={res['status']} n={res['n']} sample={res['sample']}")
-                br.close(); break
+                r=pg.evaluate(FLOW,[TENANT,"", "", D, PINNED_WID, "10,11"])
+                import json as _j
+                print(_j.dumps(r, indent=1))
+                if r.get("stage")=="ok": br.close(); break
+                br.close()
               except Exception as e:
                 print("ERR",type(e).__name__,e); br.close()
           PY
