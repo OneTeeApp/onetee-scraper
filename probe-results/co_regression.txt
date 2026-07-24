@@ -1,4 +1,223 @@
-Traceback (most recent call last):
-  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/co_regression.py", line 17, in <module>
-    from scraper.aggregate import load_registry, run as agg_run
-ModuleNotFoundError: No module named 'scraper'
+=== Colorado regression for 2026-07-25 — 147 booking sources ===
+
+[plain] 86/90 ok, 2294 times, 4 errors
+[clubprophet] 9/13 ok, 172 times, 4 errors
+[ezlinks] 14/14 ok, 227 times, 0 errors
+[golfnow] 8/12 ok, 99 times, 4 errors
+[supersaas] 1/1 ok, 20 times, 0 errors
+[clubcaddie] 11/11 ok, 385 times, 0 errors
+
+========================================================================
+
+## chronogolf  (14 sources)
+  broadlands-golf-course                               17 times
+  city-park-nine-golf-course                           15 times
+  collegiate-peaks-golf-course                         ERROR: RuntimeError: collegiate-peaks-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) — books through another engine
+  collindale-golf-course                               10 times
+  highland-meadows-golf-course                         22 times
+  kings-deer-golf-club                                 12 times
+  lakota-links-golf-course                             21 times
+  littleton-golf-tennis-club                           17 times
+  lone-tree-golf-club-hotel                            6 times
+  rifle-creek-golf-course                              0 — EMPTY (no error)
+  rio-grande-club                                      43 times
+  south-suburban-family-sports-center                  17 times
+  south-suburban-golf-course                           12 times
+  southridge-golf-course                               14 times
+
+## clubcaddie  (11 sources)
+  applewood-golf-course                                0 — EMPTY (no error)
+  black-canyon-golf-course                             21 times
+  cherokee-ridge-golf-course                           14 times
+  conquistador-golf-course                             39 times
+  divide-ranch-club                                    22 times
+  eaglevail-golf-club                                  28 times
+  grandote-peaks-golf-club                             67 times
+  monte-vista-country-club                             66 times
+  salida-golf-club                                     45 times
+  sky-ranch-golf-and-grill                             61 times
+  the-links-golf-course                                22 times
+
+## clubprophet  (16 sources)
+  cattail-creek-golf-course                            35 times
+  emerald-greens-golf-club                             0 — EMPTY (no error)
+  flatirons-golf-course                                ERROR: browser AttributeError
+  fossil-trace-golf-club                               2 times
+  green-valley-ranch-golf-club                         ERROR: browser AttributeError
+  gypsum-creek-golf-course                             34 times
+  haymaker-golf-course                                 26 times
+  indian-peaks-golf-course                             14 times
+  indian-tree-golf-course                              11 times
+  lake-arbor-golf-club                                 0 — EMPTY (no error)
+  legacy-ridge-golf-course                             19 times
+  mariana-butte-golf-course                            ERROR: browser teetimes 403
+  red-hawk-ridge-golf-course                           12 times
+  the-olde-course-at-loveland                          ERROR: browser teetimes 403
+  university-of-denver-golf-club-at-highlands-ranch         0 — EMPTY (no error)
+  walnut-creek-golf-preserve                           19 times
+
+## ezlinks  (14 sources)
+  arrowhead-golf-club                                  0 — EMPTY (no error)
+  aurora-hills-golf-course                             19 times
+  bella-ridge-golf-course                              14 times
+  golf-club-at-bear-dance                              2 times
+  grand-elk-golf-club                                  3 times
+  heritage-eagle-bend-golf-club                        10 times
+  meadow-hills-golf-course                             20 times
+  murphy-creek-golf-course                             15 times
+  pine-creek-golf-club                                 40 times
+  raven-golf-club-at-three-peaks                       23 times
+  saddle-rock-golf-course                              13 times
+  springhill-golf-course                               25 times
+  the-golf-club-at-heather-ridge                       34 times
+  the-ridge-at-castle-pines-north                      9 times
+
+## foretees  (1 sources)
+  dalton-ranch-golf-club                               37 times
+
+## foreup  (21 sources)
+  adobe-creek-national-golf-course                     142 times
+  aspen-golf-club                                      2 times
+  battlement-mesa-golf-club                            52 times
+  bella-rosa-municipal-golf-course                     8 times
+  breckenridge-golf-club                               11 times
+  cattails-golf-club                                   15 times
+  cedaredge-golf-club                                  34 times
+  chipeta-golf-course                                  92 times
+  estes-park-golf-course                               33 times
+  glenwood-springs-golf-club                           42 times
+  golf-at-river-valley-ranch                           24 times
+  ironbridge-golf-club                                 0 — EMPTY (no error)
+  meeker-golf-course                                   0 — EMPTY (no error)
+  mountain-vista-greens-golf-course                    5 times
+  patty-jewett-golf-course                             26 times
+  saddleback-golf-club                                 29 times
+  the-bridges                                          50 times
+  the-links-at-cobble-creek                            11 times
+  todd-creek-golf-club                                 15 times
+  valley-hi-golf-course                                8 times
+  yampa-valley-golf-course                             48 times
+
+## golfnow  (12 sources)
+  arrowhead-golf-club-golfnow                  [suppl] 0 — EMPTY (no error)
+  bella-ridge-golf-course-golfnow              [suppl] 7 times
+  cedaredge-golf-club-golfnow                  [suppl] 42 times
+  clubcorp-at-black-bear-golf-club                     ERROR: browser status 404
+  desert-hawk-at-pueblo-west                           ERROR: browser status 404
+  four-mile-ranch-golf-club-golfnow            [suppl] 22 times
+  grandote-peaks-golf-club-golfnow             [suppl] 18 times
+  ironbridge-golf-club-golfnow                 [suppl] 0 — EMPTY (no error)
+  pelican-lakes-golf-country-club                      0 — EMPTY (no error)
+  tamarack-golf-course                                 ERROR: browser status 404
+  the-ridge-at-castle-pines-north-golfnow      [suppl] 10 times
+  walking-stick-golf-course                            ERROR: browser status 404
+
+## membersports  (18 sources)
+  boomerang-golf-links                                 18 times
+  broken-tee-golf-course                               75 times
+  city-park-golf-course                                11 times
+  coal-creek-golf-course                               18 times
+  eagle-ranch-golf-course                              32 times
+  evergreen-golf-course                                16 times
+  foothills-golf-course                                60 times
+  fox-hollow-golf-course                               18 times
+  harvard-gulch-golf-course                            24 times
+  highland-hills-golf-course                           18 times
+  kennedy-golf-course                                  59 times
+  lincoln-park-golf-course                             0 — EMPTY (no error)
+  meadows-golf-club                                    60 times
+  overland-park-golf-course                            24 times
+  redlands-mesa-golf-club                              62 times
+  tiara-rado-golf-course                               0 — EMPTY (no error)
+  wellshire-golf-course                                21 times
+  willis-case-golf-course                              25 times
+
+## other:goibsvision  (2 sources)
+  copper-creek-golf-club                               not-run (unsupported platform)
+  telluride-ski-golf-club                              not-run (unsupported platform)
+
+## other:square  (1 sources)
+  cottonwood-links-golf-club                           not-run (unsupported platform)
+
+## quick18  (5 sources)
+  beaver-creek-golf-club                               25 times
+  homestead-golf-course                                0 — EMPTY (no error)
+  the-ranch-course-at-keystone                         34 times
+  the-river-course-at-keystone                         19 times
+  thorncreek-golf-club                                 13 times
+
+## supersaas  (1 sources)
+  spreading-antlers-golf-course                        20 times
+
+## teeitup  (25 sources)
+  antler-creek-golf-course                             32 times
+  buffalo-run-golf-course                              17 times
+  colorado-national-golf-club                          1 times
+  commonground-golf-course                             10 times
+  four-mile-ranch-golf-club                            22 times
+  golf-granby-ranch                                    0 — EMPTY (no error)
+  greenway-park-golf-course                            32 times
+  omni-interlocken-resort-golf-club                    4 times
+  plum-creek-golf-club                                 11 times
+  pole-creek-golf-club                                 9 times
+  quail-dunes-golf-course                              10 times
+  raccoon-creek-golf-course                            0 — EMPTY (no error)
+  raindance-national-resort-golf                       23 times
+  riverdale-golf-course                                39 times
+  rollingstone-ranch-golf-club                         0 — EMPTY (no error)
+  spring-valley-golf-club                              27 times
+  steamboat-golf-club                                  26 times
+  stoney-creek-golf-course                             21 times
+  sumo-golf-village                                    14 times
+  sunset-golf-course                                   13 times
+  the-greg-mastriona-golf-courses-at-hyland-hills         144 times
+  trinidad-golf-course                                 0 — EMPTY (no error)
+  twin-peaks-golf-course                               25 times
+  ute-creek-golf-course                                28 times
+  vail-golf-club                                       0 — EMPTY (no error)
+
+## teesnap  (6 sources)
+  coyote-creek-golf-course                             ERROR: HTTPError: 500
+  heather-gardens-golf-course                          78 times
+  hollydot-golf-course                                 ERROR: HTTPError: 500
+  mount-massive-golf-course                            142 times
+  pagosa-springs-golf-club                             44 times
+  the-course-at-petteys-park                           ERROR: HTTPError: 500
+
+========================================================================
+SUMMARY: 147 CO sources | 113 capturing | 12 errored | 22 empty
+
+Total CO tee times captured: 3197
+
+--- 31 sources needing attention ---
+  collegiate-peaks-golf-course                 (chronogolf) ERROR: RuntimeError: collegiate-peaks-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) — books through another engine
+  rifle-creek-golf-course                      (chronogolf) 0 — EMPTY (no error)
+  applewood-golf-course                        (clubcaddie) 0 — EMPTY (no error)
+  emerald-greens-golf-club                     (clubprophet) 0 — EMPTY (no error)
+  flatirons-golf-course                        (clubprophet) ERROR: browser AttributeError
+  green-valley-ranch-golf-club                 (clubprophet) ERROR: browser AttributeError
+  lake-arbor-golf-club                         (clubprophet) 0 — EMPTY (no error)
+  mariana-butte-golf-course                    (clubprophet) ERROR: browser teetimes 403
+  the-olde-course-at-loveland                  (clubprophet) ERROR: browser teetimes 403
+  university-of-denver-golf-club-at-highlands-ranch (clubprophet) 0 — EMPTY (no error)
+  arrowhead-golf-club                          (ezlinks) 0 — EMPTY (no error)
+  ironbridge-golf-club                         (foreup) 0 — EMPTY (no error)
+  meeker-golf-course                           (foreup) 0 — EMPTY (no error)
+  arrowhead-golf-club-golfnow                  (golfnow) 0 — EMPTY (no error)
+  clubcorp-at-black-bear-golf-club             (golfnow) ERROR: browser status 404
+  desert-hawk-at-pueblo-west                   (golfnow) ERROR: browser status 404
+  ironbridge-golf-club-golfnow                 (golfnow) 0 — EMPTY (no error)
+  pelican-lakes-golf-country-club              (golfnow) 0 — EMPTY (no error)
+  tamarack-golf-course                         (golfnow) ERROR: browser status 404
+  walking-stick-golf-course                    (golfnow) ERROR: browser status 404
+  lincoln-park-golf-course                     (membersports) 0 — EMPTY (no error)
+  tiara-rado-golf-course                       (membersports) 0 — EMPTY (no error)
+  homestead-golf-course                        (quick18) 0 — EMPTY (no error)
+  golf-granby-ranch                            (teeitup) 0 — EMPTY (no error)
+  raccoon-creek-golf-course                    (teeitup) 0 — EMPTY (no error)
+  rollingstone-ranch-golf-club                 (teeitup) 0 — EMPTY (no error)
+  trinidad-golf-course                         (teeitup) 0 — EMPTY (no error)
+  vail-golf-club                               (teeitup) 0 — EMPTY (no error)
+  coyote-creek-golf-course                     (teesnap) ERROR: HTTPError: 500
+  hollydot-golf-course                         (teesnap) ERROR: HTTPError: 500
+  the-course-at-petteys-park                   (teesnap) ERROR: HTTPError: 500
