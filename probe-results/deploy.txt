@@ -1,0 +1,28 @@
+=== deploy log (tail) ===
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+
+  Please update to the latest version to prevent critical errors.
+  Run `npm install --save-dev wrangler@4` to update to the latest version.
+  After installation, run Wrangler with `npx wrangler`.
+
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/1b380acad1c1fd73ecf14983e7bc3a4c/workers/services/onetee-api) failed.[0m
+
+  Authentication error [code: 10000]
+
+
+📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
+Please ensure it has the correct permissions for this operation.
+
+Getting User settings...
+ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
+👋 You are logged in with an User API Token. Unable to retrieve email for this user. Are you missing the `User->User Details->Read` permission?
+
+🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens.
+
+Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-07-24_18-35-32_998.log"
+
+deployed URL: UNKNOWN
