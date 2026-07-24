@@ -1,16 +1,16 @@
-== D1 2026-07-24..2026-07-26: 98 courses present, 98 with ACTIVE times ==
+== D1 2026-07-24..2026-07-26: 109 courses present, 109 with ACTIVE times ==
   active teeitup        22
   active membersports   18
-  active foreup         17
+  active foreup         18
   active chronogolf     14
+  active clubprophet    12
   active ezlinks        10
   active golfnow        6
-  active quick18        4
   active teesnap        4
-  active clubprophet    2
+  active quick18        4
   active foretees       1
 
-== 42 registry courses WITHOUT active D1 rows ==
+== 31 registry courses WITHOUT active D1 rows ==
   chronogolf     collegiate-peaks-golf-course               never landed
   clubcaddie     applewood-golf-course                      never landed
   clubcaddie     black-canyon-golf-course                   never landed
@@ -23,19 +23,9 @@
   clubcaddie     sky-ranch-golf-and-grill                   never landed
   clubcaddie     the-links-golf-course                      never landed
   clubprophet    emerald-greens-golf-club                   never landed
-  clubprophet    flatirons-golf-course                      never landed
-  clubprophet    fossil-trace-golf-club                     never landed
   clubprophet    green-valley-ranch-golf-club               never landed
-  clubprophet    gypsum-creek-golf-course                   never landed
-  clubprophet    haymaker-golf-course                       never landed
-  clubprophet    indian-tree-golf-course                    never landed
   clubprophet    lake-arbor-golf-club                       never landed
-  clubprophet    legacy-ridge-golf-course                   never landed
-  clubprophet    mariana-butte-golf-course                  never landed
-  clubprophet    red-hawk-ridge-golf-course                 never landed
-  clubprophet    the-olde-course-at-loveland                never landed
   clubprophet    university-of-denver-golf-club-at-highlands-ranch never landed
-  clubprophet    walnut-creek-golf-preserve                 never landed
   ezlinks        heritage-eagle-bend-golf-club              never landed
   foreup         meeker-golf-course                         never landed
   golfnow        clubcorp-at-black-bear-golf-club           never landed
@@ -50,14 +40,12 @@
   other:supersaas spreading-antlers-golf-course              never landed
   quick18        homestead-golf-course                      never landed
   teeitup        rollingstone-ranch-golf-club               never landed
-  teesnap        cattails-golf-club                         never landed
   teesnap        coyote-creek-golf-course                   never landed
   teesnap        hollydot-golf-course                       never landed
 
 == live re-fetch of missing PLAIN-platform courses (tomorrow) ==
   FAIL applewood-golf-course                    RuntimeError: Club Caddie consumer endpoint returns HTML (session-gated to real browsers); needs the Club Caddie partner API
   FAIL black-canyon-golf-course                 RuntimeError: black-canyon-golf-course: could not resolve Club Caddie CourseId from the booking page
-  FAIL cattails-golf-club                       HTTPError: 500 Server Error: Internal Server Error for url: https://alamosacattails.teesnap.net/
   FAIL cherokee-ridge-golf-course               RuntimeError: cherokee-ridge-golf-course: could not resolve Club Caddie CourseId from the booking page
   OK   collegiate-peaks-golf-course             0 times
   FAIL conquistador-golf-course                 RuntimeError: conquistador-golf-course: could not resolve Club Caddie CourseId from the booking page
@@ -69,7 +57,7 @@
   FAIL hollydot-golf-course                     HTTPError: 500
   OK   homestead-golf-course                    0 times
   FAIL meeker-golf-course                       ValueError: meeker-golf-course: no schedule_id discoverable from booking page 22597
-  FAIL monte-vista-country-club                 KeyError: 'shard'
+  FAIL monte-vista-country-club                 RuntimeError: monte-vista-country-club: could not resolve Club Caddie CourseId from the booking page
   OK   rollingstone-ranch-golf-club             0 times
   FAIL salida-golf-club                         RuntimeError: salida-golf-club: could not resolve Club Caddie CourseId from the booking page
   FAIL sky-ranch-golf-and-grill                 RuntimeError: sky-ranch-golf-and-grill: could not resolve Club Caddie CourseId from the booking page
