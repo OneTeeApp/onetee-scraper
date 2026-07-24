@@ -100,6 +100,10 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
 
 
 def slugify(name: str) -> str:
+    # Drop descriptive parentheticals like "(Sun City Grand)", "(fka ...)",
+    # "(North & South)" so a course's slug stays stable when the directory adds
+    # or edits a suffix. The full name is preserved in the "name" field.
+    name = re.sub(r"\([^)]*\)", "", name)
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
@@ -155,7 +159,8 @@ SOURCES = [
 def _course_from_row(row: dict, state: str, taken: set) -> dict:
     platform = row["Booking Platform"]
     ids = extract_ids(platform, row["Booking URL"])
-    ids.update(EXTRA_IDS.get(row["Course Name"].lower(), {}))
+    name_key = re.sub(r"\([^)]*\)", "", row["Course Name"]).strip().lower()
+    ids.update(EXTRA_IDS.get(name_key, EXTRA_IDS.get(row["Course Name"].lower(), {})))
     if platform.startswith("other:"):
         status = "unsupported"
     elif platform not in IMPLEMENTED:
