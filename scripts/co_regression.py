@@ -12,9 +12,14 @@ from __future__ import annotations
 import collections
 import datetime as dt
 import json
+import os
 import sys
 
-from scraper.aggregate import load_registry, run as agg_run
+# Running `python scripts/co_regression.py` puts scripts/ on sys.path, not the
+# repo root — add the repo root so `scraper` imports.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from scraper.aggregate import load_registry, run as agg_run  # noqa: E402
 
 REG = "registry.json"
 
