@@ -41,7 +41,9 @@ jobs:
         id: deploy
         continue-on-error: true
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Prefer a dedicated deploy token (Workers Scripts:Edit) if present, so
+          # the scraper's D1-only CLOUDFLARE_API_TOKEN can stay untouched.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
@@ -58,8 +60,8 @@ jobs:
         run: |
           mkdir -p probe-results
           {
-            echo "=== deploy log (tail) ==="
-            tail -n 25 deploy.log 2>/dev/null || echo "(no deploy log — step failed early)"
+            echo "=== deploy log (full: whoami + deploy) ==="
+            cat deploy.log 2>/dev/null || echo "(no deploy log — step failed early)"
             URL=$(grep -oE "https://[a-z0-9.-]+\.workers\.dev" deploy.log 2>/dev/null | head -1)
             echo
             echo "deployed URL: ${URL:-UNKNOWN}"
