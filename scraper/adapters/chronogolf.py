@@ -50,6 +50,13 @@ class ChronogolfAdapter(Adapter):
         courses = [c for c in self._courses(club_id)
                    if c.get("online_booking_enabled")]
         return {"club_id": club_id, "affiliation_type_id": aff,
+                # CLUB-level flag: an unclaimed Chronogolf *directory listing*
+                # has online_booking_enabled=False (and no seller) even though
+                # its course rows can still show online_booking_enabled=True.
+                # Those clubs never sell tee times through Chronogolf, so the
+                # marketplace API always returns 0 — guard on this to skip them
+                # instead of burning a request per course every scrape.
+                "club_bookable": bool(club.get("online_booking_enabled")),
                 "course_ids": [c["id"] for c in courses],
                 "course_names": {c["id"]: c.get("name", "") for c in courses}}
 
@@ -62,6 +69,10 @@ class ChronogolfAdapter(Adapter):
             raise ValueError(f"{course['slug']}: no chronogolf slug/club_id")
 
         disc = self.discover(str(key))
+        if not disc["club_bookable"]:
+            raise RuntimeError(
+                f"{course['slug']}: unclaimed Chronogolf directory listing "
+                "(club online_booking disabled) — books through another engine")
         aff = disc["affiliation_type_id"]
         if not aff:
             raise RuntimeError(f"{course['slug']}: no default_affiliation_type_id "
