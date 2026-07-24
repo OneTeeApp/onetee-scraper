@@ -1,0 +1,65 @@
+<stdin>:93: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+##### 1) TEEITUP Hyland Hills: facilities + one raw slot per facility #####
+ facility: {'id': 9201, 'courseId': '54f14ee20c8ad60378b058ce', 'name': 'Hyland Hills Gold Course', 'timeZone': 'America/Denver'}
+ facility: {'id': 9202, 'courseId': '54f14ee20c8ad60378b058d0', 'name': 'Hyland Hills Golf Blue Course', 'timeZone': 'America/Denver'}
+ facility: {'id': 9203, 'courseId': '54f14ee20c8ad60378b058d3', 'name': 'Hyland Hills South Par 3', 'timeZone': 'America/Denver'}
+ dayInfo keys: ['dawn', 'dusk', 'sunrise', 'sunset'] | tz-ish: {}
+ RAW SLOT (facility None): keys=['backNine', 'bookedPlayers', 'courseId', 'fromCache', 'maxPlayers', 'minPlayers', 'players', 'rates', 'rollTimeOffer', 'source', 'teetime']
+   sample: {"teetime": "2026-07-25T18:40:00.000Z", "facilityId": null, "courseId": "54f14ee20c8ad60378b058ce", "maxPlayers": 2, "minPlayers": 1, "availableSpots": null, "bookedPlayers": 2, "openSlots": null, "players": []}
+   rate0 keys: ['_id', 'acceptCreditCard', 'allowedPlayers', 'dueOnlineRiding', 'externalId', 'golfnow', 'greenFeeCart', 'holes', 'icons', 'isSimulator', 'name', 'showAsHotDeal', 'showTransactionFees', 'tags', 'trade', 'transactionFees']
+ dayInfo keys: ['dawn', 'dusk', 'sunrise', 'sunset'] | tz-ish: {}
+ dayInfo keys: ['dawn', 'dusk', 'sunrise', 'sunset'] | tz-ish: {}
+
+##### 2) CHRONOGOLF Broadlands: full raw slot (spots field hunt) #####
+ discover: {'club_id': 3261, 'affiliation_type_id': '13866', 'club_bookable': True, 'course_ids': [3689], 'course_names': {3689: 'Broadlands'}}
+ RAW SLOT keys: ['course_id', 'date', 'departure', 'event_id', 'format', 'frozen', 'green_fees', 'hole', 'id', 'out_of_capacity', 'restrictions', 'round', 'start_time', 'uuid']
+   {"id": 521342602, "uuid": "0a432553-77a8-4adf-bcd3-73a79a1d689c", "course_id": 3689, "start_time": "06:30", "date": "2026-07-25", "event_id": null, "hole": 1, "round": 1, "format": "normal", "departure": null, "restrictions": [], "out_of_capacity": true, "frozen": false, "green_fees": [{"player_type_id": 13866, "green_fee": 79.0, "half_cart": 20.0, "one_person_cart": null, "subtotal": 79.0, "teetime_id": 521342602, "affiliation_type_id": 13866, "price": 79.0, "one_person_cart_price": null, "half
+ RAW SLOT keys: ['course_id', 'date', 'departure', 'event_id', 'format', 'frozen', 'green_fees', 'hole', 'id', 'out_of_capacity', 'restrictions', 'round', 'start_time', 'uuid']
+   {"id": 521342603, "uuid": "1cb62d16-7505-460c-a659-3bf0449a7174", "course_id": 3689, "start_time": "06:40", "date": "2026-07-25", "event_id": null, "hole": 1, "round": 1, "format": "normal", "departure": null, "restrictions": [], "out_of_capacity": true, "frozen": false, "green_fees": [{"player_type_id": 13866, "green_fee": 79.0, "half_cart": 20.0, "one_person_cart": null, "subtotal": 79.0, "teetime_id": 521342603, "affiliation_type_id": 13866, "price": 79.0, "one_person_cart_price": null, "half
+ RAW SLOT keys: ['course_id', 'date', 'departure', 'event_id', 'format', 'frozen', 'green_fees', 'hole', 'id', 'out_of_capacity', 'restrictions', 'round', 'start_time', 'uuid']
+   {"id": 521342604, "uuid": "84aa7c39-14af-433f-b504-acaadba639f5", "course_id": 3689, "start_time": "06:50", "date": "2026-07-25", "event_id": null, "hole": 1, "round": 1, "format": "normal", "departure": null, "restrictions": [], "out_of_capacity": true, "frozen": false, "green_fees": [{"player_type_id": 13866, "green_fee": 79.0, "half_cart": 20.0, "one_person_cart": null, "subtotal": 79.0, "teetime_id": 521342604, "affiliation_type_id": 13866, "price": 79.0, "one_person_cart_price": null, "half
+
+##### 3) MEMBERSPORTS Kennedy: raw rows + item names (sub-courses) #####
+ rows: 79
+ item name histogram: {'Kennedy Par 3 or Footgolf': 40}
+ row0 keys: ['items', 'teeTime']
+ row0 teeTime: 420 | item0: {"allowExtraRidersOnline": false, "allowPullCartsOnline": true, "allowSinglesToBookOnline": true, "availableCount": 0, "backNinePlayerCount": 0, "bookingNotAllowed": false, "bookingNotAllowedReason": null, "cartRequirementTypeId": 2, "configurationTypeId": 0, "event2RoundId": 0, "frontTeeTimeId": 17530456, "hasBackNineEvent": false, "golfClubId": 3629, "golfCourseId": 4669, "golfCourseNumberOfHole
+
+##### 4) D1: real stored rows per platform (teetime format, spots, city) #####
+  {'platform': 'teeitup', 'course_slug': 'antler-creek-golf-course', 'teetime': '2026-07-22T23:10:00.000Z', 'open_spots': 4, 'city': 'Peyton', 'state': 'CO', 'venue_id': 'antler-creek-golf-course', 'active': 1, 'last_seen_at': '2026-07-22T21:39:11+00:00'}
+  {'platform': 'foreup', 'course_slug': 'the-bridges', 'teetime': '2026-07-22T18:45', 'open_spots': 2, 'city': 'Montrose', 'state': 'CO', 'venue_id': 'the-bridges', 'active': 1, 'last_seen_at': '2026-07-22T21:39:11+00:00'}
+  {'platform': 'chronogolf', 'course_slug': 'broadlands-golf-course', 'teetime': '2026-07-22T09:00:00', 'open_spots': 4, 'city': 'Broomfield', 'state': 'CO', 'venue_id': 'broadlands-golf-course', 'active': 1, 'last_seen_at': '2026-07-22T22:31:26+00:00'}
+  {'platform': 'teesnap', 'course_slug': 'mount-massive-golf-course', 'teetime': '2026-07-22T09:40:00', 'open_spots': None, 'city': 'Leadville', 'state': 'CO', 'venue_id': 'mount-massive-golf-course', 'active': 1, 'last_seen_at': '2026-07-22T22:47:30+00:00'}
+  {'platform': 'membersports', 'course_slug': 'boomerang-golf-links', 'teetime': '2026-07-23T06:10:00', 'open_spots': 1, 'city': 'Greeley', 'state': 'CO', 'venue_id': 'boomerang-golf-links', 'active': 1, 'last_seen_at': '2026-07-23T03:47:57+00:00'}
+  {'platform': 'quick18', 'course_slug': 'the-river-course-at-keystone', 'teetime': '2026-07-23T18:30:00', 'open_spots': 1, 'city': 'Dillon', 'state': 'CO', 'venue_id': 'the-river-course-at-keystone', 'active': 1, 'last_seen_at': '2026-07-23T23:44:40+00:00'}
+  {'platform': 'clubprophet', 'course_slug': 'indian-peaks-golf-course', 'teetime': '2026-07-23T16:00:00', 'open_spots': None, 'city': 'Lafayette', 'state': 'CO', 'venue_id': 'indian-peaks-golf-course', 'active': 1, 'last_seen_at': '2026-07-23T20:12:46+00:00'}
+  {'platform': 'golfnow', 'course_slug': 'cedaredge-golf-club', 'teetime': '2026-07-23T17:30:00', 'open_spots': None, 'city': 'Cedaredge', 'state': 'CO', 'venue_id': 'cedaredge-golf-club', 'active': 1, 'last_seen_at': '2026-07-23T22:50:02+00:00'}
+  {'platform': 'ezlinks', 'course_slug': 'aurora-hills-golf-course', 'teetime': '2026-07-23T18:30:00', 'open_spots': 4, 'city': 'Aurora', 'state': 'CO', 'venue_id': 'aurora-hills-golf-course', 'active': 1, 'last_seen_at': '2026-07-23T22:50:10+00:00'}
+  {'platform': 'foretees', 'course_slug': 'dalton-ranch-golf-club', 'teetime': '2026-07-23T18:10:00', 'open_spots': 4, 'city': 'Durango', 'state': 'CO', 'venue_id': 'dalton-ranch-golf-club', 'active': 1, 'last_seen_at': '2026-07-23T23:45:09+00:00'}
+  {'platform': 'clubcaddie', 'course_slug': 'applewood-golf-course', 'teetime': '2026-07-24T12:12:00', 'open_spots': None, 'city': 'Golden', 'state': 'CO', 'venue_id': 'applewood-golf-course', 'active': 1, 'last_seen_at': '2026-07-24T02:03:15+00:00'}
+  {'platform': 'supersaas', 'course_slug': 'spreading-antlers-golf-course', 'teetime': '2026-07-24T07:00:00', 'open_spots': None, 'city': 'Lamar', 'state': 'CO', 'venue_id': 'spreading-antlers-golf-course', 'active': 1, 'last_seen_at': '2026-07-24T15:58:03+00:00'}
+ -- hyland same-time check (how many rows share one teetime?):
+   {'teetime': '2026-07-24T18:30:00.000Z', 'n': 1}
+   {'teetime': '2026-07-24T18:40:00.000Z', 'n': 1}
+   {'teetime': '2026-07-24T18:50:00.000Z', 'n': 1}
+   {'teetime': '2026-07-24T19:00:00.000Z', 'n': 1}
+   {'teetime': '2026-07-24T19:10:00.000Z', 'n': 1}
+ -- teeitup teetime format sample:
+   {'teetime': '2026-07-22T23:10:00.000Z'}
+   {'teetime': '2026-07-22T23:20:00.000Z'}
+   {'teetime': '2026-07-22T23:30:00.000Z'}
+ -- past-times: active rows with teetime older than 6h ago (UTC naive compare):
+   {'platform': 'chronogolf', 'n': 729}
+   {'platform': 'clubcaddie', 'n': 159}
+   {'platform': 'clubprophet', 'n': 15}
+   {'platform': 'ezlinks', 'n': 535}
+   {'platform': 'foretees', 'n': 6}
+   {'platform': 'foreup', 'n': 240}
+   {'platform': 'golfnow', 'n': 431}
+   {'platform': 'membersports', 'n': 748}
+   {'platform': 'quick18', 'n': 134}
+   {'platform': 'supersaas', 'n': 16}
+   {'platform': 'teeitup', 'n': 75}
+   {'platform': 'teesnap', 'n': 582}
+ -- city null/empty check:
+   {'n': 0}
