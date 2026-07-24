@@ -17,89 +17,119 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - name: Install deps + Chromium
-        run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
-      - name: Diagnose Indian Peaks cps.golf (discover real courseIds vs pinned 10/11)
+      - run: pip install requests
+      - name: Raw data-quality probe (labels, spots, timezones, D1 rows)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           mkdir -p probe-results
-          python - <<'PY' 2>&1 | tee probe-results/indianpeaks.txt
-          import datetime as dt
-          from playwright.sync_api import sync_playwright
+          python - <<'PY' 2>&1 | tee probe-results/dataquality.txt
+          import datetime as dt, json, os, sys
+          sys.path.insert(0, ".")
+          from scraper.adapters.teeitup import TeeItUpAdapter
+          from scraper.adapters.chronogolf import ChronogolfAdapter
+          from scraper.adapters.experimental import MemberSportsAdapter
 
-          TENANT="indianpeaks"
-          D=(dt.date.today()+dt.timedelta(days=1)).strftime("%a %b %d %Y")
+          D = dt.date.today() + dt.timedelta(days=1)
 
-          ZERO="00000000-0000-0000-0000-000000000000"
-          # Full onlineresweb header profile (matches adapters/clubprophet._headers).
-          FLOW=r"""
-          async ([tenant, wid, cids, date, pinnedWid, pinnedCids]) => {
-            const base="https://"+tenant+".cps.golf";
-            const api=base+"/onlineres/onlineapi/api/v1/onlinereservation";
-            const ZERO="00000000-0000-0000-0000-000000000000";
-            const tr=await fetch(base+"/identityapi/myconnect/token/short",
-              {method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
-               body:"client_id=onlinereswebshortlived"});
-            if(tr.status!==200) return {stage:"token",status:tr.status};
-            const token=(await tr.json()).access_token;
-            const H=(websiteId)=>({Authorization:"Bearer "+token,
-              "Accept":"application/json, text/plain, */*","Accept-Language":"en-US,en;q=0.9",
-              "client-id":"onlineresweb","x-terminalid":"3","x-websiteid":websiteId||ZERO,
-              "x-ismobile":"false","x-productid":"1","x-componentid":"1","x-siteid":"1",
-              "x-moduleid":"7","x-timezoneid":"America/Denver","x-timezone-offset":"360",
-              "x-requestid":crypto.randomUUID(),"Origin":base,
-              "Referer":base+"/onlineresweb/search-teetime"});
-            // 1) discovery
-            const go=await fetch(api+"/GetAllOptions/"+tenant,{headers:H(ZERO)});
-            let b={}; try{b=await go.json();}catch(e){}
-            const co=(b.courseOptions||[]).map(c=>({courseId:c.courseId!==undefined?c.courseId:c.id,
-              name:c.courseName||c.name, holes:c.holes}));
-            const discWid=b.webSiteId||(b.reservationOptions||{}).webSiteId;
-            const realIds=co.map(c=>c.courseId).filter(x=>x!==undefined&&x!==null);
-            // helper to query TeeTimes for a (wid,cids)
-            const teetimes=async(useWid,useCids)=>{
-              const txid=crypto.randomUUID();
-              await fetch(api+"/RegisterTransactionId",{method:"POST",
-                headers:{...H(useWid),"Content-Type":"application/json"},
-                body:JSON.stringify({transactionId:txid})});
-              const url=api+`/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0&numberOfPlayer=0`
-                +`&courseIds=${useCids}&searchTimeType=0&transactionId=${txid}&teeOffTimeMin=0&teeOffTimeMax=23`
-                +`&isChangeTeeOffTime=true&teeSheetSearchView=5&classCode=R&defaultOnlineRate=N`
-                +`&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
-              const tt=await fetch(url,{headers:H(useWid)});
-              let c=[]; try{c=(await tt.json()).content||[];}catch(e){}
-              return {status:tt.status,n:c.length,sample:c.slice(0,3).map(s=>({t:s.startTime,cid:s.courseId,name:s.courseName}))};
-            };
-            const out={stage:"ok", getAllOptionsStatus:go.status, discWebSiteId:discWid, courseOptions:co, realIds};
-            // 2) pinned registry ids (what the scraper currently uses)
-            out.pinned = await teetimes(pinnedWid, pinnedCids);
-            // 3) discovered ids
-            if(realIds.length) out.discovered = await teetimes(discWid||pinnedWid, realIds.join(","));
-            return out;
-          }
-          """
-          PINNED_WID="f04abbc1-368f-40f4-096d-08d89aea9574"
-          with sync_playwright() as pw:
-            for attempt in range(3):
-              br=pw.chromium.launch(args=["--no-sandbox"])
-              try:
-                pg=br.new_page()
-                pg.goto(f"https://{TENANT}.cps.golf/onlineresweb/search-teetime",wait_until="domcontentloaded",timeout=35000)
-                pg.wait_for_timeout(6000)
-                r=pg.evaluate(FLOW,[TENANT,"", "", D, PINNED_WID, "10,11"])
-                import json as _j
-                print(_j.dumps(r, indent=1))
-                if r.get("stage")=="ok": br.close(); break
-                br.close()
-              except Exception as e:
-                print("ERR",type(e).__name__,e); br.close()
+          print("##### 1) TEEITUP Hyland Hills: facilities + one raw slot per facility #####")
+          try:
+              a = TeeItUpAdapter()
+              alias = "hyland-hills-park-recreation-district"
+              facs = a.discover_facilities(alias)
+              for f in facs:
+                  print(" facility:", {k: f.get(k) for k in ("id","facilityId","courseId","name","courseName","timezone","timeZone") if f.get(k) is not None})
+              data = a._teetimes(alias, D)
+              blocks = data if isinstance(data, list) else [data]
+              seen = set()
+              for b in blocks:
+                  di = b.get("dayInfo") or {}
+                  if di: print(" dayInfo keys:", sorted(di.keys()), "| tz-ish:", {k:v for k,v in di.items() if "ime" in k or "one" in k})
+                  for s in b.get("teetimes", []):
+                      fid = s.get("facilityId")
+                      if fid in seen: continue
+                      seen.add(fid)
+                      print(f" RAW SLOT (facility {fid}): keys={sorted(s.keys())}")
+                      print("   sample:", json.dumps({k: s.get(k) for k in ("teetime","facilityId","courseId","maxPlayers","minPlayers","availableSpots","bookedPlayers","openSlots","players")}, default=str))
+                      r = (s.get("rates") or [{}])[0]
+                      print("   rate0 keys:", sorted(r.keys()))
+          except Exception as e:
+              print(" ERR", type(e).__name__, e)
+
+          print()
+          print("##### 2) CHRONOGOLF Broadlands: full raw slot (spots field hunt) #####")
+          try:
+              c = ChronogolfAdapter()
+              disc = c.discover("broadlands-golf-course")
+              print(" discover:", disc)
+              aff = disc["affiliation_type_id"]
+              slots = c.get_json("https://www.chronogolf.com/marketplace/clubs/%d/teetimes" % disc["club_id"],
+                                 params=[("date", D.isoformat()), ("course_id", disc["course_ids"][0]),
+                                         ("affiliation_type_ids[]", aff), ("affiliation_type_ids[]", aff), ("nb_holes", 18)])
+              for s in (slots or [])[:3]:
+                  print(" RAW SLOT keys:", sorted(s.keys()))
+                  print("  ", json.dumps(s, default=str)[:500])
+          except Exception as e:
+              print(" ERR", type(e).__name__, e)
+
+          print()
+          print("##### 3) MEMBERSPORTS Kennedy: raw rows + item names (sub-courses) #####")
+          try:
+              m = MemberSportsAdapter()
+              body = {"configurationTypeId": 0, "date": D.isoformat(), "golfClubGroupId": 0,
+                      "golfClubId": 3629, "golfCourseId": 20573, "groupSheetTypeId": 0}
+              data = m.post_json(f"{m.API}/golfclubs/onlineBookingTeeTimes", json=body, headers=m._headers(), timeout=25)
+              print(" rows:", len(data))
+              names = {}
+              for row in data[:60]:
+                  for it in row.get("items", []):
+                      nm = it.get("name")
+                      names.setdefault(nm, 0)
+                      names[nm] += 1
+              print(" item name histogram:", names)
+              if data:
+                  r0 = data[0]
+                  print(" row0 keys:", sorted(r0.keys()))
+                  print(" row0 teeTime:", r0.get("teeTime"), "| item0:", json.dumps((r0.get("items") or [{}])[0], default=str)[:400])
+          except Exception as e:
+              print(" ERR", type(e).__name__, e)
+
+          print()
+          print("##### 4) D1: real stored rows per platform (teetime format, spots, city) #####")
+          try:
+              import requests
+              acct, db, tok = os.environ["CLOUDFLARE_ACCOUNT_ID"], os.environ["CLOUDFLARE_D1_DB_ID"], os.environ["CLOUDFLARE_API_TOKEN"]
+              url = f"https://api.cloudflare.com/client/v4/accounts/{acct}/d1/database/{db}/query"
+              def q(sql, params=None):
+                  r = requests.post(url, json={"sql": sql, "params": params or []},
+                                    headers={"Authorization": f"Bearer {tok}"}, timeout=30).json()
+                  if not r.get("success"): raise RuntimeError(r.get("errors"))
+                  return r["result"][0].get("results", [])
+              rows = q("""SELECT platform, course_slug, teetime, open_spots, city, state, venue_id, active, last_seen_at
+                          FROM tee_times WHERE rowid IN (
+                            SELECT MIN(rowid) FROM tee_times WHERE active=1 GROUP BY platform)""")
+              for r in rows: print(" ", r)
+              print(" -- hyland same-time check (how many rows share one teetime?):")
+              for r in q("""SELECT teetime, COUNT(*) n FROM tee_times
+                            WHERE course_slug LIKE '%hyland%' AND active=1 GROUP BY teetime
+                            ORDER BY teetime LIMIT 5"""): print("  ", r)
+              print(" -- teeitup teetime format sample:")
+              for r in q("""SELECT teetime FROM tee_times WHERE platform='teeitup' AND active=1 LIMIT 3"""): print("  ", r)
+              print(" -- past-times: active rows with teetime older than 6h ago (UTC naive compare):")
+              cutoff = (dt.datetime.utcnow() - dt.timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%S")
+              for r in q("SELECT platform, COUNT(*) n FROM tee_times WHERE active=1 AND teetime < ? GROUP BY platform", [cutoff]): print("  ", r)
+              print(" -- city null/empty check:")
+              for r in q("SELECT COUNT(*) n FROM tee_times WHERE active=1 AND (city IS NULL OR city='')"): print("  ", r)
+          except Exception as e:
+              print(" ERR", type(e).__name__, e)
           PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
-          git add probe-results/indianpeaks.txt
-          git commit -m "indian peaks cps probe [skip ci]" || exit 0
+          git add probe-results/dataquality.txt
+          git commit -m "data-quality probe [skip ci]" || exit 0
           git push
