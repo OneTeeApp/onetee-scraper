@@ -64,6 +64,14 @@ jobs:
           print("== labels present per platform ==")
           for r in q("""SELECT platform, COUNT(*) n FROM tee_times
                         WHERE active=1 AND course_label<>'' GROUP BY 1"""): print(" ", r)
+          print("== active rows per platform ==")
+          for r in q("SELECT platform, COUNT(*) n FROM tee_times WHERE active=1 GROUP BY 1"): print(" ", r)
+          print("== recent runs (inserted/updated/errors) ==")
+          import json as _j
+          for r in q("SELECT id, generated_at, date, courses_queried, courses_ok, tee_times, rows_inserted, errors FROM runs ORDER BY id DESC LIMIT 10"):
+              errs = _j.loads(r.pop("errors") or "[]")
+              tee_errs = [e for e in errs if "teeitup" in str(e.get("platform",""))][:3]
+              print(" ", r, "| teeitup errors:", tee_errs if tee_errs else len(errs))
           PY
       - name: Commit
         run: |
