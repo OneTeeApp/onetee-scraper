@@ -1,12 +1,6 @@
-"""Probe: drive the Club Caddie datepicker like a user.
-
-The view page renders today's tee sheet in-place; clicking Search navigates
-away and loses state. A real user opens the material datepicker and clicks a
-day, which fires the SPA's own onChange -> in-place results. This probe:
-  1. loads view, confirms today's baseline time count
-  2. opens the datepicker (click #dateinput), dumps the calendar DOM
-  3. clicks tomorrow's day cell, then Search, polls up to 20s for times
-  4. if still 0, dumps the results-container HTML to see what's there
+"""Probe v2: drive the DTP material datepicker properly.
+Day cells are span.dtp-select-day. Open picker, click the target day, confirm,
+Search, and capture the network response that carries the tee times.
 """
 from __future__ import annotations
 
@@ -23,94 +17,111 @@ TOMORROW = dt.date.today() + dt.timedelta(days=1)
 
 COUNT_JS = r"""() => {
   const all=[...document.querySelectorAll("*")];
-  const t=all.filter(e=>e.children.length===0 && /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||""));
-  return t.length;
+  return all.filter(e=>e.children.length===0 && /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||"")).length;
 }"""
 
-CAL_JS = r"""() => {
-  // find any visible calendar/picker overlay
-  const cands = [...document.querySelectorAll(
-    ".dtp, .datepicker, .bootstrap-datetimepicker-widget, [class*=picker], [class*=calendar]")]
-    .filter(e => e.offsetParent !== null);
-  const dump = cands.slice(0,2).map(e => ({
-    cls: e.className,
-    html: e.outerHTML.replace(/\s+/g," ").slice(0, 700)}));
-  // clickable day cells
-  const days = [...document.querySelectorAll("td, .day, [class*=day]")]
-    .filter(e => e.offsetParent !== null && /^\d{1,2}$/.test((e.textContent||"").trim()));
-  return {overlays: dump, dayCells: days.slice(0,40).map(e => ({
-    t:(e.textContent||"").trim(), cls:e.className, tag:e.tagName}))};
+DTP_JS = r"""() => {
+  const dtp=[...document.querySelectorAll(".dtp,[class*=dtp]")].filter(e=>e.offsetParent!==null);
+  return dtp.slice(0,1).map(e=>e.outerHTML.replace(/\s+/g," ").slice(0,1200));
 }"""
 
 
-def main():
-    from playwright.sync_api import sync_playwright
-    reg = load_registry("registry.json")
-    c = [x for x in reg if x["slug"] == "salida-golf-club"][0]
+def run(pw, c, day_num):
     base = f"https://apimanager-{c['ids']['shard']}.clubcaddie.com"
     token = c["ids"]["view_token"]
-    day = str(TOMORROW.day)
-    print(f"RESULT cc-cal salida (target {TOMORROW.isoformat()}, day {day}):", flush=True)
+    b = pw.chromium.launch(args=["--no-sandbox"])
+    data_resps = []
+    try:
+        ctx = b.new_context(user_agent=UA)
+        pg = ctx.new_page()
 
-    with sync_playwright() as pw:
-        b = pw.chromium.launch(args=["--no-sandbox"])
-        try:
-            ctx = b.new_context(user_agent=UA)
-            pg = ctx.new_page()
-            pg.goto(f"{base}/webapi/view/{token}", wait_until="domcontentloaded",
-                    timeout=40000)
-            pg.wait_for_timeout(8000)
-            print(f"  baseline today times: {pg.evaluate(COUNT_JS)} url={pg.url[:90]}",
-                  flush=True)
-
-            # open the datepicker
-            try:
-                pg.click("#dateinput", timeout=6000)
-                pg.wait_for_timeout(1500)
-            except Exception as e:  # noqa: BLE001
-                print(f"  click #dateinput failed: {type(e).__name__}", flush=True)
-            cal = pg.evaluate(CAL_JS)
-            print(f"  overlays: {json.dumps(cal['overlays'])[:800]}", flush=True)
-            print(f"  dayCells sample: {json.dumps(cal['dayCells'][:20])[:500]}",
-                  flush=True)
-
-            # try clicking tomorrow's day cell (visible, enabled, not muted)
-            clicked = False
-            for sel in [f"td.day:not(.disabled):not(.old):not(.new):text-is('{day}')",
-                        f".datepicker-days td:not(.disabled):text-is('{day}')",
-                        f"td:not(.disabled):text-is('{day}')"]:
+        def on_resp(resp):
+            u = resp.url
+            if "clubcaddie" in u and resp.request.method in ("GET", "POST") \
+                    and not u.endswith((".js", ".css", ".png", ".woff2", ".jpg", ".svg")):
                 try:
-                    pg.click(sel, timeout=3000)
+                    t = resp.text()
+                except Exception:
+                    return
+                # does this response carry tee-time strings?
+                import re
+                n = len(re.findall(r"\d?\d:\d\d\s*[AP]M", t))
+                if n >= 3:
+                    data_resps.append({"url": u.split(".com", 1)[-1][:110],
+                                       "status": resp.status, "times": n,
+                                       "ct": (resp.headers.get("content-type") or "")[:20]})
+
+        pg.on("response", on_resp)
+        pg.goto(f"{base}/webapi/view/{token}", wait_until="domcontentloaded", timeout=40000)
+        pg.wait_for_timeout(7000)
+        print(f"RESULT {c['slug']} (day {day_num}): baseline={pg.evaluate(COUNT_JS)}", flush=True)
+
+        # open picker
+        for opener in ("#datechange", "#dateinput"):
+            try:
+                pg.click(opener, timeout=4000)
+                pg.wait_for_timeout(1200)
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        print(f"  DTP overlay: {json.dumps(pg.evaluate(DTP_JS))[:600]}", flush=True)
+
+        # click the day span (try unpadded + padded)
+        clicked = False
+        for txt in (str(day_num), f"{day_num:02d}"):
+            for sel in (f"span.dtp-select-day:text-is('{txt}')",
+                        f".dtp-picker-days span:text-is('{txt}')",
+                        f"a.dtp-select-day:text-is('{txt}')"):
+                try:
+                    pg.click(sel, timeout=2500)
                     clicked = True
                     print(f"  clicked day via {sel!r}", flush=True)
                     break
                 except Exception:  # noqa: BLE001
                     continue
-            if not clicked:
-                print("  could not click a day cell", flush=True)
-            pg.wait_for_timeout(1500)
-
-            # click Search
+            if clicked:
+                break
+        pg.wait_for_timeout(1000)
+        # confirm/OK if present
+        for sel in ("a.dtp-btn-ok", ".dtp-btn-ok", "button:has-text('OK')",
+                    ".dtp-buttons a:has-text('OK')"):
             try:
-                pg.click("#UpdateFilerButton", timeout=6000)
-            except Exception as e:  # noqa: BLE001
-                print(f"  Search click failed: {type(e).__name__}", flush=True)
-            # poll for results
-            got = 0
-            for _ in range(20):
-                pg.wait_for_timeout(1000)
-                got = pg.evaluate(COUNT_JS)
-                if got:
-                    break
-            print(f"  AFTER search: times={got} url={pg.url[:100]}", flush=True)
-            if not got:
-                body = pg.evaluate(
-                    "() => (document.body?document.body.innerText:'').replace(/\\s+/g,' ').slice(0,400)")
-                print(f"  body: {body!r}", flush=True)
+                pg.click(sel, timeout=1500)
+                print(f"  clicked OK via {sel!r}", flush=True)
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        pg.wait_for_timeout(800)
+        # value now?
+        val = pg.eval_on_selector("#dateinput", "e=>e.value") if clicked else "?"
+        print(f"  #dateinput value after pick: {val!r}", flush=True)
+
+        # Search
+        try:
+            pg.click("#UpdateFilerButton", timeout=6000)
         except Exception as e:  # noqa: BLE001
-            print(f"  ERROR {type(e).__name__} {str(e)[:90]}", flush=True)
-        finally:
-            b.close()
+            print(f"  Search failed: {type(e).__name__}", flush=True)
+        got = 0
+        for _ in range(20):
+            pg.wait_for_timeout(1000)
+            got = pg.evaluate(COUNT_JS)
+            if got:
+                break
+        print(f"  AFTER search: times={got} url={pg.url[:95]}", flush=True)
+        print(f"  data responses w/ times: {json.dumps(data_resps[:6])}", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"RESULT {c['slug']}: ERROR {type(e).__name__} {str(e)[:80]}", flush=True)
+    finally:
+        b.close()
+
+
+def main():
+    from playwright.sync_api import sync_playwright
+    reg = load_registry("registry.json")
+    courses = [x for x in reg if x["slug"] in ("salida-golf-club", "applewood-golf-course")]
+    with sync_playwright() as pw:
+        for c in courses:
+            run(pw, c, TOMORROW.day)
 
 
 if __name__ == "__main__":
