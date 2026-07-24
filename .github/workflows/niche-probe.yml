@@ -34,6 +34,9 @@ jobs:
                                 headers={"Authorization": f"Bearer {tok}"}, timeout=30).json()
               if not r.get("success"): raise RuntimeError(r.get("errors"))
               return r["result"][0].get("results", [])
+          # one-off tidy: strip parenthetical metro hints on legacy rows (new
+          # inserts are already clean; existing rows only update spots/price)
+          q("UPDATE tee_times SET city = TRIM(substr(city, 1, instr(city,'(')-1)) WHERE city LIKE '%(%'")
           print("== PK columns ==")
           print([x["name"] for x in q("PRAGMA table_info(tee_times)") if x.get("pk")])
           print("== row counts ==")
