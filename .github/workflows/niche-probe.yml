@@ -1,0 +1,32 @@
+name: Niche platform probe
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["scripts/niche_probe.py", ".github/workflows/niche-probe.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: niche-probe
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - run: |
+          mkdir -p probe-results
+          python scripts/niche_probe.py 2>&1 | tee probe-results/niche.txt
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/niche.txt
+          git commit -m "niche probe [skip ci]" || exit 0
+          git push
