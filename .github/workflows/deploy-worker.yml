@@ -1,6 +1,7 @@
 name: Deploy Worker API
 
-# (re-trigger: token updated with Workers Scripts:Edit)
+# (re-trigger: retry after prune landed — Worker still owes sub-course
+#  names, venue dedupe and the belt-and-braces past-time filter)
 # Deploys the Cloudflare Worker (worker/) with `wrangler deploy`, using the same
 # secrets as the scraper. The repo's wrangler.toml keeps a placeholder D1 id; the
 # real id is injected here from CLOUDFLARE_D1_DB_ID so it never lives in git.
