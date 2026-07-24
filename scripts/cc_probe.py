@@ -1,6 +1,6 @@
-"""Probe v5: intercept Club Caddie's own /slots call via route.fetch so we read
-the exact request headers AND the response body the page itself receives — the
-definitive test of whether the widget gets JSON, and what to replicate.
+"""Probe v6: Club Caddie /slots is a server-rendered HTML page with the tee
+times in the DOM. Establish session (view page) -> navigate to /slots for the
+target date -> dump ordered card text + one card's HTML to design the parser.
 """
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from scraper.aggregate import load_registry  # noqa: E402
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+TOMORROW = dt.date.today() + dt.timedelta(days=1)
+MDY = TOMORROW.strftime("%m/%d/%Y")
 
 
 def probe(pw, course):
@@ -20,49 +22,40 @@ def probe(pw, course):
     shard, token = ids.get("shard"), ids.get("view_token")
     base = f"https://apimanager-{shard}.clubcaddie.com"
     b = pw.chromium.launch(args=["--no-sandbox"])
-    captured = []
     try:
         ctx = b.new_context(user_agent=UA)
-
-        def handle(route):
-            req = route.request
-            if "/slots" in req.url:
-                try:
-                    resp = route.fetch()
-                    body = resp.text()
-                    captured.append({
-                        "url": req.url.split(".com", 1)[-1][:130],
-                        "req_headers": {k: v for k, v in req.headers.items()
-                                        if k.lower() in ("x-requested-with", "accept",
-                                        "referer", "cookie", "x-interaction",
-                                        "authorization")},
-                        "status": resp.status,
-                        "ct": (resp.headers.get("content-type") or "")[:30],
-                        "is_json": body.strip()[:1] in "{[",
-                        "body_head": body[:600],
-                    })
-                    route.fulfill(response=resp, body=body)
-                    return
-                except Exception as e:  # noqa: BLE001
-                    captured.append({"url": req.url[:80], "err": str(e)[:60]})
-            route.continue_()
-
-        ctx.route("**/*", handle)
         pg = ctx.new_page()
+        # 1. establish session
         pg.goto(f"{base}/webapi/view/{token}", wait_until="domcontentloaded",
                 timeout=40000)
-        pg.wait_for_timeout(9000)
-        # also read the rendered DOM for tee-time text (fallback plan)
-        dom = pg.evaluate(r"""() => {
+        pg.wait_for_timeout(4000)
+        # 2. navigate to the slots page for tomorrow
+        pg.goto(f"{base}/webapi/view/{token}/slots?date={MDY}&player=1&ratetype=any",
+                wait_until="domcontentloaded", timeout=40000)
+        pg.wait_for_timeout(4000)
+        info = pg.evaluate(r"""() => {
+          const out = {url: location.href.slice(0,120)};
           const txt = document.body ? document.body.innerText : "";
-          const lines = txt.split("\n").map(s=>s.trim()).filter(Boolean);
-          const times = lines.filter(l => /\d?\d:\d\d\s*[AP]M/i.test(l));
-          return {timeCount: times.length, samples: times.slice(0,8)};
+          out.lines = txt.split("\n").map(s=>s.trim()).filter(Boolean).slice(0, 60);
+          // find the element wrapping the first time, dump its card HTML
+          const all = [...document.querySelectorAll("*")];
+          const timeEl = all.find(e => /^\s*\d?\d:\d\d\s*[AP]M\s*$/i.test(e.textContent||"")
+                                    && e.children.length === 0);
+          if (timeEl) {
+            let card = timeEl;
+            for (let i=0;i<5 && card.parentElement;i++){
+              card = card.parentElement;
+              if (card.textContent.match(/\$|\bholes?\b|player/i)) break;
+            }
+            out.cardHTML = card.outerHTML.replace(/\s+/g," ").slice(0, 900);
+            out.cardClass = card.className;
+          }
+          return out;
         }""")
-        print(f"RESULT cc {course['slug']}:", flush=True)
-        for c in captured:
-            print(f"  {json.dumps(c)[:900]}", flush=True)
-        print(f"  DOM times: {json.dumps(dom)[:500]}", flush=True)
+        print(f"RESULT cc {course['slug']}: url={info.get('url')}", flush=True)
+        print("  LINES: " + json.dumps(info.get("lines"))[:900], flush=True)
+        print(f"  cardClass={info.get('cardClass')!r}", flush=True)
+        print(f"  cardHTML={info.get('cardHTML')}", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"RESULT cc {course['slug']}: ERROR {type(e).__name__} {str(e)[:90]}",
               flush=True)
@@ -74,7 +67,7 @@ def main():
     from playwright.sync_api import sync_playwright
     reg = load_registry("registry.json")
     ccs = [c for c in reg if c["platform"] == "clubcaddie" and c["ids"].get("shard")]
-    want = [c for c in ccs if c["slug"] in ("applewood-golf-course", "salida-golf-club")]
+    want = [c for c in ccs if c["slug"] == "applewood-golf-course"]
     with sync_playwright() as pw:
         for c in want:
             probe(pw, c)
