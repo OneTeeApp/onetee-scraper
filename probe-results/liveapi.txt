@@ -1,1 +1,39 @@
-== live API: coal creek today ==
+now Denver: 2026-07-24T17:42:31 | now Phoenix: 2026-07-24T16:42:31
+API: https://onetee-api.damp-snow-8025.workers.dev
+
+== /api/health ==
+   {'ok': True, 'total': 28569, 'active': 15906}
+
+== 1. PAST TIMES: any returned slot earlier than local now? (want 0) ==
+   2000 slots returned, 0 in the past
+   include_past=1 sanity (should be > 0): 729
+
+== 2. STATE field ==
+   rows missing state: 15
+   ?state=AZ rows that aren't AZ: 0
+
+== 3. VENUE DEDUPE: '-golfnow' slugs exposed? (want 0) ==
+   courses: 242 | with -golfnow slug: 0
+    arrowhead-golf-club | golfnow | 1 slots | CO | Littleton
+    bella-ridge-golf-course | ezlinks | 22 slots | CO | Johnstown
+    cedaredge-golf-club | foreup | 112 slots | CO | Cedaredge
+    ironbridge-golf-club | foreup | 47 slots | CO | Glenwood Springs
+
+== 4. SUB-COURSES: Hyland / Kennedy display names ==
+    hyland-hills-golf-course -> (no upcoming rows)
+      same-time multi-course slots: 0 | example: None
+    kennedy-golf-course -> {'Kennedy Golf Course': 115}
+      same-time multi-course slots: 0 | example: None
+
+== 5. OPEN SPOTS coverage ==
+   593/2000 rows with no open_spots | by platform: {'golfnow': 302, 'clubprophet': 46, 'clubcaddie': 146, 'teesnap': 83, 'supersaas': 16}
+
+== 6. CITY coverage ==
+   rows with no city: 0 | cities with parens: 0
+
+== 7. BROADLANDS booking_url ==
+    {'https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d'}
+
+== 8. D1 backstop: elapsed rows still active (want ~0) ==
+    {'elapsed_active': 729}
+   prune: {'deactivated': 729, 'by_tz': {'America/Denver': 262, 'America/Phoenix': 467}, 'dry_run': False}

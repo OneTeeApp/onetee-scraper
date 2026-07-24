@@ -1,5 +1,5 @@
 --- last 5 runs of scrape.yml ---
-2026-07-24T22:25:45Z | in_progress/ | Prune elapsed tee times at the data layer + fix UTC "today" in scrapers
+2026-07-24T22:25:45Z | completed/success | Prune elapsed tee times at the data layer + fix UTC "today" in scrapers
 2026-07-24T20:56:44Z | completed/success | scrape.yml: self-trigger on workflow config changes
 2026-07-24T20:51:55Z | completed/failure | probe: dump workflow run statuses + failing scrape log
 2026-07-24T20:48:19Z | completed/failure | probe: add per-platform counts + runs table dump
@@ -12,8 +12,8 @@
 2026-07-23T23:44:12Z | completed/success | Scrape tee times (fast, today)
 --- last 5 runs of prune-past.yml ---
 --- last 5 runs of deploy-worker.yml ---
+2026-07-24T23:33:45Z | completed/success | deploy-worker: fire deploy now that CLOUDFLARE_DEPLOY_TOKEN exists
 2026-07-24T22:26:12Z | completed/success | deploy-worker: retry deploy (sub-course names + venue dedupe still no…
 2026-07-24T20:24:26Z | completed/success | Data quality: sub-course labels, real spot counts, local times, past-…
 2026-07-24T19:13:40Z | completed/success | deploy-worker: support dedicated CLOUDFLARE_DEPLOY_TOKEN + log full w…
 2026-07-24T18:57:25Z | completed/success | Probe fixes: full cps headers for Indian Peaks; wrangler whoami in de…
-2026-07-24T18:53:25Z | completed/success | Re-trigger Worker deploy (token now has Workers scope) + Indian Peaks…
