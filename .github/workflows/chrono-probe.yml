@@ -3,7 +3,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ["scripts/chrono_probe3.py", ".github/workflows/chrono-probe.yml"]
+    paths: ["scripts/chrono_probe4.py", ".github/workflows/chrono-probe.yml"]
 permissions:
   contents: write
 concurrency:
@@ -19,7 +19,7 @@ jobs:
       - run: pip install requests beautifulsoup4
       - run: |
           mkdir -p probe-results
-          python scripts/chrono_probe3.py 2>&1 | tee probe-results/chrono.txt
+          python scripts/chrono_probe4.py 2>&1 | tee probe-results/chrono.txt
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
