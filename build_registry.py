@@ -21,10 +21,10 @@ PATTERNS = {
     "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/club/([a-z0-9-]+)"),
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
     "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)"),
-    "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinksgolf\.com"),
+    "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinks(?:golf)?\.com"),
     "golfnow": re.compile(r"golfnow\.com/tee-times/facility/(\d+)-([a-z0-9-]+)"),
     "teesnap": re.compile(r"https?://([a-z0-9-]+)\.teesnap\.net"),
-    "quick18": re.compile(r"https?://([a-z0-9-]+)\.quick18\.com"),
+    "quick18": re.compile(r"https?://([a-z0-9-]+)\.(?:quick18|play18)\.com"),
     "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
     "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
 }
@@ -107,7 +107,13 @@ def extract_ids(platform: str, url: str) -> dict:
     if platform == "foreup":
         return {"course_id": g[0], "schedule_id": g[1]}
     if platform == "teeitup":
-        return {"alias": g[0]}
+        ids = {"alias": g[0]}
+        # shared-tenant aliases (Phoenix muni, etc.) select a course via
+        # ?course=<facilityId>; capture it so the adapter filters to it.
+        cm = re.search(r"[?&]course=(\d+)", url or "")
+        if cm:
+            ids["facility_id"] = cm.group(1)
+        return ids
     if platform == "clubprophet":
         return {"tenant": g[0]}
     if platform == "chronogolf":
@@ -122,7 +128,10 @@ def extract_ids(platform: str, url: str) -> dict:
     if platform == "golfnow":
         return {"golfnow_facility_id": g[0], "golfnow_slug": g[1].removesuffix("/search")}
     if platform in ("teesnap", "quick18"):
-        return {"subdomain": g[0]}
+        ids = {"subdomain": g[0]}
+        if "play18.com" in (url or ""):
+            ids["domain"] = "play18.com"   # Quick18's newer domain
+        return ids
     if platform == "noteefy":
         return {"venue_guid": g[0]}
     if platform == "foretees":
@@ -130,41 +139,71 @@ def extract_ids(platform: str, url: str) -> dict:
     return {}
 
 
+# Source CSVs, each tagged with the state they cover. course_slug is the D1
+# key, so slugs must be globally unique across states (collisions get a state
+# suffix below).
+SOURCES = [
+    ("colorado_golf_courses_booking.csv", "CO"),
+    ("arizona_golf_courses_booking.csv", "AZ"),
+]
+
+
+def _course_from_row(row: dict, state: str, taken: set) -> dict:
+    platform = row["Booking Platform"]
+    ids = extract_ids(platform, row["Booking URL"])
+    ids.update(EXTRA_IDS.get(row["Course Name"].lower(), {}))
+    if platform.startswith("other:"):
+        status = "unsupported"
+    elif platform not in IMPLEMENTED:
+        status = "experimental"          # golfnow / ezlinks
+    elif platform == "foreup" and not ids.get("schedule_id"):
+        status = "needs_ids"
+    elif platform == "chronogolf" and not ids.get("club_uuid"):
+        status = "needs_ids"             # uuid harvested at runtime
+    elif platform == "teeitup" and not ids.get("alias"):
+        status = "needs_ids"             # e.g. Troon wrapper, no direct alias
+    else:
+        status = "ready"
+    slug = slugify(row["Course Name"])
+    if slug in taken:                    # keep course_slug globally unique
+        slug = f"{slug}-{state.lower()}"
+    taken.add(slug)
+    return {
+        "slug": slug,
+        "name": row["Course Name"],
+        "city": row["City"],
+        "state": state,
+        "platform": platform,
+        "booking_url": row["Booking URL"],
+        "ids": ids,
+        "status": status,
+        "confidence": row["Confidence"],
+        "notes": row["Notes"],
+    }
+
+
 def main() -> None:
     courses = []
-    with open(SRC) as f:
-        for row in csv.DictReader(f):
-            if row["Online Booking"] != "yes" or not row["Booking Platform"]:
-                continue
-            platform = row["Booking Platform"]
-            ids = extract_ids(platform, row["Booking URL"])
-            ids.update(EXTRA_IDS.get(row["Course Name"].lower(), {}))
-            if platform.startswith("other:"):
-                status = "unsupported"
-            elif platform not in IMPLEMENTED:
-                status = "experimental"          # golfnow / ezlinks
-            elif platform == "foreup" and not ids.get("schedule_id"):
-                status = "needs_ids"
-            elif platform == "chronogolf" and not ids.get("club_uuid"):
-                status = "needs_ids"             # uuid harvested at runtime
-            else:
-                status = "ready"
-            courses.append({
-                "slug": slugify(row["Course Name"]),
-                "name": row["Course Name"],
-                "city": row["City"],
-                "platform": platform,
-                "booking_url": row["Booking URL"],
-                "ids": ids,
-                "status": status,
-                "confidence": row["Confidence"],
-                "notes": row["Notes"],
-            })
+    taken: set = set()
+    for src, state in SOURCES:
+        try:
+            f = open(src)
+        except FileNotFoundError:
+            continue
+        with f:
+            for row in csv.DictReader(f):
+                if row["Online Booking"] != "yes" or not row["Booking Platform"]:
+                    continue
+                courses.append(_course_from_row(row, state, taken))
     with open(OUT, "w") as f:
-        json.dump({"generated_from": SRC, "courses": courses}, f, indent=1)
+        json.dump({"generated_from": [s for s, _ in SOURCES], "courses": courses}, f,
+                  indent=1)
     from collections import Counter
     print(f"wrote {OUT}: {len(courses)} bookable courses")
-    print(dict(Counter(c['status'] for c in courses)))
+    print("by state:", dict(Counter(c["state"] for c in courses)))
+    print("by status:", dict(Counter(c["status"] for c in courses)))
+    print("AZ by platform:",
+          dict(Counter(c["platform"] for c in courses if c["state"] == "AZ")))
 
 
 if __name__ == "__main__":
