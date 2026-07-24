@@ -67,6 +67,8 @@ EXTRA_IDS = {
                                    "course_ids": [2]},
     "mariana butte golf course": {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b",
                                   "course_ids": [3]},
+    "gypsum creek golf course":  {"website_id": "36a7e810-d311-43dc-8326-08db37856ea4",
+                                  "course_ids": [1, 2]},   # 2 = offseason sheet
     # ForeUp munis: Patty Jewett 401s without a booking_class; pin the classes
     # that returned 200 in discover3.
     "patty jewett golf course":  {"booking_class": "1339"},

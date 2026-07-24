@@ -184,12 +184,15 @@
    "slug": "broadlands-golf-course",
    "name": "Broadlands Golf Course",
    "city": "Broomfield",
-   "platform": "other:noteefy",
-   "booking_url": "https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d",
-   "ids": {},
-   "status": "unsupported",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/broadlands-golf-course",
+   "ids": {
+    "slug": "broadlands-golf-course",
+    "club_uuid": null
+   },
+   "status": "needs_ids",
    "confidence": "high",
-   "notes": "Noteefy booking page sits behind a Cloudflare challenge that does not auto-clear headlessly \u2014 no scrape path found; revisit."
+   "notes": "Noteefy front door is a skin over a Chronogolf tee sheet (white-label app com.chronogolf.booking.broadlands); marketplace API serves it \u2014 probe-verified 15 times."
   },
   {
    "slug": "broken-tee-golf-course",
@@ -759,7 +762,12 @@
    "platform": "clubprophet",
    "booking_url": "https://gypsumcreekgolf.cps.golf/onlineresweb/search-teetime",
    "ids": {
-    "tenant": "gypsumcreekgolf"
+    "tenant": "gypsumcreekgolf",
+    "website_id": "36a7e810-d311-43dc-8326-08db37856ea4",
+    "course_ids": [
+     1,
+     2
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -1869,12 +1877,15 @@
    "slug": "walking-stick-golf-course",
    "name": "Walking Stick Golf Course",
    "city": "Pueblo",
-   "platform": "other:tgsweb",
-   "booking_url": "http://173.164.40.54/TgsWeb/Webdll.dll",
-   "ids": {},
-   "status": "unsupported",
+   "platform": "golfnow",
+   "booking_url": "https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search",
+   "ids": {
+    "golfnow_facility_id": "2724",
+    "golfnow_slug": "walking-stick-golf-course"
+   },
+   "status": "experimental",
    "confidence": "low",
-   "notes": "Legacy TgsWeb engine on raw IP (site Book button); GolfNow 2724 resale exists; Chronogolf directory-only lists phone."
+   "notes": "Site links a legacy TgsWeb bare-IP engine (returns empty responses); GolfNow 2724 is the only workable online channel; Chronogolf directory-only lists phone."
   },
   {
    "slug": "walnut-creek-golf-preserve",
