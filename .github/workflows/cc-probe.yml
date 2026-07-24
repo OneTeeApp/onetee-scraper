@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "scripts/cc_probe.py"
+      - "scripts/cps_retry_probe.py"
       - ".github/workflows/cc-probe.yml"
 
 permissions:
@@ -32,6 +33,8 @@ jobs:
         run: |
           mkdir -p probe-results
           python scripts/cc_probe.py 2>&1 | tee probe-results/cc.txt
+          echo "===== CPS RETRY PROBE =====" | tee -a probe-results/cc.txt
+          python scripts/cps_retry_probe.py 2>&1 | tee -a probe-results/cc.txt
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
