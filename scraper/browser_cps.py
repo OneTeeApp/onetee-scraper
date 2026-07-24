@@ -22,6 +22,7 @@ import json
 import logging
 import pathlib
 import sys
+import time
 
 from .adapters.base import USER_AGENT
 from .adapters.clubprophet import ClubProphetAdapter
@@ -89,22 +90,26 @@ def run(date: dt.date, registry_path: str, out_path: str) -> dict:
 
     tee_times, errors = [], []
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=["--no-sandbox"])
-        page = browser.new_page(user_agent=USER_AGENT)
-        for i, c in enumerate(courses):
+        for c in courses:
             ids = c["ids"]
             tenant = ids["tenant"]
             wid = ids.get("website_id") or ""
             cids = ",".join(str(x) for x in ids["course_ids"])
-            if i:
-                page.wait_for_timeout(1500)     # pace requests: the WAF bot-scores
-            last = None                          # bursts of rapid API calls
+            last = None
             got = False
-            for attempt in range(3):             # the WAF is probabilistic; retry
+            for attempt in range(3):
+                # Fresh browser per attempt. Cloudflare's managed JS challenge
+                # is issued per browsing context and takes ~6s to auto-clear; a
+                # clean context that waits it out clears the tenant WAF far more
+                # reliably than a reused page with a short settle (2/16 -> 13/13
+                # tenants in testing). This is the same legit managed-challenge
+                # auto-clear used for EZLinks — no stealth, no challenge-solving.
+                browser = pw.chromium.launch(args=["--no-sandbox"])
                 try:
+                    page = browser.new_page(user_agent=USER_AGENT)
                     page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
-                              wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_timeout(800)   # let any WAF/JS challenge settle
+                              wait_until="domcontentloaded", timeout=35000)
+                    page.wait_for_timeout(6000)  # let the managed challenge clear
                     r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
                     last = f"{r.get('stage')} {r.get('status')}"
                     if r.get("status") == 200:
@@ -112,15 +117,17 @@ def run(date: dt.date, registry_path: str, out_path: str) -> dict:
                         tee_times.extend(tts)
                         log.info("  %-34s %d times", c["slug"], len(tts))
                         got = True
-                        break
                 except Exception as e:  # noqa: BLE001
                     last = f"{type(e).__name__}"
-                page.wait_for_timeout(2500 * (attempt + 1))   # backoff before retry
+                finally:
+                    browser.close()
+                if got:
+                    break
+                time.sleep(2 * (attempt + 1))    # brief backoff before a fresh try
             if not got:
                 errors.append({"course": c["slug"], "platform": "clubprophet",
                                "error": f"browser {last}"})
                 log.info("  %-34s ERROR %s", c["slug"], last)
-        browser.close()
 
     doc = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
