@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS tee_times (
   teetime      TEXT NOT NULL,            -- ISO local course time
   course_name  TEXT NOT NULL,
   city         TEXT,
+  state        TEXT,                     -- two-letter state (CO, AZ, ...) for frontend filtering
   platform     TEXT,
   holes        TEXT,                     -- e.g. "18" or "9/18"
   open_spots   INTEGER,
@@ -20,8 +21,14 @@ CREATE TABLE IF NOT EXISTS tee_times (
   PRIMARY KEY (course_slug, teetime)
 );
 
+-- Frontend reads: active slots for a state on a given day. The composite index
+-- covers the common (state, date) filter; separate indexes cover course lookups
+-- and active-only scans. At ~15k courses these keep reads sub-linear.
 CREATE INDEX IF NOT EXISTS idx_teetimes_date   ON tee_times (substr(teetime, 1, 10));
 CREATE INDEX IF NOT EXISTS idx_teetimes_active ON tee_times (active);
+CREATE INDEX IF NOT EXISTS idx_teetimes_state_date
+  ON tee_times (state, substr(teetime, 1, 10), active);
+CREATE INDEX IF NOT EXISTS idx_teetimes_course ON tee_times (course_slug);
 
 CREATE TABLE IF NOT EXISTS runs (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,

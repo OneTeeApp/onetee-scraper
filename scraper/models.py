@@ -14,6 +14,7 @@ class TeeTime:
     city: str
     platform: str               # foreup | teeitup | chronogolf | clubprophet | ...
     teetime: str                # ISO 8601 local course time, e.g. "2026-07-24T07:30:00"
+    state: str = ""             # two-letter state, e.g. "CO" | "AZ" (frontend filter)
     holes: list[int] = field(default_factory=list)   # e.g. [9, 18]
     open_spots: Optional[int] = None                 # players that can still book
     price_min: Optional[float] = None                # USD

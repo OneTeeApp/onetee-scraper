@@ -38,6 +38,7 @@ import time
 from .adapters.base import USER_AGENT
 from .adapters.experimental import GolfNowAdapter  # base_tee_time host
 from .aggregate import load_registry
+from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
 
@@ -145,12 +146,15 @@ def _fetch_course(pw, course: dict, dates: list[dt.date]) -> tuple[dict, str | N
     return {}, last
 
 
-def run(dates: list[dt.date], registry_path: str, out_dir: str) -> dict:
+def run(dates: list[dt.date], registry_path: str, out_dir: str,
+        shard: str | None = None) -> dict:
     from playwright.sync_api import sync_playwright
 
     registry = load_registry(registry_path)
+    set_env_shard_count(shard)
     courses = [c for c in registry if c["platform"] == "clubcaddie"
                and c["ids"].get("shard") and c["ids"].get("view_token")]
+    courses = apply_shard(courses, shard)
     log.info("browser-fetching %d clubcaddie courses for %d dates",
              len(courses), len(dates))
 
@@ -200,12 +204,13 @@ def main(argv: list[str] | None = None) -> int:
                    help="first date; --days controls how many")
     p.add_argument("--days", type=int, default=1)
     p.add_argument("--registry", default="registry.json")
+    p.add_argument("--shard", help="i/N — process a 1/N slice")
     p.add_argument("--out-dir", default="output")
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
     start = dt.date.fromisoformat(a.date)
     dates = [start + dt.timedelta(days=n) for n in range(a.days)]
-    run(dates, a.registry, a.out_dir)
+    run(dates, a.registry, a.out_dir, a.shard)
     return 0
 
 

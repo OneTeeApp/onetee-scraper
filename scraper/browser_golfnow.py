@@ -28,6 +28,7 @@ import sys
 from .adapters.base import USER_AGENT
 from .adapters.experimental import GolfNowAdapter
 from .aggregate import load_registry
+from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
 
@@ -106,12 +107,15 @@ def _slots_to_teetimes(course: dict, slots: list[dict]) -> list:
     return out
 
 
-def run(date: dt.date, registry_path: str, out_path: str) -> dict:
+def run(date: dt.date, registry_path: str, out_path: str,
+        shard: str | None = None) -> dict:
     from playwright.sync_api import sync_playwright
 
     registry = load_registry(registry_path)
+    set_env_shard_count(shard)
     courses = [c for c in registry
                if c["platform"] == "golfnow" and c["ids"].get("golfnow_facility_id")]
+    courses = apply_shard(courses, shard)
     date_str = f"{date:%b} {date.day} {date:%Y}"   # "Jul 5 2026" (no zero-pad)
     log.info("browser-fetching %d golfnow facilities for %s", len(courses), date)
 
@@ -190,10 +194,11 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Browser-based GolfNow fetcher")
     p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=1)).isoformat())
     p.add_argument("--registry", default="registry.json")
+    p.add_argument("--shard", help="i/N — process a 1/N slice")
     p.add_argument("--out", default="output/gn.json")
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
-    run(dt.date.fromisoformat(a.date), a.registry, a.out)
+    run(dt.date.fromisoformat(a.date), a.registry, a.out, a.shard)
     return 0
 
 

@@ -21,6 +21,7 @@ Prices are in cents.
 from __future__ import annotations
 
 import datetime as dt
+import os
 import threading
 import time as _time
 from typing import Any
@@ -30,19 +31,29 @@ from ..models import TeeTime
 
 API_BASE = "https://phx-api-be-east-1b.kenna.io"
 
-# ~86 TeeItUp courses (CO+AZ) all hit this one kenna host; too much concurrency
-# or too tight a cadence trips its burst 429 limit. Cap to 2 concurrent and
-# space requests ~0.7s apart so the fleet stays under the rate limit (the base
-# adapter's retry/backoff still recovers occasional 429s).
-_KENNA_SEM = threading.Semaphore(2)      # <=2 concurrent kenna.io requests
-_KENNA_GAP = 0.7                         # min seconds between requests
+# All TeeItUp courses hit one shared kenna host, so the WHOLE fleet — across
+# every parallel shard — must stay under its burst 429 limit. Within a process
+# we cap concurrency and space requests; across S shards we widen the per-shard
+# gap to GAP*S so the aggregate cadence is constant no matter how many shards
+# run (SHARD_COUNT is published by scraper.sharding). This is what lets TeeItUp
+# scale to thousands of courses without one shard's pace multiplying by S.
+_KENNA_SEM = threading.Semaphore(2)      # <=2 concurrent kenna.io reqs per shard
+_KENNA_BASE_GAP = 0.7                     # global min seconds between requests
 _KENNA_LOCK = threading.Lock()
 _KENNA_LAST = [0.0]
 
 
+def _kenna_gap() -> float:
+    try:
+        shards = max(1, int(os.environ.get("SHARD_COUNT", "1")))
+    except ValueError:
+        shards = 1
+    return _KENNA_BASE_GAP * shards
+
+
 def _kenna_throttle():
     with _KENNA_LOCK:
-        wait = _KENNA_GAP - (_time.monotonic() - _KENNA_LAST[0])
+        wait = _kenna_gap() - (_time.monotonic() - _KENNA_LAST[0])
         if wait > 0:
             _time.sleep(wait)
         _KENNA_LAST[0] = _time.monotonic()

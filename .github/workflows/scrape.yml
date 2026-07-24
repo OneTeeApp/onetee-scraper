@@ -1,10 +1,13 @@
 name: Scrape tee times (full, 3 days)
 
+# Full 3-day scan, hourly at :17. Sharded: the course list is split into N
+# deterministic slices (--shard i/N) that run as parallel matrix jobs, so total
+# wall-clock stays flat as the registry grows toward ~15k courses. Each shard
+# only reads/writes its own courses in D1 (the sync is course-scoped), so shards
+# never contend. Bump SHARDS by widening the matrix list — nothing else changes.
+
 on:
   schedule:
-    # Full 3-day scan, hourly at :17 (GitHub congests at :00). The fast
-    # workflow (scrape-fast.yml) keeps *today* fresh every ~5 min; this one
-    # keeps the next two days current without 12x-ing the request volume.
     - cron: "17 * * * *"
   workflow_dispatch: {}
   push:
@@ -14,13 +17,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: scrape-full          # own group: never blocks the fast job
+  group: scrape-full-${{ matrix.shard }}
   cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]   # N = 4 shards; widen this list to scale out
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Scrape + push each date to D1 (today + next 2 days)
+      - name: Scrape + push shard ${{ matrix.shard }}/4 (today + next 2 days)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -37,27 +44,19 @@ jobs:
         run: |
           for OFFSET in 0 1 2; do
             DATE=$(date -u -d "+${OFFSET} days" +%F)
-            echo "::group::scrape+push ${DATE}"
+            OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
+            echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
+              --shard "${{ matrix.shard }}/4" \
               --exclude clubprophet,ezlinks,golfnow,clubcaddie \
-              --out "output/tee_times_${DATE}.json" || true
-            python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
+              --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
-          done
-
-      - name: Post to OneTee (no-op until ONETEE_API_URL secret is set)
-        if: ${{ vars.ONETEE_ENABLED == 'true' }}
-        env:
-          ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
-          ONETEE_API_KEY: ${{ secrets.ONETEE_API_KEY }}
-        run: |
-          for F in output/tee_times_*.json; do
-            python -m scraper.onetee --data "$F"
           done
 
       - name: Upload raw results as artifact (7-day debugging trail)
         uses: actions/upload-artifact@v4
         with:
-          name: tee-times-${{ github.run_id }}
+          name: tee-times-${{ github.run_id }}-s${{ matrix.shard }}
           path: output/tee_times_*.json
           retention-days: 7

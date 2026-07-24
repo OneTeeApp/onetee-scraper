@@ -20,6 +20,7 @@ import pathlib
 import sys
 
 from .models import FetchResult
+from .sharding import apply_shard, set_env_shard_count
 from .adapters.base import Adapter, make_session
 from .adapters.foreup import ForeUpAdapter
 from .adapters.teeitup import TeeItUpAdapter
@@ -77,13 +78,17 @@ def fetch_course(course: dict, date: dt.date) -> FetchResult:
 
 def run(date: dt.date, registry_path: str, out_path: str,
         platforms: set[str] | None, courses: set[str] | None,
-        include_raw: bool, workers: int, exclude: set[str] | None = None) -> dict:
+        include_raw: bool, workers: int, exclude: set[str] | None = None,
+        shard: str | None = None) -> dict:
+    set_env_shard_count(shard)          # so per-host throttles pace at 1/N
     registry = load_registry(registry_path)
     targets = [c for c in registry
                if (not platforms or c["platform"] in platforms)
                and (not exclude or c["platform"] not in exclude)
                and (not courses or c["slug"] in courses)]
-    log.info("fetching %d courses for %s", len(targets), date)
+    targets = apply_shard(targets, shard)
+    log.info("fetching %d courses for %s%s", len(targets), date,
+             f" (shard {shard})" if shard else "")
 
     results: list[FetchResult] = []
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
@@ -122,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--courses", help="comma-separated course-slug filter")
     p.add_argument("--include-raw", action="store_true")
     p.add_argument("--workers", type=int, default=5)  # polite: retry handles 429
+    p.add_argument("--shard", help="i/N — process a deterministic 1/N slice")
     p.add_argument("-v", "--verbose", action="store_true")
     a = p.parse_args(argv)
 
@@ -131,7 +137,8 @@ def main(argv: list[str] | None = None) -> int:
         set(a.platforms.split(",")) if a.platforms else None,
         set(a.courses.split(",")) if a.courses else None,
         a.include_raw, a.workers,
-        set(a.exclude.split(",")) if a.exclude else None)
+        set(a.exclude.split(",")) if a.exclude else None,
+        a.shard)
     return 0
 
 

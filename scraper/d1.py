@@ -37,12 +37,13 @@ import requests
 
 SCHEMA = (pathlib.Path(__file__).parent.parent / "schema.sql").read_text()
 
-COLS = ["course_slug", "teetime", "course_name", "city", "platform", "holes",
-        "open_spots", "price_min", "price_max", "currency", "booking_url",
-        "simulated", "active", "first_seen_at", "last_seen_at"]
+COLS = ["course_slug", "teetime", "course_name", "city", "state", "platform",
+        "holes", "open_spots", "price_min", "price_max", "currency",
+        "booking_url", "simulated", "active", "first_seen_at", "last_seen_at"]
 CHUNK = 6   # rows per INSERT — D1's HTTP API caps bound params at 100/query
-            # (6 rows × 15 cols = 90). Local SQLite would allow far more, but
+            # (6 rows × 16 cols = 96). Local SQLite would allow far more, but
             # correctness on D1 wins; initial full load is a one-time cost.
+SLUG_CHUNK = 90   # slugs per read query (stays under D1's 100 bound-param cap)
 
 
 # --------------------------------------------------------------------------- #
@@ -100,7 +101,40 @@ class SqliteLocal:
 # --------------------------------------------------------------------------- #
 
 def init_schema(db) -> None:
+    # Forward-compatible + idempotent: add the `state` column to a pre-existing
+    # table BEFORE running SCHEMA (whose state index references the column).
+    # On a fresh DB the ALTER no-ops (no table yet) and SCHEMA creates the table
+    # with `state` already in it. Runs cheaply on every push.
+    try:
+        db.execute("ALTER TABLE tee_times ADD COLUMN state TEXT")
+    except Exception:  # noqa: BLE001 — column already exists, or fresh DB
+        pass
     db.executescript(SCHEMA)
+
+
+def migrate(db, registry_path: str | None = None) -> dict:
+    """Idempotent forward migration: ensure schema (incl. the state column and
+    indexes) and backfill state on legacy rows from the registry. Safe to run
+    repeatedly."""
+    init_schema(db)
+    backfilled = 0
+    if registry_path:
+        from collections import defaultdict
+        import pathlib as _p
+        reg = json.loads(_p.Path(registry_path).read_text())["courses"]
+        by_state: dict[str, list[str]] = defaultdict(list)
+        for c in reg:
+            if c.get("state"):
+                by_state[c["state"]].append(c["slug"])
+        for st, slugs in by_state.items():
+            for i in range(0, len(slugs), SLUG_CHUNK):
+                batch = slugs[i:i + SLUG_CHUNK]
+                ph = ",".join("?" * len(batch))
+                db.execute(
+                    f"UPDATE tee_times SET state=? WHERE course_slug IN ({ph}) "
+                    "AND (state IS NULL OR state='')", [st, *batch])
+                backfilled += len(batch)
+    return {"backfilled_course_batches": backfilled}
 
 
 def _key(t: dict) -> tuple[str, str]:
@@ -116,6 +150,7 @@ def sync(db, doc: dict) -> dict:
         scraped[_key(t)] = {
             "course_slug": t["course_slug"], "teetime": t["teetime"],
             "course_name": t["course_name"], "city": t.get("city"),
+            "state": t.get("state"),
             "platform": t.get("platform"),
             "holes": "/".join(map(str, t.get("holes") or [])),
             "open_spots": t.get("open_spots"),
@@ -130,9 +165,21 @@ def sync(db, doc: dict) -> dict:
     errored = {e["course"] for e in doc.get("errors", [])}
     scraped_courses = {k[0] for k in scraped}
 
-    existing = {(r["course_slug"], r["teetime"]): r for r in db.execute(
-        "SELECT course_slug, teetime, open_spots, price_min, price_max, active"
-        " FROM tee_times WHERE substr(teetime,1,10) = ?", [date])}
+    # Read existing rows ONLY for the courses in this document (a shard's slice),
+    # not the whole date. Deactivation only ever touches scraped_courses, so this
+    # is behaviour-preserving — and it keeps each sync O(shard) instead of
+    # O(all courses in the DB), which is what makes 15k courses viable. Chunk the
+    # IN-list to stay under D1's 100 bound-param limit.
+    existing: dict = {}
+    slugs = sorted(scraped_courses)
+    for i in range(0, len(slugs), SLUG_CHUNK):
+        batch = slugs[i:i + SLUG_CHUNK]
+        ph = ",".join("?" * len(batch))
+        for r in db.execute(
+                "SELECT course_slug, teetime, open_spots, price_min, price_max, "
+                f"active FROM tee_times WHERE substr(teetime,1,10) = ? "
+                f"AND course_slug IN ({ph})", [date, *batch]):
+            existing[(r["course_slug"], r["teetime"])] = r
 
     to_insert = [v for k, v in scraped.items() if k not in existing]
     to_update = []
@@ -185,8 +232,9 @@ def sync(db, doc: dict) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Cloudflare D1 tee-time store")
-    p.add_argument("cmd", choices=["init", "push", "stats"])
+    p.add_argument("cmd", choices=["init", "migrate", "push", "stats"])
     p.add_argument("--data", default="output/tee_times.json")
+    p.add_argument("--registry", default="registry.json")
     p.add_argument("--local", metavar="SQLITE_FILE",
                    help="use a local SQLite file instead of Cloudflare D1")
     a = p.parse_args()
@@ -196,6 +244,10 @@ def main() -> int:
     if a.cmd == "init":
         init_schema(db)
         print("schema ensured")
+    elif a.cmd == "migrate":
+        s = migrate(db, a.registry)
+        print(f"migrated: state column ensured, indexes created, "
+              f"backfill touched {s['backfilled_course_batches']} courses")
     elif a.cmd == "push":
         init_schema(db)
         doc = json.loads(pathlib.Path(a.data).read_text())

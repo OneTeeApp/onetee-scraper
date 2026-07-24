@@ -106,6 +106,7 @@ class Adapter(abc.ABC):
             course_slug=course["slug"],
             course_name=course["name"],
             city=course.get("city", ""),
+            state=course.get("state", ""),
             platform=course["platform"],
             booking_url=course.get("booking_url", ""),
             **kw,
