@@ -37,7 +37,7 @@ jobs:
         run: |
           DATE=$(date -u +%F)
           python -m scraper.aggregate --date "${DATE}" \
-            --exclude clubprophet,ezlinks,golfnow,clubcaddie \
+            --exclude clubprophet,ezlinks,golfnow \
             --out "output/tee_times_${DATE}.json" || true
           python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
 

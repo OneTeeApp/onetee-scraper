@@ -39,7 +39,7 @@ jobs:
             DATE=$(date -u -d "+${OFFSET} days" +%F)
             echo "::group::scrape+push ${DATE}"
             python -m scraper.aggregate --date "${DATE}" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie \
+              --exclude clubprophet,ezlinks,golfnow \
               --out "output/tee_times_${DATE}.json" || true
             python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true
             echo "::endgroup::"
