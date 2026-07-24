@@ -20,7 +20,7 @@ concurrency:
 jobs:
   scrape-today:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,7 +36,7 @@ jobs:
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           DATE=$(date -u +%F)
-          python -m scraper.aggregate --date "${DATE}" \
+          python -m scraper.aggregate --date "${DATE}" --workers 8 \
             --exclude clubprophet,ezlinks,golfnow,clubcaddie \
             --out "output/tee_times_${DATE}.json" || true
           python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true

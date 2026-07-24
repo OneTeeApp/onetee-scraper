@@ -20,7 +20,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,7 +38,7 @@ jobs:
           for OFFSET in 0 1 2; do
             DATE=$(date -u -d "+${OFFSET} days" +%F)
             echo "::group::scrape+push ${DATE}"
-            python -m scraper.aggregate --date "${DATE}" \
+            python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --exclude clubprophet,ezlinks,golfnow,clubcaddie \
               --out "output/tee_times_${DATE}.json" || true
             python -m scraper.d1 push --data "output/tee_times_${DATE}.json" || true

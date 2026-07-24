@@ -32,7 +32,7 @@ API_BASE = "https://phx-api-be-east-1b.kenna.io"
 
 # All ~22 TeeItUp courses hit this one host; unthrottled concurrency trips 429s.
 # Cap concurrency and space requests so the shared host stays happy.
-_KENNA_SEM = threading.Semaphore(2)      # ≤2 concurrent kenna.io requests
+_KENNA_SEM = threading.Semaphore(3)      # ≤2 concurrent kenna.io requests
 _KENNA_GAP = 0.35                        # min seconds between requests
 _KENNA_LOCK = threading.Lock()
 _KENNA_LAST = [0.0]
