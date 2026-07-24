@@ -14,7 +14,16 @@ Key files:
 - `ARCHITECTURE.md` — design, platform landscape, legal notes, scaling plan.
 - `docs/SETUP.md` — **deploy guide**: GitHub Actions + Cloudflare D1, $0/month.
 - `.github/workflows/scrape.yml` — hourly scrape → D1 sync workflow.
-- `worker/` — optional Cloudflare Worker read-API for oneteeapp.com.
+- `worker/` — Cloudflare Worker read-API for oneteeapp.com. **Live at
+  `https://onetee-api.damp-snow-8025.workers.dev`** (`/api/health`,
+  `/api/courses`, `/api/tee-times`). Deployed by
+  `.github/workflows/deploy-worker.yml`, which needs the `CLOUDFLARE_DEPLOY_TOKEN`
+  secret (Workers Scripts:Edit — the scraper's `CLOUDFLARE_API_TOKEN` is D1-only
+  and cannot deploy).
+- `.github/workflows/prune-past.yml` — deactivates tee times that have already
+  elapsed in the course's local timezone. Booking engines keep the whole day's
+  grid visible, so "already started" is never signalled by the source; without
+  this, unbookable morning slots sat on the site all afternoon.
 
 Quick start (Python 3.10+, `pip install requests`):
 

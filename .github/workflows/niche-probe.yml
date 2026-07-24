@@ -9,6 +9,10 @@ permissions:
 concurrency:
   group: niche-probe
   cancel-in-progress: true
+
+env:
+  API: https://onetee-api.damp-snow-8025.workers.dev
+
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -19,86 +23,96 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install requests
 
-      - name: Find the live API URL from the public site
-        run: |
-          mkdir -p probe-results
-          {
-            echo "== workers.dev / api hosts referenced by www.oneteeapp.com =="
-            curl -sL --max-time 25 https://www.oneteeapp.com \
-              | grep -oE 'https://[a-z0-9.-]*(workers\.dev|oneteeapp\.com)[^"'"'"' )]*' \
-              | sort -u | head -40
-          } 2>&1 | tee probe-results/apiurl.txt
-
-      - name: Diagnose past tee times (live API + D1), then prune
+      - name: Verify the deployed Worker end to end
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           mkdir -p probe-results
-          python - <<'PY' 2>&1 | tee probe-results/pasttimes.txt
+          python - <<'PY' 2>&1 | tee probe-results/liveapi.txt
           import os, datetime as dt, zoneinfo, requests
           from scraper.d1 import D1Rest, prune_past
 
-          db = D1Rest()
-          q = db.execute
+          API = os.environ["API"]
+          def get(path):
+              r = requests.get(API + path, timeout=30)
+              r.raise_for_status()
+              return r.json()
+
           den = dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).replace(tzinfo=None)
           phx = dt.datetime.now(zoneinfo.ZoneInfo("America/Phoenix")).replace(tzinfo=None)
-          NOW_CO, NOW_AZ = den.isoformat(timespec="seconds"), phx.isoformat(timespec="seconds")
-          print("now Denver:", NOW_CO, "| now Phoenix:", NOW_AZ)
+          NOW = {"CO": den.isoformat(timespec="seconds"), "AZ": phx.isoformat(timespec="seconds")}
+          def now_for(t): return NOW.get(t.get("state") or "CO", NOW["CO"])
+          print("now Denver:", NOW["CO"], "| now Phoenix:", NOW["AZ"])
+          print("API:", API)
 
-          print("\n== BEFORE: active rows already elapsed, by platform ==")
-          for r in q("""SELECT platform, COUNT(*) n, MIN(teetime) oldest, MAX(teetime) newest
-                          FROM tee_times
-                         WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END
-                      GROUP BY 1 ORDER BY n DESC""", [NOW_AZ, NOW_CO]):
-              print("  ", r)
-          print("== BEFORE: totals ==")
-          print("  ", q("""SELECT COUNT(*) elapsed_active FROM tee_times
-                            WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
-                        [NOW_AZ, NOW_CO])[0],
-                q("SELECT COUNT(*) total_active FROM tee_times WHERE active=1")[0])
+          print("\n== /api/health ==")
+          print("  ", get("/api/health"))
 
-          print("\n== BEFORE: worst offenders (most elapsed rows still active) ==")
-          for r in q("""SELECT course_slug, state, COUNT(*) n, MIN(teetime) oldest,
-                               MAX(last_seen_at) last_scrape
-                          FROM tee_times
-                         WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END
-                      GROUP BY 1,2 ORDER BY n DESC LIMIT 15""", [NOW_AZ, NOW_CO]):
-              print("  ", r)
+          print("\n== 1. PAST TIMES: any returned slot earlier than local now? (want 0) ==")
+          tt = get("/api/tee-times?limit=2000")["tee_times"]
+          past = [t for t in tt if t["teetime"] < now_for(t)]
+          print(f"   {len(tt)} slots returned, {len(past)} in the past")
+          for t in past[:5]:
+              print("   PAST:", t["course_slug"], t.get("state"), t["teetime"])
+          print("   include_past=1 sanity (should be > 0):",
+                sum(1 for t in get("/api/tee-times?limit=2000&include_past=1")["tee_times"]
+                    if t["teetime"] < now_for(t)))
 
-          print("\n== Coal Creek rows (today) ==")
-          for r in q("""SELECT teetime, active, open_spots, last_seen_at
-                          FROM tee_times WHERE course_slug LIKE '%coal-creek%'
-                           AND substr(teetime,1,10)=? ORDER BY teetime LIMIT 20""",
-                     [den.date().isoformat()]):
-              print("  ", r)
+          print("\n== 2. STATE field ==")
+          print("   rows missing state:", sum(1 for t in tt if not t.get("state")))
+          print("   ?state=AZ rows that aren't AZ:",
+                sum(1 for t in get("/api/tee-times?state=AZ&limit=500")["tee_times"]
+                    if t.get("state") != "AZ"))
 
-          print("\n== dates present among ACTIVE rows (is local-today even scraped?) ==")
-          for r in q("""SELECT substr(teetime,1,10) d, COUNT(*) n, MAX(last_seen_at) last_scrape
-                          FROM tee_times WHERE active=1 GROUP BY 1 ORDER BY 1"""):
-              print("  ", r)
+          print("\n== 3. VENUE DEDUPE: '-golfnow' slugs exposed? (want 0) ==")
+          cs = get("/api/courses")["courses"]
+          print("   courses:", len(cs), "| with -golfnow slug:",
+                sum(1 for c in cs if "-golfnow" in (c["course_slug"] or "")))
+          for c in cs:
+              if c["course_slug"] in ("arrowhead-golf-club", "bella-ridge-golf-course",
+                                      "cedaredge-golf-club", "ironbridge-golf-club"):
+                  print("   ", c["course_slug"], "|", c.get("platform"), "|",
+                        c.get("slots"), "slots |", c.get("state"), "|", c.get("city"))
 
-          print("\n== PRUNE ==")
-          print("  ", prune_past(db))
+          print("\n== 4. SUB-COURSES: Hyland / Kennedy display names ==")
+          for slug in ("hyland-hills-golf-course", "kennedy-golf-course"):
+              rows = get(f"/api/tee-times?course={slug}&limit=400")["tee_times"]
+              names = {}
+              same = {}
+              for r in rows:
+                  names[r["course_name"]] = names.get(r["course_name"], 0) + 1
+                  same.setdefault(r["teetime"], []).append(r["course_name"])
+              print("   ", slug, "->", names or "(no upcoming rows)")
+              dupes = {k: v for k, v in same.items() if len(v) > 1}
+              print("      same-time multi-course slots:", len(dupes),
+                    "| example:", next(iter(dupes.items()), None))
 
-          print("\n== AFTER: elapsed rows still active (want 0) ==")
-          print("  ", q("""SELECT COUNT(*) elapsed_active FROM tee_times
-                            WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
-                        [NOW_AZ, NOW_CO])[0],
-                q("SELECT COUNT(*) total_active FROM tee_times WHERE active=1")[0])
+          print("\n== 5. OPEN SPOTS coverage ==")
+          miss = sum(1 for t in tt if t.get("open_spots") in (None, ""))
+          byp = {}
+          for t in tt:
+              if t.get("open_spots") in (None, ""):
+                  byp[t["platform"]] = byp.get(t["platform"], 0) + 1
+          print(f"   {miss}/{len(tt)} rows with no open_spots | by platform:", byp)
+
+          print("\n== 6. CITY coverage ==")
+          print("   rows with no city:", sum(1 for t in tt if not t.get("city")),
+                "| cities with parens:", sum(1 for t in tt if "(" in (t.get("city") or "")))
+
+          print("\n== 7. BROADLANDS booking_url ==")
+          b = get("/api/tee-times?course=broadlands-golf-course&limit=3")["tee_times"]
+          print("   ", {t["booking_url"] for t in b} or "(no upcoming rows)")
+
+          print("\n== 8. D1 backstop: elapsed rows still active (want ~0) ==")
+          db = D1Rest()
+          print("   ", db.execute(
+              """SELECT COUNT(*) elapsed_active FROM tee_times
+                   WHERE active=1 AND teetime < CASE WHEN state='AZ' THEN ? ELSE ? END""",
+              [NOW["AZ"], NOW["CO"]])[0])
+          print("   prune:", prune_past(db))
           PY
-
-      - name: Live API check (before/after prune is already applied above)
-        run: |
-          {
-            echo "== live API: coal creek today =="
-            for HOST in $(grep -oE 'https://[a-z0-9.-]*workers\.dev' probe-results/apiurl.txt | sort -u); do
-              echo "--- ${HOST} ---"
-              curl -sL --max-time 20 "${HOST}/api/health" | head -c 400; echo
-              curl -sL --max-time 20 "${HOST}/api/tee-times?course=coal-creek-golf-course&limit=8" | head -c 1200; echo
-            done
-          } 2>&1 | tee probe-results/liveapi.txt
 
       - name: Recent workflow runs
         env:
@@ -118,6 +132,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main || true
           git add probe-results/
-          git commit -m "probe: past-time diagnosis [skip ci]" || exit 0
+          git commit -m "probe: verify deployed worker [skip ci]" || exit 0
           git push
-# verify: prune cron + new date logic
