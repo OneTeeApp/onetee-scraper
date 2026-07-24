@@ -1,34 +1,7 @@
-RESULT applewood-golf-course:
-  URL: https://apimanager-cc11.clubcaddie.com/webapi/TeeTimes
-  method=POST post='date=07%2F24%2F2026&player=1&holes=any&fromtime=4&totime=23&minprice=0&maxprice=9999&ratetype=any&HoleGroup=front&CourseId=103418&apikey=hbfdabab&Interaction=4802ihv466eq0mkbg4cdb5c3bi'
-  req_headers={"referer": "https://apimanager-cc11.clubcaddie.com/webapi/view/hbfdabab/slots?date=07%2F24%2F2026&player=1&ratetype=any&Interaction=4802ihv466eq0mkbg4cdb5c3bi", "x-requested-with": "XMLHttpRequest", "accept": "*/*", "content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
-  resp: status=200 len=288677 times=33
-  HTML around first slot: ="resource-outer-label"> Starting 9: </span><br>
-                        <div class='resource-label bg-btncolor'> <span class="holeName">Applewood GC - Front</span></div>
-                        </div>
-                        <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left itembox tt-label">
-                        <span class="tee-time-label"> Tee Time: </span><br>
-                        06:30 AM                    </div>
-                                             <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left  itembox teetime-col-4 tt-price"><span class="tt-price-label"> Price: </span><br>$58.00</div>
-                     
-                        
-                                                                                    <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left  itembox teetime-col-hole tt-price"> <span class="tt-price-label"> Holes: </span><br>
-  date params: []
-  REPLAY tomorrow (2026-07-25): {"status": 200, "len": 4091, "times": 0, "isHtml": true}
-RESULT salida-golf-club:
-  URL: https://apimanager-cc30.clubcaddie.com/webapi/TeeTimes
-  method=POST post='date=07%2F24%2F2026&player=1&holes=any&fromtime=4&totime=23&minprice=0&maxprice=9999&ratetype=any&HoleGroup=front&CourseId=103497&apikey=gjfdabab&Interaction=q5kislrmeki810dt9mpko3chsq'
-  req_headers={"referer": "https://apimanager-cc30.clubcaddie.com/webapi/view/gjfdabab/slots?date=07%2F24%2F2026&player=1&ratetype=any&Interaction=q5kislrmeki810dt9mpko3chsq", "x-requested-with": "XMLHttpRequest", "accept": "*/*", "content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
-  resp: status=200 len=352216 times=43
-  HTML around first slot:     <span class="resource-outer-label"> Starting 9: </span><br>
-                        <div class='resource-label bg-btncolor'> <span class="holeName">Front</span></div>
-                        </div>
-                        <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left itembox tt-label">
-                        <span class="tee-time-label"> Tee Time: </span><br>
-                        08:00 AM                    </div>
-                                             <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left  itembox teetime-col-4 tt-price"><span class="tt-price-label"> Price: </span><br>$54.00</div>
-                     
-                        
-                                                                                    <div class="col-2 col-md-2 col-lg-2 col-sm-2 text-left itembox teetime-col-hole tt-price"> <span class="tt-price-label"> Holes: </span><br>9
-  date params: []
-  REPLAY tomorrow (2026-07-25): {"status": 200, "len": 4091, "times": 0, "isHtml": true}
+RESULT cc applewood-golf-course            err=None counts={'07-24': 33, '07-25': 0, '07-26': 18} e.g.=('2026-07-24T06:30:00', [18], 58.0, 22)
+RESULT cc black-canyon-golf-course         err=None counts={'07-24': 45, '07-25': 21, '07-26': 51} e.g.=('2026-07-24T08:20:00', [9], 30.0, 22)
+RESULT cc conquistador-golf-course         err=None counts={'07-24': 42, '07-25': 42, '07-26': 45} e.g.=('2026-07-24T07:24:00', [9], None, 22)
+RESULT cc eaglevail-golf-club              err=None counts={'07-24': 28, '07-25': 29, '07-26': 36} e.g.=('2026-07-24T07:30:00', [18], 179.0, 22)
+RESULT cc monte-vista-country-club         err=None counts={'07-24': 42, '07-25': 66, '07-26': 66} e.g.=('2026-07-24T08:00:00', [9], 25.0, 22)
+RESULT cc salida-golf-club                 err=None counts={'07-24': 43, '07-25': 46, '07-26': 57} e.g.=('2026-07-24T08:00:00', [9], 54.0, 22)
+RESULT cc the-links-golf-course            err=None counts={'07-24': 5, '07-25': 16, '07-26': 13} e.g.=('2026-07-24T06:53:00', [9], 24.0, 22)
