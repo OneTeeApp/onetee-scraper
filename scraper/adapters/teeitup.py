@@ -30,10 +30,12 @@ from ..models import TeeTime
 
 API_BASE = "https://phx-api-be-east-1b.kenna.io"
 
-# All ~22 TeeItUp courses hit this one host; unthrottled concurrency trips 429s.
-# Cap concurrency and space requests so the shared host stays happy.
-_KENNA_SEM = threading.Semaphore(3)      # ≤2 concurrent kenna.io requests
-_KENNA_GAP = 0.35                        # min seconds between requests
+# ~86 TeeItUp courses (CO+AZ) all hit this one kenna host; too much concurrency
+# or too tight a cadence trips its burst 429 limit. Cap to 2 concurrent and
+# space requests ~0.7s apart so the fleet stays under the rate limit (the base
+# adapter's retry/backoff still recovers occasional 429s).
+_KENNA_SEM = threading.Semaphore(2)      # <=2 concurrent kenna.io requests
+_KENNA_GAP = 0.7                         # min seconds between requests
 _KENNA_LOCK = threading.Lock()
 _KENNA_LAST = [0.0]
 
