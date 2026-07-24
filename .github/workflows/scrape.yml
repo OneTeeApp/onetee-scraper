@@ -48,7 +48,7 @@ jobs:
             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/4" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas \
               --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"

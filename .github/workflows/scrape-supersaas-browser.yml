@@ -1,0 +1,51 @@
+name: Scrape SuperSaaS via browser (3 days)
+
+# SuperSaaS publishes public tee sheets, but the day view is JS-rendered (plain
+# HTTP returns a shell with zero slots). A real Chromium loads
+#   /schedule/<acct>/<sched>?year=Y&month=M&day=D&view=day
+# and scrapes the open "new reservation" chips. Login is only needed to *book*.
+# The plain scraper excludes supersaas, so this job solely owns those slugs.
+
+on:
+  schedule:
+    - cron: "37 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "registry.json"
+      - "scraper/browser_supersaas.py"
+      - ".github/workflows/scrape-supersaas-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-supersaas-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Scrape 3 days + push each to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          for OFFSET in 0 1 2; do
+            DATE=$(date -u -d "+${OFFSET} days" +%F)
+            OUT="output/ss_${DATE}.json"
+            python -m scraper.browser_supersaas --date "${DATE}" --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
+          done

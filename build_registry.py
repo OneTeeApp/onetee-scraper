@@ -97,7 +97,7 @@ EXTRA_IDS = {
 
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
-               "membersports", "quick18", "teesnap", "foretees", "supersaas"}
+               "membersports", "quick18", "teesnap", "foretees"}
 
 
 def slugify(name: str) -> str:
