@@ -15,8 +15,12 @@ npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-code
 
 Getting User settings...
 ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
-👋 You are logged in with an User API Token. Unable to retrieve email for this user. Are you missing the `User->User Details->Read` permission?
-
+👋 You are logged in with an User API Token, associated with the email support@oneteeapp.com.
+┌─────────────────────────────────┬──────────────────────────────────┐
+│ Account Name                    │ Account ID                       │
+├─────────────────────────────────┼──────────────────────────────────┤
+│ Support@oneteeapp.com's Account │ 1b380acad1c1fd73ecf14983e7bc3a4c │
+└─────────────────────────────────┴──────────────────────────────────┘
 🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens.
 === wrangler deploy ===
 
@@ -32,20 +36,32 @@ Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more
   After installation, run Wrangler with `npx wrangler`.
 
 
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mYou are about to publish a Workers Service that was last published via the Cloudflare Dashboard.[0m
 
-[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mA request to the Cloudflare API (/accounts/1b380acad1c1fd73ecf14983e7bc3a4c/workers/services/onetee-api) failed.[0m
-
-  Authentication error [code: 10000]
+  Edits that have been made via the dashboard will be overridden by your local code and config.
 
 
-📎 It looks like you are authenticating Wrangler via a custom API token set in an environment variable.
-Please ensure it has the correct permissions for this operation.
+? Would you like to continue?
+🤖 Using fallback value in non-interactive context: yes
+Total Upload: 5.67 KiB / gzip: 1.77 KiB
+Your worker has access to the following bindings:
+- D1 Databases:
+  - DB: onetee-teetimes (816b0f14-b3d5-4f2b-97fb-4dc6f4e5632d)
+Uploaded onetee-api (1.58 sec)
+Deployed onetee-api triggers (0.35 sec)
+  https://onetee-api.damp-snow-8025.workers.dev
+Current Version ID: 8f155cfb-6f84-4625-b184-349abb4fc832
 
-Getting User settings...
-ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
-👋 You are logged in with an User API Token. Unable to retrieve email for this user. Are you missing the `User->User Details->Read` permission?
+deployed URL: https://onetee-api.damp-snow-8025.workers.dev
 
-🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens.
-🪵  Logs were written to "/home/runner/.config/.wrangler/logs/wrangler-2026-07-24_22-26-31_176.log"
+=== GET https://onetee-api.damp-snow-8025.workers.dev/api/health ===
+{"ok":true,"total":28569,"active":15906}
+=== GET https://onetee-api.damp-snow-8025.workers.dev/api/courses?state=CO  (arrowhead / bella ridge should each appear ONCE, native platform) ===
+  cedaredge-golf-club | None | None slots | None
+  cedaredge-golf-club-golfnow | None | None slots | None
+  bella-ridge-golf-course | None | None slots | None
+  bella-ridge-golf-course-golfnow | None | None slots | None
+  arrowhead-golf-club | None | None slots | None
 
-deployed URL: UNKNOWN
+duplicate-check: count of course_slugs containing '-golfnow' (should be 0):
+  0
