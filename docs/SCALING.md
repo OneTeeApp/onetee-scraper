@@ -58,6 +58,30 @@ chronogolf clubs) are naturally distributed and need no global coordination.
   single JSON ever gets unwieldy, shard the registry by state on disk — the
   loaders already filter by course, so no consumer assumes one file.
 
+## Multi-source venues (native engine + GolfNow overflow)
+
+A physical course can sell tee times through more than one channel — typically a
+native engine (foreUP/EZLinks/TeeItUp/…) that holds the full sheet, plus a
+GolfNow listing that carries only *overflow* inventory. GolfNow is almost never a
+course's sole channel, so a "golfnow" tag usually means "we found the overflow
+link, not the real one."
+
+Model: every registry entry is one booking **source** and carries a `venue_id`
+(the physical course) plus a `source_role` (`primary` = native/only, `supplement`
+= overflow). The primary owns the clean venue slug; each supplement gets a
+`-<platform>` slug. Why separate slugs instead of merging at write time: the two
+sources are scraped by *different* workflows (plain vs. `browser_golfnow`) on
+different cadences, and D1 sync is course-slug-scoped — one slug per source keeps
+each sync independent and clobber-free. The union+dedupe happens at **read time**:
+the frontend groups rows by `venue_id`, and on a `(venue_id, teetime)` collision
+keeps the `primary` row (its native booking link). `idx_teetimes_venue` makes the
+per-venue grouping cheap. This scales to any number of sources per venue without
+changing the write path — add a source row sharing the `venue_id`.
+
+Consumer requirement: the Worker API must expose `venue_id` + `source_role`, and
+the frontend must group by `venue_id`; otherwise a course with a supplement shows
+as two cards.
+
 ## What to do next as volume climbs
 
 1. Widen the `scrape.yml` matrix (and adopt it in the browser workflows) as
