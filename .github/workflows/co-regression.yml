@@ -1,0 +1,42 @@
+name: Colorado regression
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scripts/co_regression.py"
+      - ".github/workflows/co-regression.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: co-regression
+  cancel-in-progress: true
+
+jobs:
+  regress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests beautifulsoup4 playwright
+          python -m playwright install --with-deps chromium
+      - name: Run full CO regression across every fetcher
+        run: |
+          mkdir -p probe-results output
+          python scripts/co_regression.py 2>&1 | tee probe-results/co_regression.txt
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/co_regression.txt
+          git commit -m "CO regression report [skip ci]" || exit 0
+          git push
