@@ -1,0 +1,38 @@
+name: Migrate D1 (backfill state / venue_id / source_role)
+
+# One-shot + on-demand backfill. init (run on every scrape push) ADDS the newer
+# columns, but stable rows written before them keep NULLs until they next change.
+# This backfills state/venue_id/source_role from the registry so ?state= filtering
+# and venue grouping are correct immediately, not just on the next re-scrape.
+# Idempotent: after the first run the UPDATE matches nothing.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/migrate.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Backfill legacy rows from registry
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: python -m scraper.d1 migrate --registry registry.json
