@@ -1,0 +1,30 @@
+name: AZ remap verify
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["scripts/az_remap_verify.py", ".github/workflows/az-remap-verify.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: az-remap-verify
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install requests beautifulsoup4
+      - run: |
+          mkdir -p probe-results
+          python scripts/az_remap_verify.py 2>&1 | tee probe-results/remap.txt
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add probe-results/remap.txt
+          git commit -m "remap verify [skip ci]" || exit 0
+          git push
