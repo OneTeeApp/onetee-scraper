@@ -1,0 +1,54 @@
+name: Kenna slot shape (what the sibling filter matches on)
+
+# verify_fixes.txt section A: TeeItUp fetch() returns ZERO for all ten pinned
+# courses while the raw _teetimes() call on the same alias and date returns
+# hundreds. The only thing fetch() adds is a248c79's client-side sibling
+# filter, which intersects {slot.facilityId, slot.courseId} with the pinned
+# integer facility_id. diag_golden_hills.txt shows slots carrying a Mongo
+# courseId ("54f14bc50c8ad60378b0163a") — if the integer never appears in a
+# slot, that intersection is empty for every slot and the filter deletes the
+# whole sheet. Measure the slot shape before changing the filter a third time.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_kenna_slots.py"
+      - ".github/workflows/diag-kenna-slots.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-kenna-slots
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Diagnose
+        run: |
+          mkdir -p probe-results
+          python scripts/diag_kenna_slots.py 2>&1 | tee probe-results/diag_kenna_slots.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/diag_kenna_slots.txt
+          git commit -m "kenna slot shape diagnosis [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push kenna slot diag results after 5 attempts"; exit 1
