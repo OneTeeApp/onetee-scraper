@@ -1,0 +1,74 @@
+diag_golden_hills: is the alias wrong, the facility id, or the club?
+date probed: 2026-07-26
+Report only. Nothing here edits the CSV, the registry, or D1.
+
+========================================================================
+1. the booking page — does it exist, and what alias does it carry?
+========================================================================
+
+--- https://golden-hills-golf-club-az.book.teeitup.com/?course=1295
+    HTTP 200  29171B  final=https://golden-hills-golf-club-az.book.teeitup.com/?course=1295
+    alias-looking strings in the page: none
+    facility ids in the page: none
+
+--- https://golden-hills-golf-club-az.book.teeitup.com/
+    HTTP 200  29117B  final=https://golden-hills-golf-club-az.book.teeitup.com/
+    alias-looking strings in the page: none
+    facility ids in the page: none
+
+========================================================================
+2. which alias spellings does kenna know?
+========================================================================
+
+--- CONTROL aguila-golf-course
+    /v2/courses      HTTP 404  Not Found
+
+--- golden-hills-golf-club-az
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 404  {"error": "Booking Engine Settings not found"}
+    /v2/tee-times    HTTP 404  {"error": "Booking Engine Settings not found"}
+
+--- golden-hills-golf-club
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 200  [{"id": 1295, "courseId": "54f14bc50c8ad60378b0163a", "checkinInstructions": "", "isSimulator": false, "name": "Golden Hills Golf Club", "timeZone": "America/Phoenix", "address": "
+    /v2/tee-times    HTTP 200  [{"dayInfo": {"dawn": "2026-07-26T12:08:00.000Z", "sunrise": "2026-07-26T12:36:00.000Z", "sunset": "2026-07-27T02:29:00.000Z", "dusk": "2026-07-27T03:00:00.000Z"}, "teetimes": [{"c
+
+--- goldenhills
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 404  {"error": "Booking Engine Settings not found"}
+    /v2/tee-times    HTTP 404  {"error": "Booking Engine Settings not found"}
+
+--- golden-hills
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 404  {"error": "Booking Engine Settings not found"}
+    /v2/tee-times    HTTP 404  {"error": "Booking Engine Settings not found"}
+
+--- arizona-golf-resort
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 200  [{"id": 1295, "courseId": "54f14bc50c8ad60378b0163a", "checkinInstructions": "", "isSimulator": false, "name": "Golden Hills Golf Club", "timeZone": "America/Phoenix", "address": "
+    /v2/tee-times    HTTP 200  [{"dayInfo": {"dawn": "2026-07-26T12:08:00.000Z", "sunrise": "2026-07-26T12:36:00.000Z", "sunset": "2026-07-27T02:29:00.000Z", "dusk": "2026-07-27T03:00:00.000Z"}, "teetimes": [{"c
+
+--- arizona-golf-resort-az
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 404  {"error": "Booking Engine Settings not found"}
+    /v2/tee-times    HTTP 404  {"error": "Booking Engine Settings not found"}
+
+--- arizonagolfresort
+    /v2/courses      HTTP 404  Not Found
+    /alias/…/facilities HTTP 404  {"error": "Booking Engine Settings not found"}
+    /v2/tee-times    HTTP 404  {"error": "Booking Engine Settings not found"}
+
+========================================================================
+3. for anything that resolved, what does discover_facilities say?
+========================================================================
+    golden-hills-golf-club-az        raised HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east
+    golden-hills-golf-club           1 facilities ids=[1295] names=['Golden Hills Golf Club']
+        -> the registry's facility_id 1295 IS in this alias
+    goldenhills                      raised HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east
+    golden-hills                     raised HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east
+    arizona-golf-resort              1 facilities ids=[1295] names=['Golden Hills Golf Club']
+        -> the registry's facility_id 1295 IS in this alias
+    arizona-golf-resort-az           raised HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east
+    arizonagolfresort                raised HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east
+
+done
