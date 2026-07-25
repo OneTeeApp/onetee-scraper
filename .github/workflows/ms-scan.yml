@@ -1,0 +1,60 @@
+name: MemberSports club-id scan
+
+# Walks the MemberSports club-id space so the four mis-tagged CO courses
+# (Meadows, Lincoln Park, Boomerang, Highland Hills) can be pinned to their
+# real club. There is no club-listing endpoint — see the docstring in
+# scripts/ms_club_scan.py. Needs no secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      lo:
+        description: "lowest club id"
+        default: "3600"
+      hi:
+        description: "highest club id"
+        default: "3900"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ms_club_scan.py"
+      - ".github/workflows/ms-scan.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ms-scan
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Scan
+        env:
+          MS_SCAN_LO: ${{ github.event.inputs.lo || '3600' }}
+          MS_SCAN_HI: ${{ github.event.inputs.hi || '3900' }}
+        run: |
+          mkdir -p probe-results
+          python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/msscan.txt
+          git commit -m "membersports club scan [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push scan results after 5 attempts"; exit 1
