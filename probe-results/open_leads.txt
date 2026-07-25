@@ -1,0 +1,47 @@
+probe_open_leads: the two leads still open after #67/#68
+dates: 2026-07-26, 2026-07-28
+Real headless Chromium on public pages. No challenge is solved, no credentials are entered, no TLS fingerprint is forged.
+Report only. Nothing here edits the CSV or the registry.
+
+========================================================================
+A. Arizona Traditions — EZLinks portal through the fleet's own flow
+========================================================================
+
+--- Arizona Traditions Golf Club  portal=arizonatraditionseagle
+    2026-07-26: stage=search status=200 rows=103
+        first row keys: ['r01', 'r02', 'r03', 'r04', 'r05', 'r06', 'r07', 'r08']
+    2026-07-28: stage=search status=200 rows=219
+        first row keys: ['r01', 'r02', 'r03', 'r04', 'r05', 'r06', 'r07', 'r08']
+
+--- Arizona Traditions Golf Club  portal=arizonatraditions
+    2026-07-26: stage=search status=200 rows=0
+    2026-07-28: stage=search status=200 rows=0
+
+--- CONTROL — Ocotillo Golf Club  portal=ocotillo
+    2026-07-26: stage=search status=200 rows=174
+        first row keys: ['r01', 'r02', 'r03', 'r04', 'r05', 'r06', 'r07', 'r08']
+    2026-07-28: stage=search status=200 rows=218
+        first row keys: ['r01', 'r02', 'r03', 'r04', 'r05', 'r06', 'r07', 'r08']
+
+========================================================================
+B. Club Prophet tenants — does any candidate mint a token?
+========================================================================
+
+--- Emerald Greens Golf Club
+    emeraldgreens            no token (HTTP 404)  title='Club Prophet Online Booking Engine'
+    windsorgardens           navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://windsorgardens.cps.golf/onliner
+    windsorgardensdenver     navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://windsorgardensdenver.cps.golf/o
+    emeraldgreensco          navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://emeraldgreensco.cps.golf/online
+    emeraldgreensgolf        navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://emeraldgreensgolf.cps.golf/onli
+
+--- University of Denver Golf Club at Highlands Ranch
+    universityofdenver       navigation failed: Error: Page.goto: Navigation to "https://universityofdenver.cps.golf/onlineresweb/searc
+    highlandsranchgolf       navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://highlandsranchgolf.cps.golf/onl
+    dugolf                   navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://dugolf.cps.golf/onlineresweb/se
+    duhighlandsranch         navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://duhighlandsranch.cps.golf/onlin
+    highlandsranch           navigation failed: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://highlandsranch.cps.golf/onliner
+
+--- CONTROL — Indian Peaks
+    indianpeaks              LIVE (token minted)  title='Indian Peaks Online Tee Times'
+
+done
