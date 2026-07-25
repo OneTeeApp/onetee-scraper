@@ -1,0 +1,56 @@
+name: Native booking-engine probe
+
+# Reads each course's OWN website looking for a native booking engine behind a
+# GolfNow tag (Arizona) or behind a booking host that turned out not to be a
+# real tenant (Colorado). Report only — it never edits the CSVs or the
+# registry. Needs no secrets; it only fetches public pages.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "az or co"
+        default: "az"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/native_probe.py"
+      - ".github/workflows/native-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: native-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Probe
+        run: |
+          mkdir -p probe-results
+          # CO first: it is 7 courses and answers the question blocking #67.
+          MODE=co python scripts/native_probe.py 2>&1 | tee probe-results/native_co.txt
+          MODE=az python scripts/native_probe.py 2>&1 | tee probe-results/native_az.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/native_co.txt probe-results/native_az.txt
+          git commit -m "native engine probe [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push native probe results after 5 attempts"; exit 1
