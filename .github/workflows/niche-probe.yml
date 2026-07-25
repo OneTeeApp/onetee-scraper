@@ -77,8 +77,13 @@ jobs:
                   print("   ", c["course_slug"], "|", c.get("platform"), "|",
                         c.get("slots"), "slots |", c.get("state"), "|", c.get("city"))
 
-          print("\n== 4. SUB-COURSES: Hyland / Kennedy display names ==")
-          for slug in ("hyland-hills-golf-course", "kennedy-golf-course"):
+          # Hyland Hills' slug is the full "Greg Mastriona" name — the short one
+          # never existed, so probing it reported a healthy course as broken.
+          # Fox Hollow, Broken Tee and Foothills are the other multi-sheet venues.
+          print("\n== 4. SUB-COURSES: display names ==")
+          for slug in ("the-greg-mastriona-golf-courses-at-hyland-hills",
+                       "kennedy-golf-course", "fox-hollow-golf-course",
+                       "broken-tee-golf-course", "foothills-golf-course"):
               rows = get(f"/api/tee-times?course={slug}&limit=400")["tee_times"]
               names = {}
               same = {}

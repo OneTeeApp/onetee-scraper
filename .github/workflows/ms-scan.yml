@@ -40,18 +40,23 @@ jobs:
 
       - name: Scan
         env:
-          MS_SCAN_LO: ${{ github.event.inputs.lo || '3550' }}
-          MS_SCAN_HI: ${{ github.event.inputs.hi || '4000' }}
+          MS_SCAN_LO: ${{ github.event.inputs.lo || '4000' }}
+          MS_SCAN_HI: ${{ github.event.inputs.hi || '4600' }}
         run: |
           mkdir -p probe-results
-          python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan.txt
+          python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan2.txt
+          # Second band, below the one msscan.txt already covered. Meadows Golf
+          # Club is the last CO course whose real club id is unknown and it is
+          # not in 3550..4000, so widen in both directions.
+          MS_SCAN_LO=3000 MS_SCAN_HI=3550 \
+            python scripts/ms_club_scan.py 2>&1 | tee -a probe-results/msscan2.txt
 
       - name: Commit
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add probe-results/msscan.txt
+          git add probe-results/msscan.txt probe-results/msscan2.txt
           git commit -m "membersports club scan [skip ci]" || exit 0
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push && exit 0

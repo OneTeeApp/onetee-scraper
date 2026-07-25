@@ -20,7 +20,7 @@ PATTERNS = {
     "clubprophet": re.compile(r"https?://([a-z0-9]+)\.cps\.golf"),
     "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/club/([a-z0-9-]+)"),
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
-    "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)"),
+    "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)(?:/(\d+))?(?:/(\d+))?"),
     "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinks(?:golf)?\.com"),
     "golfnow": re.compile(r"golfnow\.com/tee-times/facility/(\d+)-([a-z0-9-]+)"),
     "teesnap": re.compile(r"https?://([a-z0-9-]+)\.teesnap\.net"),
@@ -43,8 +43,32 @@ EXTRA_IDS = {
     "overland park golf course": {"club_id": "3755", "secondary_id": "4827"},
     "harvard gulch golf course": {"club_id": "3713", "secondary_id": "4781"},
     "willis case golf course":   {"club_id": "3833", "secondary_id": "4932"},
-    "kennedy golf course":       {"club_id": "3629", "secondary_id": "20573"},
+    # Kennedy's three sheets are NOT all reachable from one configurationTypeId
+    # (see probe-results/diag2.txt): cfg 0 is the Par 3 sheet, cfg 1 is Babe
+    # Lind / Creek and cfg 2 is West 9 only. Pinned to cfg 0, the two 18-hole
+    # configurations were invisible and course_label was always blank.
+    "kennedy golf course":       {"club_id": "3629", "secondary_id": "20573",
+                                  "config_ids": [0, 1, 2]},
     # city-park stays 3660/4711 (correct as extracted)
+
+    # Three CO courses were tagged with a NEIGHBOUR's golfClubId because the
+    # city portal's booking URL is shared between two courses. The club-id scan
+    # (probe-results/msscan.txt) asked each club what it actually owns and
+    # settled them: 3724 is Highland Hills, not Boomerang; 3739 is Lincoln Park,
+    # while 3821 is Tiara Rado. Left uncorrected, each of these served its
+    # neighbour's tee sheet under its own name.
+    "boomerang golf links":      {"club_id": "3642", "secondary_id": "4686"},
+    "lincoln park golf course":  {"club_id": "3739", "secondary_id": "4808"},
+    # highland-hills stays 3724/4793 and tiara-rado stays 3821/4918 — both
+    # confirmed correct by the same scan.
+    #
+    # Meadows is the one the scan could not settle: club 3697 owns only the
+    # three sheets named "Foothills", and no club in 3550..4000 answers to
+    # Meadows. Its CSV row was filled in from Foothills' URL (same parks
+    # district, same website), so scraping it would republish Foothills' tee
+    # times under the Meadows name. Blanked deliberately -> status needs_ids,
+    # which keeps it out of the scrape until the wider scan finds its club.
+    "meadows golf club":         {"club_id": "", "secondary_id": ""},
 
     # TeeItUp: the book.teeitup.com vanity subdomain is NOT always the kenna
     # x-be-alias. Captured the real alias each course's booking page sends to
@@ -137,7 +161,14 @@ def extract_ids(platform: str, url: str) -> dict:
     if platform == "clubcaddie":
         return {"shard": g[0], "view_token": g[1]}
     if platform == "membersports":
-        return {"club_id": g[0], "secondary_id": g[1]}
+        ids = {"club_id": g[0], "secondary_id": g[1]}
+        # tee-times/{club}/{course}/{group}/{cfg}/{sheetType}: the 4th segment
+        # is configurationTypeId, which selects WHICH tee sheet. The adapter
+        # used to pin it to 0 and so lost every sheet only reachable at another
+        # value, so carry it through and sweep it alongside 0.
+        if len(g) > 3 and g[3] and g[3] != "0":
+            ids["config_ids"] = [0, int(g[3])]
+        return ids
     if platform == "ezlinks":
         return {"portal": g[0]}
     if platform == "golfnow":
@@ -181,6 +212,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         status = "needs_ids"             # uuid harvested at runtime
     elif platform == "teeitup" and not ids.get("alias"):
         status = "needs_ids"             # e.g. Troon wrapper, no direct alias
+    elif platform == "membersports" and not ids.get("club_id"):
+        # A shared city portal can leave a course pointing at its neighbour's
+        # golfClubId. Better to publish nothing than someone else's tee sheet.
+        status = "needs_ids"
     else:
         status = "ready"
     return {

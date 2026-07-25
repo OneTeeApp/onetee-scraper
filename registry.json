@@ -228,14 +228,14 @@
    "venue_id": "boomerang-golf-links",
    "source_role": "primary",
    "platform": "membersports",
-   "booking_url": "https://app.membersports.com/tee-times/3724/4793/0/5/0",
+   "booking_url": "https://app.membersports.com/tee-times/3642/4686/0/0/0",
    "ids": {
-    "club_id": "3724",
-    "secondary_id": "4793"
+    "club_id": "3642",
+    "secondary_id": "4686"
    },
    "status": "ready",
-   "confidence": "medium",
-   "notes": "Greeley shared MemberSports portal (per Highland Hills finding; one agent saw a Chronogolf page \u2014 flag for verify)."
+   "confidence": "high",
+   "notes": "Not shared with Highland Hills after all: club 3724 owns only Highland Hills. Boomerang is its own club 3642 / course 4686 (probe-results/msscan.txt). The old URL sent bookers to Highland Hills' sheet."
   },
   {
    "slug": "breckenridge-golf-club",
@@ -594,14 +594,15 @@
    "state": "CO",
    "venue_id": "coyote-creek-golf-course",
    "source_role": "primary",
-   "platform": "teesnap",
-   "booking_url": "https://coyotecreek.teesnap.net/",
+   "platform": "membersports",
+   "booking_url": "https://app.membersports.com/tee-times/3674/4730/0/0/0",
    "ids": {
-    "subdomain": "coyotecreek"
+    "club_id": "3674",
+    "secondary_id": "4730"
    },
    "status": "ready",
-   "confidence": "medium",
-   "notes": "Teesnap portal."
+   "confidence": "high",
+   "notes": "Left Teesnap: coyotecreek.teesnap.net now returns HTTP 500. MemberSports club 3674 / course 4730 answers live with inventory (probe-results/msscan.txt)."
   },
   {
    "slug": "dalton-ranch-golf-club",
@@ -769,7 +770,11 @@
    "booking_url": "https://app.membersports.com/tee-times/3697/4758/0/3/0",
    "ids": {
     "club_id": "3697",
-    "secondary_id": "4758"
+    "secondary_id": "4758",
+    "config_ids": [
+     0,
+     3
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -841,7 +846,11 @@
    "booking_url": "https://app.membersports.com/tee-times/3703/20589/0/7/0",
    "ids": {
     "club_id": "3703",
-    "secondary_id": "20589"
+    "secondary_id": "20589",
+    "config_ids": [
+     0,
+     7
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -1105,7 +1114,11 @@
    "booking_url": "https://app.membersports.com/tee-times/3724/4793/0/5/0",
    "ids": {
     "club_id": "3724",
-    "secondary_id": "4793"
+    "secondary_id": "4793",
+    "config_ids": [
+     0,
+     5
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -1246,7 +1259,12 @@
    "booking_url": "https://app.membersports.com/custom/3660/4711/19",
    "ids": {
     "club_id": "3629",
-    "secondary_id": "20573"
+    "secondary_id": "20573",
+    "config_ids": [
+     0,
+     1,
+     2
+    ]
    },
    "status": "ready",
    "confidence": "high",
@@ -1329,14 +1347,14 @@
    "venue_id": "lincoln-park-golf-course",
    "source_role": "primary",
    "platform": "membersports",
-   "booking_url": "https://app.membersports.com/tee-times/3821/4918/0/4/0",
+   "booking_url": "https://app.membersports.com/tee-times/3739/4808/0/0/0",
    "ids": {
-    "club_id": "3821",
-    "secondary_id": "4918"
+    "club_id": "3739",
+    "secondary_id": "4808"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "Grand Junction shared MemberSports portal (with Tiara Rado)."
+   "notes": "Not shared with Tiara Rado after all: club 3821 owns only Tiara Rado. Lincoln Park is its own club 3739 / course 4808 (probe-results/msscan.txt). The old URL sent bookers to Tiara Rado's sheet."
   },
   {
    "slug": "littleton-golf-tennis-club",
@@ -1418,12 +1436,16 @@
    "platform": "membersports",
    "booking_url": "https://app.membersports.com/tee-times/3697/4758/0/3/0",
    "ids": {
-    "club_id": "3697",
-    "secondary_id": "4758"
+    "club_id": "",
+    "secondary_id": "",
+    "config_ids": [
+     0,
+     3
+    ]
    },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "MIGRATED from ForeUp; shared with Foothills."
+   "status": "needs_ids",
+   "confidence": "low",
+   "notes": "UNRESOLVED: club 3697 owns only the three sheets named Foothills, and no club in 3550-4000 answers to Meadows. This row's URL was copied from Foothills (same parks district), so ids are blanked in build_registry.py -> status needs_ids until the wider scan finds its real club."
   },
   {
    "slug": "meeker-golf-course",
@@ -2281,7 +2303,11 @@
    "booking_url": "https://app.membersports.com/tee-times/3821/4918/0/4/0",
    "ids": {
     "club_id": "3821",
-    "secondary_id": "4918"
+    "secondary_id": "4918",
+    "config_ids": [
+     0,
+     4
+    ]
    },
    "status": "ready",
    "confidence": "high",
