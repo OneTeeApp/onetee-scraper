@@ -122,6 +122,22 @@ jobs:
                    ORDER BY teetime LIMIT 1""", [NOW["AZ"], NOW["CO"]]) or "(none)")
           PY
 
+      # Definitive answer on whether the cron trigger registered. The elapsed-row
+      # count is good circumstantial evidence, but Cloudflare will just tell us.
+      - name: Worker cron schedules (Cloudflare API)
+        env:
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          {
+            echo "== registered cron triggers for onetee-api =="
+            curl -s --max-time 20 \
+              -H "Authorization: Bearer ${CF_TOKEN}" \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/workers/scripts/onetee-api/schedules" \
+              || echo "(schedules fetch failed)"
+            echo
+          } 2>&1 | tee -a probe-results/liveapi.txt
+
       - name: Recent workflow runs
         env:
           GH_TOKEN: ${{ github.token }}
