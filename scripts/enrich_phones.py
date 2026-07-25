@@ -90,6 +90,27 @@ TOLL_FREE = {"800", "888", "877", "866", "855", "844", "833"}
 
 SCORE_FLOOR = 3
 
+
+def area_score(a: str, state: str) -> int:
+    """Reward an in-state area code; PENALISE an out-of-state one.
+
+    In-state used to be the only signal, worth +2, and out-of-state simply
+    scored nothing — which still cleared the floor for a tel: link. So Black
+    Bear in Parker, Colorado shipped "(972) 243-6191": a Dallas number, lifted
+    from invitedclubs.com, the corporate site its CSV row lists as its website.
+    A golfer calling that reaches a management company in Texas, which is worse
+    than showing no number at all.
+
+    A golf course is a physical place and uses a local line. An out-of-state
+    area code on a course's own site means a corporate switchboard, a booking
+    vendor, or an architect's credit — never the pro shop. Toll-free is judged
+    separately below; it is merely weak, not wrong.
+    """
+    known = AREA_CODES.get(state)
+    if not known or a in TOLL_FREE:
+        return 0
+    return 2 if a in known else -2
+
 # Numbers that are structurally impossible for a US phone: NANP forbids 0/1
 # as the first digit of an area code or an exchange.
 def plausible(a: str, b: str) -> bool:
@@ -128,7 +149,7 @@ def candidates(html: str, state: str) -> list[tuple[int, str]]:
         a, b, c = digits[:3], digits[3:6], digits[6:]
         if not plausible(a, b):
             continue
-        s = 3 + (2 if a in AREA_CODES.get(state, set()) else 0)
+        s = 3 + area_score(a, state)
         s -= 2 if a in TOLL_FREE else 0
         add(fmt(a, b, c), s)
 
@@ -141,7 +162,7 @@ def candidates(html: str, state: str) -> list[tuple[int, str]]:
         window = text[max(0, m.start() - 120):m.end() + 60].lower()
         s = 0
         s += 2 if any(w in window for w in CONTACT_WORDS) else 0
-        s += 2 if a in AREA_CODES.get(state, set()) else 0
+        s += area_score(a, state)
         s -= 2 if a in TOLL_FREE else 0
         # A fax sits right next to the pro shop number and scores identically
         # on every other signal. Printing it as "call to book" is worse than

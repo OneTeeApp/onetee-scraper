@@ -44,7 +44,19 @@ async ([bodyStr, dateStr, fid]) => {
   const r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
     {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
      body: JSON.stringify(body)});
-  let j = {}; try { j = await r.json(); } catch (e) {}
+  // Read the text first and report a parse failure AS a failure. The old form
+  // was `let j = {}; try { j = await r.json(); } catch (e) {}` — a body that
+  // did not parse became an empty object, an empty object has no ttResults,
+  // and the course was filed as "0 tee times" under a status the caller had
+  // already accepted. A missing answer read as a known one, which is the same
+  // bug that made four live facilities look empty.
+  const text = await r.text();
+  let j;
+  try { j = JSON.parse(text); }
+  catch (e) {
+    return {status: r.status, parse_failed: true, bytes: text.length,
+            content_type: r.headers.get("content-type") || ""};
+  }
   const tt = (j.ttResults && j.ttResults.teeTimes) || [];
   const money = (m) => (m && typeof m.value === "number") ? m.value : null;
   const out = [];
@@ -160,7 +172,11 @@ def run(date: dt.date, registry_path: str, out_path: str,
                         raise RuntimeError(last)
                     r = page.evaluate(FETCH_JS, [captured["body"], date_str, fid])
                     last = f"status {r.get('status')}"
-                    if r.get("status") == 200:
+                    if r.get("parse_failed"):
+                        last = (f"status {r.get('status')} but the body was not "
+                                f"JSON ({r.get('content_type', '?')[:40]}, "
+                                f"{r.get('bytes')} bytes)")
+                    elif r.get("status") == 200:
                         tts = _slots_to_teetimes(c, r.get("slots") or [])
                         tee_times.extend(tts)
                         log.info("  %-34s %d times", c["slug"], len(tts))
