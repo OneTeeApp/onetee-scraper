@@ -1,0 +1,111 @@
+diag_teesnap2: is ?course=<id> scoped to the subdomain or global?
+date probed: 2026-07-26
+Report only. Nothing here edits the adapter, the registry, or D1.
+
+========================================================================
+?course=148   [heathergardens' only real course (returns 0 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=  fp=-empty-
+    => course=148: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=131   [heathergardens course[0].property_id (returns 78 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=28.00,35.00,45.00  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=28.00,35.00,45.00  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=28.00,35.00,45.00  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=28.00,35.00,45.00  fp=-empty-
+    => course=131: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=307   [lakehavasu West, a real course (returns 0 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=  fp=-empty-
+    => course=307: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=308   [lakehavasu East, a real course (returns 75 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=15.80,28.81  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=15.80,28.81  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=15.80,28.81  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=15.80,28.81  fp=-empty-
+    => course=308: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=1517   [lakehavasu courses[0].infos[0].id — a TEXT NOTICE (returns 60)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=102.83,115.67,155.67,205.67  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=102.83,115.67,155.67,205.67  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=102.83,115.67,155.67,205.67  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=102.83,115.67,155.67,205.67  fp=-empty-
+    => course=1517: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=966   [mtmassivegolf's only real course (returns 76 there)]
+========================================================================
+    heathergardens         63 times  first=2026-07-26T09:40:00  last=2026-07-26T20:00:00  prices=41.00,60.00  fp=d6cb518250e1
+    lakehavasu             63 times  first=2026-07-26T09:40:00  last=2026-07-26T20:00:00  prices=41.00,60.00  fp=d6cb518250e1
+    mtmassivegolf          63 times  first=2026-07-26T09:40:00  last=2026-07-26T20:00:00  prices=41.00,60.00  fp=d6cb518250e1
+    sundancegolfclub       63 times  first=2026-07-26T09:40:00  last=2026-07-26T20:00:00  prices=41.00,60.00  fp=d6cb518250e1
+    => course=966: IDENTICAL on all 4 subdomains (d6cb518250e1) -> subdomain ignored
+
+========================================================================
+?course=862   [mtmassivegolf course[0].property_id (returns 68 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=30.00,35.00,38.00,43.00  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=30.00,35.00,38.00,43.00  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=30.00,35.00,38.00,43.00  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=30.00,35.00,38.00,43.00  fp=-empty-
+    => course=862: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=1801   [sundancegolfclub's only real course (returns 90 there)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=24.00,40.00  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=24.00,40.00  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=24.00,40.00  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=24.00,40.00  fp=-empty-
+    => course=1801: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=1785   [sundancegolfclub courses[0].infos[2].id — TEXT (returns 60)]
+========================================================================
+    heathergardens          0 times  first=  last=  prices=25.00,30.00  fp=-empty-
+    lakehavasu              0 times  first=  last=  prices=25.00,30.00  fp=-empty-
+    mtmassivegolf           0 times  first=  last=  prices=25.00,30.00  fp=-empty-
+    sundancegolfclub        0 times  first=  last=  prices=25.00,30.00  fp=-empty-
+    => course=1785: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+
+========================================================================
+?course=1   [a control id belonging to nobody in this sample]
+========================================================================
+    heathergardens       HTTP 500
+    lakehavasu           HTTP 500
+    mtmassivegolf        HTTP 500
+    sundancegolfclub     HTTP 500
+    => course=1: IDENTICAL on all 4 subdomains (ERR:HTTP 500) -> subdomain ignored
+
+========================================================================
+VERDICTS
+========================================================================
+  course=148: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=131: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=307: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=308: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=1517: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=966: IDENTICAL on all 4 subdomains (d6cb518250e1) -> subdomain ignored
+  course=862: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=1801: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=1785: IDENTICAL on all 4 subdomains (-empty-) -> subdomain ignored
+  course=1: IDENTICAL on all 4 subdomains (ERR:HTTP 500) -> subdomain ignored
+
+If every id reads the same on every subdomain, the tenant host is decorative: an id that is not in THAT tenant's own window.courses is some other club's sheet, and must never be scraped under this course's name.
+
+done
