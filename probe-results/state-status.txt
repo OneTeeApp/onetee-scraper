@@ -1,0 +1,207 @@
+==========================================================================
+PER-STATE COVERAGE
+==========================================================================
+state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
+-----------------------------------------------------------------------------------------------------------------------
+CO          181   126    70%            2            3            5            4            0           41           60
+AZ          218   133    61%           23           11           17           27            0            7            0
+-----------------------------------------------------------------------------------------------------------------------
+ALL         399   259    65%           25           14           22           31            0           48           60
+
+  bookable = every course in the state's directory minus private and military clubs,
+  which no aggregator can sell. cover = live / bookable.
+
+==========================================================================
+WHAT'S BLOCKING — one row per fix, sorted by how far along it is
+==========================================================================
+  bucket       platform               courses   states
+  silent       teeitup                     21   AZ:19 CO:2
+  silent       quick18                      3   AZ:3
+  silent       clubprophet                  1   AZ:1
+  needs_ids    chronogolf                   9   AZ:8 CO:1
+  needs_ids    clubprophet                  2   CO:2
+  needs_ids    foreup                       2   AZ:2
+  needs_ids    teeitup                      1   AZ:1
+  experimental golfnow                     15   AZ:10 CO:5
+  experimental ezlinks                      7   AZ:7
+  unsupported  other:golfwithaccess        10   AZ:10
+  unsupported  other:totale                 8   AZ:8
+  unsupported  other:rguest                 4   AZ:4
+  unsupported  other:goibsvision            2   CO:2
+  unsupported  other:embedded               2   AZ:2
+  unsupported  other:square                 1   CO:1
+  unsupported  clubprophet                  1   CO:1
+  unsupported  other:chelsea                1   AZ:1
+  unsupported  other:clubhouseonline        1   AZ:1
+  unsupported  other:teequest               1   AZ:1
+  no_booking   —                           48   AZ:7 CO:41
+
+==========================================================================
+CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 private), 126 live (70%)
+==========================================================================
+
+  SILENT  (2) — believed scrapable, returning nothing
+     Rollingstone Ranch Golf Club                 teeitup        Steamboat Springs
+     Trinidad Golf Course                         teeitup        Trinidad
+
+  NEEDS_IDS  (3) — right platform, identifiers not captured
+     Collegiate Peaks Golf Course                 chronogolf     Buena Vista
+     Emerald Greens Golf Club                     clubprophet    Denver
+     University of Denver Golf Club at Highlands  clubprophet    Littleton
+
+  EXPERIMENTAL  (5) — adapter exists but is not production
+     Clubcorp At Black Bear Golf Club             golfnow        Parker
+     Desert Hawk at Pueblo West                   golfnow        Pueblo
+     Pelican Lakes Golf & Country Club            golfnow        Windsor
+     Tamarack Golf Course                         golfnow        Limon
+     Walking Stick Golf Course                    golfnow        Pueblo
+
+  UNSUPPORTED  (4) — no adapter possible today
+     Copper Creek Golf Club                       other:goibsvision Frisco
+     Cottonwood Links Golf Club                   other:square   Fowler
+     Lake Arbor Golf Club                         clubprophet    Arvada
+     Telluride Ski & Golf Club                    other:goibsvision Telluride
+
+  NO_BOOKING  (41) — playable, but no online booking in the source data
+     Broadmoor Golf Club                          —              Colorado Springs
+     Cedar Ridges Golf Course                     —              Rangely
+     Challenger Golf Course                       —              Crestone
+     Devil's Thumb Golf Club                      —              Delta
+     Dos Rios Golf Club                           —              Gunnison
+     Eads Golf Course                             —              Eads
+     Eagle Trace Golf Club                        —              Broomfield
+     Elmwood Golf Course                          —              Pueblo
+     F&H Park and Recreation District             —              Haxtun
+     Grand Lake Golf Course                       —              Grand Lake
+     Hillcrest Golf Club                          —              Durango
+     Holyoke Golf Course                          —              Holyoke
+     Hugo Golf Club                               —              Hugo
+     Indian Hills Golf Course                     —              Yuma
+     La Junta Golf Club                           —              La Junta
+     Lake Estes Golf Course                       —              Estes Park
+     Las Animas Golf Course                       —              Las Animas
+     Mossland Memorial Golf Course                —              Flagler
+     Mountain Meadows Golf Club                   —              Red Feather Lakes
+     Park Hill Golf Club                          —              Denver
+     Plainsman Golf Club                          —              Joes
+     Prairie Golf Course                          —              Cope
+     Prairie Pines Golf Club                      —              Burlington
+     Quint Valley Golf Club                       —              Byers
+     Red Sky Golf Club                            —              Wolcott
+     Riverview Golf Course                        —              Sterling
+     Rocky Ford Country Club                      —              Rocky Ford
+     Saint Andrews At Westcliffe                  —              Westcliffe
+     Sand Creek Golf Course                       —              Colorado Springs
+     Sedgwick County Golf Course                  —              Julesburg
+     Smoky River Golf Club                        —              Cheyenne Wells
+     Snowmass Club                                —              Snowmass Village
+     Southglenn Country Club                      —              Littleton
+     Springfield Municipal Golf Course            —              Springfield
+     Stratton Golf Course                         —              Stratton
+     The Club at Inverness                        —              Englewood
+     The Mad Russian Golf Course                  —              Milliken
+     Walsenburg Golf Course                       —              Walsenburg
+     Washington County Golf Club                  —              Akron
+     West Woods Golf Club                         —              Arvada
+     Wray Country Club                            —              Wray
+
+==========================================================================
+AZ  —  218 bookable courses (218 in arizona_golf_courses_booking.csv, 0 private), 133 live (61%)
+==========================================================================
+
+  SILENT  (23) — believed scrapable, returning nothing
+     Aguila 9 Golf Course                         teeitup        Laveen
+     Ahwatukee Country Club                       teeitup        Ahwatukee
+     Antelope Hills Golf Course (North & South)   teeitup        Prescott
+     Arizona National Golf Club                   teeitup        Tucson
+     Augusta Ranch Golf Club                      teeitup        Mesa
+     Canoa Ranch Golf Club                        teeitup        Green Valley
+     Desert Springs Golf Course (Sun City Grand)  teeitup        Surprise
+     Falcon Golf Club                             teeitup        Litchfield Park
+     Fountain of the Sun Country Club             teeitup        Mesa
+     Francisco Grande Hotel & Golf Resort         teeitup        Casa Grande
+     Great Eagle Golf Club (Happy Trails Resort)  teeitup        Surprise
+     Junior National Golf Club (fka Tres Rios / E teeitup        Goodyear
+     McCormick Ranch Golf Club (Pine & Palm)      teeitup        Scottsdale
+     Mountain Brook Golf Club                     teeitup        Gold Canyon
+     Omni Tucson National (Catalina/Sonoran)      teeitup        Tucson
+     Pinetop Lakes Golf & Country Club            quick18        Pinetop-Lakeside
+     San Tan Highlands Golf Club (fka Golf Club a teeitup        San Tan Valley
+     Sierra Vista Golf Center at Pueblo del Sol ( teeitup        Sierra Vista
+     Springfield Golf Resort                      quick18        Chandler
+     SunRidge Canyon Golf Club                    quick18        Fountain Hills
+     The Views Golf Club                          clubprophet    Oro Valley
+     Ventana Canyon Golf & Racquet Club (Mountain teeitup        Tucson
+     Villa de Paz Golf Club                       teeitup        Phoenix
+
+  NEEDS_IDS  (11) — right platform, identifiers not captured
+     Encanterra, A Trilogy Country Club           chronogolf     San Tan Valley
+     Fortuna del Rey Golf Club & RV Resort        chronogolf     Yuma
+     Lake Powell National Golf Course             chronogolf     Page
+     Lookout Mountain Golf Club (Hilton Tapatio C chronogolf     Phoenix
+     Mesa del Sol Golf Club                       foreup         Yuma
+     San Pedro Golf Course                        teeitup        Benson
+     Scottsdale Country Club (formerly Starfire G chronogolf     Scottsdale
+     Snowflake Municipal Golf Course              foreup         Snowflake
+     The Boulders Golf Club (North & South)       chronogolf     Carefree
+     The Foothills Golf Club                      chronogolf     Ahwatukee
+     Westin Kierland Golf Club                    chronogolf     Scottsdale
+
+  EXPERIMENTAL  (17) — adapter exists but is not production
+     Bear Creek Golf Complex                      ezlinks        Chandler
+     Cocopah Rio Colorado Golf Course             golfnow        Somerton
+     Falcon Dunes Golf Course                     golfnow        Waddell
+     Mount Graham Golf Course                     ezlinks        Safford
+     Palm Valley Golf Club                        ezlinks        Goodyear
+     Palo Duro Creek Golf Course                  golfnow        Nogales
+     Pinewood Country Club                        golfnow        Munds Park
+     Quail Canyon Golf Course                     golfnow        Tucson
+     Santa Rita Golf Club                         golfnow        Corona de Tucson
+     Sun City North Golf Course (RCSC)            golfnow        Sun City
+     TPC Scottsdale (Stadium & Champions)         ezlinks        Scottsdale
+     Talking Stick Golf Club (O'odham & Piipaash) ezlinks        Scottsdale
+     The Legend at Arrowhead                      ezlinks        Glendale
+     Twin Lakes Golf Course                       golfnow        Willcox
+     Westbrook Village Golf Club (Vistas & Lakes) golfnow        Peoria
+     Whirlwind Golf Club at Wild Horse Pass       ezlinks        Chandler
+     Wickenburg Ranch Golf & Social Club (Big Wic golfnow        Wickenburg
+
+  UNSUPPORTED  (27) — no adapter possible today
+     Birdie Ranch at Silver Creek (fka Silver Cre other:embedded Show Low
+     Bison Golf Club                              other:embedded Show Low
+     Camelback Golf Club (Ambiente & Padre)       other:rguest   Scottsdale
+     Deer Valley Golf Course (Sun City West)      other:totale   Sun City West
+     Dell Urich Golf Course                       other:golfwithaccess Tucson
+     Desert Trails Golf Course (Sun City West)    other:totale   Sun City West
+     Echo Mesa Golf Course (Sun City West)        other:totale   Sun City West
+     El Conquistador Golf Club (Conquistador/Caña other:golfwithaccess Oro Valley
+     El Rio Golf Course                           other:golfwithaccess Tucson
+     Emerald Canyon Golf Course                   other:teequest Parker
+     Fred Enke Golf Course                        other:golfwithaccess Tucson
+     Grandview Golf Course (Sun City West)        other:totale   Sun City West
+     Ken McDonald Golf Course                     other:totale   Tempe
+     Las Colinas Golf Club                        other:golfwithaccess Queen Creek
+     Los Caballeros Golf Club                     other:clubhouseonline Wickenburg
+     Pebblebrook Golf Course (Sun City West)      other:totale   Sun City West
+     Poston Butte Golf Club                       other:golfwithaccess Florence
+     Pusch Ridge Golf Course                      other:golfwithaccess Oro Valley
+     Randolph North Golf Course                   other:golfwithaccess Tucson
+     Silverbell Golf Course                       other:golfwithaccess Tucson
+     Stardust Golf Course (Sun City West)         other:totale   Sun City West
+     Sun Lakes Country Club                       other:chelsea  Sun Lakes
+     The Club at Starr Pass                       other:golfwithaccess Tucson
+     Trail Ridge Golf Course (Sun City West)      other:totale   Sun City West
+     We-Ko-Pa Golf Club (Cholla & Saguaro)        other:rguest   Fort McDowell
+     Wildfire Golf Club - Faldo Course (JW Marrio other:rguest   Phoenix
+     Wildfire Golf Club - Palmer Course (JW Marri other:rguest   Phoenix
+
+  NO_BOOKING  (7) — playable, but no online booking in the source data
+     Alpine Country Club                          —              Alpine
+     Cocopah Bend RV & Golf Resort                —              Yuma
+     Desert Hills Golf Club                       —              Green Valley
+     Havasu Island Golf Course                    —              Lake Havasu City
+     Tonto Verde Golf Club                        —              Rio Verde
+     Villa Monterey Public Golf Club              —              Scottsdale
+     Vista Verde Golf Club                        —              Rio Verde
+
+wrote probe-results/state-status.json
