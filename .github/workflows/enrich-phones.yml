@@ -11,6 +11,13 @@ name: Enrich directory phone numbers
 #
 # Public pages only, GET only, no logins. A host that answers with a bot
 # challenge is skipped and counted — see scripts/enrich_phones.py.
+#
+# Re-kicked 2026-07-25. The first run produced nothing: local/phones.json was
+# still empty and no "Directory phone numbers" commit ever landed. The repo was
+# private at the time, and Actions stops running silently once a private repo
+# exhausts its included minutes — which an hourly 4-shard scrape does quickly.
+# The repo is public again, so minutes are unmetered and this can actually
+# finish its 189 sites.
 
 on:
   workflow_dispatch:
