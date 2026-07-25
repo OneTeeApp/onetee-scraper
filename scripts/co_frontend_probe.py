@@ -202,6 +202,26 @@ def section_b(reg: dict, db: D1Rest) -> None:
         print(f"   {r['course_slug']:50s} city={r['city']!r} x{r['n']}")
         print(f"      platform={(c or {}).get('platform')!r}  {verdict}")
 
+    # The retired-slug sweep, checked directly rather than inferred from the
+    # state gap closing. These two questions are not the same question: a row
+    # can have a state and still belong to a course the registry has dropped,
+    # and that row is a phantom course on the site either way.
+    try:
+        act = db.execute("SELECT course_slug, COUNT(*) n FROM tee_times "
+                         "WHERE active=1 GROUP BY course_slug")
+        orph = {r["course_slug"]: r["n"] for r in act
+                if r["course_slug"] not in reg}
+        print(f"\n   retired-slug sweep: {len(reg)} courses in the registry, "
+              f"{len(act)} with active rows, "
+              f"{sum(orph.values())} active rows across "
+              f"{len(orph)} slug(s) the registry does not contain")
+        for slug, n in sorted(orph.items(), key=lambda kv: -kv[1]):
+            print(f"      STILL SERVED, NOT IN REGISTRY: {slug} x{n}")
+        if not orph:
+            print("      none — every active row belongs to a live course")
+    except Exception as exc:  # noqa: BLE001
+        print(f"   D1: {type(exc).__name__}: {str(exc)[:150]}")
+
     # The same question asked of the API, since that is what the widget sees.
     try:
         tt = api_get("/api/tee-times?limit=2000")["tee_times"]
