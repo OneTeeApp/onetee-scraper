@@ -10,10 +10,10 @@ on:
     inputs:
       lo:
         description: "lowest club id"
-        default: "3600"
+        default: "3550"
       hi:
         description: "highest club id"
-        default: "3900"
+        default: "4000"
   push:
     branches: [main]
     paths:
@@ -30,7 +30,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,8 +40,8 @@ jobs:
 
       - name: Scan
         env:
-          MS_SCAN_LO: ${{ github.event.inputs.lo || '3600' }}
-          MS_SCAN_HI: ${{ github.event.inputs.hi || '3900' }}
+          MS_SCAN_LO: ${{ github.event.inputs.lo || '3550' }}
+          MS_SCAN_HI: ${{ github.event.inputs.hi || '4000' }}
         run: |
           mkdir -p probe-results
           python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan.txt
