@@ -1,0 +1,62 @@
+diag_kenna_routes: booking hosts, and which discovery route lives
+date probed: 2026-07-26
+Report only. Nothing here edits the CSV, the registry, or D1.
+
+========================================================================
+1. does the booking HOST follow the alias?
+========================================================================
+    https://golden-hills-golf-club-az.book.teeitup.com/?course=1295
+        HTTP 200  29171B  final=https://golden-hills-golf-club-az.book.teeitup.com/?course=1295
+    https://golden-hills-golf-club.book.teeitup.com/?course=1295
+        HTTP 200  28060B  final=https://golden-hills-golf-club.book.teeitup.com/?course=1295
+    https://arizona-golf-resort.book.teeitup.com/?course=1295
+        HTTP 200  10541B  final=https://arizona-golf-resort.book.teeitup.com/?course=1295
+    https://aguila-golf-course.book.teeitup.com/
+        HTTP 200  32850B  final=https://aguila-golf-course.book.teeitup.com/
+    https://this-club-does-not-exist-onetee.book.teeitup.com/
+        HTTP 200  10444B  final=https://this-club-does-not-exist-onetee.book.teeitup.com/
+
+    Same byte size from a real tenant, a wrong alias and a nonsense one means the host is a wildcard SPA shell that resolves the alias client-side — in which case a 404-ing alias is a broken page for users, not just for us.
+
+========================================================================
+2. /v2/courses vs /alias/<alias>/facilities, across live aliases
+========================================================================
+92 distinct teeitup aliases in the registry; probing up to 12
+
+    antler-creek-golf-course           /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[3587]
+    buffalo-run-golf-course            /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[513]
+    colorado-national-golf-club        /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[1719]
+    commonground-golf-course           /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[5275]
+    four-mile-ranch-golf-club          /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[4402]
+    golf-granby-ranch                  /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[2637]
+    greenway-park-golf-course          /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[11455]
+    interlocken-golf-club-ohr          /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[594]
+    plum-creek-golf-club-3             /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[4137]
+    pole-creek-golf-club               /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[1152]
+    quail-dunes-golf-course-at-fort-morgan /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[5164]
+    raccoon-creek-golf-course          /v2/courses: HTTP 404
+                                       /alias/../facilities: HTTP 200  1 facilities ids=[515]
+
+    /v2/courses answered for 0/12; /alias/<alias>/facilities answered for 12/12.
+    If /v2/courses is 0-for-N, discover_facilities should try the alias route FIRST and keep /v2/courses only as the fallback: one less request per alias against a host that 429s the fleet.
+
+========================================================================
+3. the Golden Hills sheet, through the alias that resolves
+========================================================================
+    golden-hills-golf-club     51 slots on 2026-07-26
+        first: {"courseId": "54f14bc50c8ad60378b0163a", "teetime": "2026-07-26T13:48:00.000Z", "backNine": false, "rates": [{"_id": 88762941, "name": "Prepaid - 18 Holes", "ex
+    arizona-golf-resort        51 slots on 2026-07-26
+        first: {"courseId": "54f14bc50c8ad60378b0163a", "teetime": "2026-07-26T13:48:00.000Z", "backNine": false, "rates": [{"_id": 88762941, "name": "Prepaid - 18 Holes", "ex
+
+done
