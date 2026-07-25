@@ -1,16 +1,16 @@
-golfnow diagnosis — 2026-07-25T22:20:35.315491+00:00
+golfnow diagnosis — 2026-07-25T22:35:30.970859+00:00
 dates probed: offsets [0, 1, 3] from today
 
 === arrowhead-golf-club-golfnow  (facility 453) ===
-  VERDICT: WORKS — 17 of 17 rows are ours; production should have these.
+  VERDICT: WORKS — 16 of 16 rows are ours; production should have these.
   url        : https://www.golfnow.com/tee-times/facility/453-arrowhead-golf-club/search
   landed     : https://www.golfnow.com/tee-times/facility/453-arrowhead-golf-club/search  redirected=False
   http/title : 200  'Arrowhead Golf Club Tee Times - Littleton, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=39.453423,-105.07798,35
-  2026-07-26  status=200 total=17 mine=17 center=39.453423,-105.07798,35
-        17  453|?
-  2026-07-28  status=200 total=0 mine=0 center=39.453423,-105.07798,35
+  2026-07-25  status=200 total=0 mine=0 center=39.453423,-105.07798,35 tries=1
+  2026-07-26  status=200 total=16 mine=16 center=39.453423,-105.07798,35 tries=1
+        16  453|?
+  2026-07-28  status=200 total=0 mine=0 center=39.453423,-105.07798,35 tries=1
 
 === bella-ridge-golf-course-golfnow  (facility 19098) ===
   VERDICT: WORKS — 47 of 47 rows are ours; production should have these.
@@ -18,56 +18,165 @@ dates probed: offsets [0, 1, 3] from today
   landed     : https://www.golfnow.com/tee-times/facility/19098-bella-ridge-golf-club/search  redirected=False
   http/title : 200  'Bella Ridge Golf Club Tee Times - Johnstown, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=40.29889,-104.94385,35
-  2026-07-26  status=200 total=11 mine=11 center=40.29889,-104.94385,35
+  2026-07-25  status=200 total=0 mine=0 center=40.29889,-104.94385,35 tries=1
+  2026-07-26  status=200 total=11 mine=11 center=40.29889,-104.94385,35 tries=1
         11  19098|?
-  2026-07-28  status=200 total=36 mine=36 center=40.29889,-104.94385,35
+  2026-07-28  status=200 total=36 mine=36 center=40.29889,-104.94385,35 tries=1
         36  19098|?
 
 === cedaredge-golf-club-golfnow  (facility 9351) ===
-  VERDICT: WORKS — 101 of 101 rows are ours; production should have these.
+  VERDICT: WORKS — 99 of 99 rows are ours; production should have these.
   url        : https://www.golfnow.com/tee-times/facility/9351-cedaredge-golf-club/search
   landed     : https://www.golfnow.com/tee-times/facility/9351-cedaredge-golf-club/search  redirected=False
   http/title : 200  'Cedaredge Golf Club Tee Times - Cedaredge, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=8 mine=8 center=38.88113,-107.92721,35
-         8  9351|?
-  2026-07-26  status=200 total=37 mine=37 center=38.88113,-107.92721,35
+  2026-07-25  status=200 total=6 mine=6 center=38.88113,-107.92721,35 tries=1
+         6  9351|?
+  2026-07-26  status=200 total=37 mine=37 center=38.88113,-107.92721,35 tries=1
         37  9351|?
-  2026-07-28  status=200 total=56 mine=56 center=38.88113,-107.92721,35
+  2026-07-28  status=200 total=56 mine=56 center=38.88113,-107.92721,35 tries=1
         56  9351|?
 
 === clubcorp-at-black-bear-golf-club  (facility 2484) ===
-  VERDICT: GENUINELY EMPTY — GolfNow returned no tee times at all for any date tested. Not a bug: retag as no-online-booking.
+  VERDICT: NO VALID RESPONSE — the search API answered 3/3 dates with something that is not JSON (HTTP 404, 'Page Not Found'). See body_head before assuming anything.
   url        : https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search
   landed     : https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search  redirected=False
   http/title : 200  'Black Bear Golf Club Tee Times - Parker, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-26  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-28  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  2026-07-25  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-26  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67541
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-28  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
 
 === desert-hawk-at-pueblo-west  (facility 5635) ===
-  VERDICT: GENUINELY EMPTY — GolfNow returned no tee times at all for any date tested. Not a bug: retag as no-online-booking.
+  VERDICT: NO VALID RESPONSE — the search API answered 3/3 dates with something that is not JSON (HTTP 404, 'Page Not Found'). See body_head before assuming anything.
   url        : https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search
   landed     : https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search  redirected=False
   http/title : 200  'Desert Hawk At Pueblo West Tee Times - Peblo West, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-26  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-28  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  2026-07-25  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-26  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-28  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67546
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
 
 === four-mile-ranch-golf-club-golfnow  (facility 4402) ===
-  VERDICT: WRONG SLUG — GolfNow redirected us. Canonical URL is https://www.golfnow.com/tee-times/facility/4402-four-mile-golf-course/search; take the slug from it.
-  url        : https://www.golfnow.com/tee-times/facility/4402-four-mile-ranch-golf/search
-  landed     : https://www.golfnow.com/tee-times/facility/4402-four-mile-golf-course/search  redirected=True
+  VERDICT: WORKS — 73 of 73 rows are ours; production should have these.
+  url        : https://www.golfnow.com/tee-times/facility/4402-four-mile-golf-course/search
+  landed     : https://www.golfnow.com/tee-times/facility/4402-four-mile-golf-course/search  redirected=False
   http/title : 200  'Four Mile Golf Course Tee Times - Canon City, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=4 mine=4 center=38.466347,-105.164795,35
-         4  4402|?
-  2026-07-26  status=200 total=21 mine=21 center=38.466347,-105.164795,35
+  2026-07-25  status=200 total=3 mine=3 center=38.466347,-105.164795,35 tries=1
+         3  4402|?
+  2026-07-26  status=200 total=21 mine=21 center=38.466347,-105.164795,35 tries=1
         21  4402|?
-  2026-07-28  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  2026-07-28  status=200 total=49 mine=49 center=38.466347,-105.164795,35 tries=1
+        49  4402|?
 
 === grandote-peaks-golf-club-golfnow  (facility 18465) ===
   VERDICT: WORKS — 35 of 35 rows are ours; production should have these.
@@ -75,10 +184,10 @@ dates probed: offsets [0, 1, 3] from today
   landed     : https://www.golfnow.com/tee-times/facility/18465-grandote-peaks-golf-club/search  redirected=False
   http/title : 200  'Grandote Peaks Golf Club Tee Times - La Veta, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=37.49743,-105.01243,35
-  2026-07-26  status=200 total=18 mine=18 center=37.49743,-105.01243,35
+  2026-07-25  status=200 total=0 mine=0 center=37.49743,-105.01243,35 tries=1
+  2026-07-26  status=200 total=18 mine=18 center=37.49743,-105.01243,35 tries=1
         18  18465|?
-  2026-07-28  status=200 total=17 mine=17 center=37.49743,-105.01243,35
+  2026-07-28  status=200 total=17 mine=17 center=37.49743,-105.01243,35 tries=1
         17  18465|?
 
 === ironbridge-golf-club-golfnow  (facility 18154) ===
@@ -87,31 +196,85 @@ dates probed: offsets [0, 1, 3] from today
   landed     : https://www.golfnow.com/tee-times/facility/18154-ironbridge-golf-club/search  redirected=False
   http/title : 200  'Ironbridge Golf Club Tee Times - Glenwood Springs, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=39.4711,-107.28037,35
-  2026-07-26  status=200 total=44 mine=44 center=39.4711,-107.28037,35
+  2026-07-25  status=200 total=0 mine=0 center=39.4711,-107.28037,35 tries=1
+  2026-07-26  status=200 total=44 mine=44 center=39.4711,-107.28037,35 tries=1
         44  18154|?
-  2026-07-28  status=200 total=54 mine=54 center=39.4711,-107.28037,35
+  2026-07-28  status=200 total=54 mine=54 center=39.4711,-107.28037,35 tries=2
         54  18154|?
 
 === pelican-lakes-golf-country-club  (facility 4719) ===
-  VERDICT: GENUINELY EMPTY — GolfNow returned no tee times at all for any date tested. Not a bug: retag as no-online-booking.
+  VERDICT: GENUINELY EMPTY — GolfNow returned a valid response with no tee times on all 3 date(s) that answered. Not a bug: retag as no-online-booking.
   url        : https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search
   landed     : https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search  redirected=False
   http/title : 200  'Pelican Lakes Golf Club - Pelican Lakes Course Tee Times - Windsor, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=40.45916,-104.90742,35
-  2026-07-26  status=200 total=0 mine=0 center=40.45916,-104.90742,35
-  2026-07-28  status=200 total=0 mine=0 center=40.45916,-104.90742,35
+  2026-07-25  status=200 total=0 mine=0 center=40.45916,-104.90742,35 tries=1
+  2026-07-26  status=200 total=0 mine=0 center=40.45916,-104.90742,35 tries=1
+  2026-07-28  status=200 total=0 mine=0 center=40.45916,-104.90742,35 tries=1
 
 === tamarack-golf-course  (facility 16424) ===
-  VERDICT: GENUINELY EMPTY — GolfNow returned no tee times at all for any date tested. Not a bug: retag as no-online-booking.
+  VERDICT: NO VALID RESPONSE — the search API answered 3/3 dates with something that is not JSON (HTTP 404, 'Page Not Found'). See body_head before assuming anything.
   url        : https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search
   landed     : https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search  redirected=False
   http/title : 200  'Tamarack Golf Course Tee Times - Limon, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-26  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-28  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  2026-07-25  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-26  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67541
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-28  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
 
 === the-ridge-at-castle-pines-north-golfnow  (facility 1411) ===
   VERDICT: WORKS — 5 of 5 rows are ours; production should have these.
@@ -119,17 +282,71 @@ dates probed: offsets [0, 1, 3] from today
   landed     : https://www.golfnow.com/tee-times/facility/1411-the-ridge-at-castle-pines-colorado/search  redirected=False
   http/title : 200  'The Ridge at Castle Pines (Colorado) Tee Times - Castle Rock, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=200 total=0 mine=0 center=39.470104,-104.907486,35
-  2026-07-26  status=200 total=5 mine=5 center=39.470104,-104.907486,35
+  2026-07-25  status=200 total=0 mine=0 center=39.470104,-104.907486,35 tries=1
+  2026-07-26  status=200 total=5 mine=5 center=39.470104,-104.907486,35 tries=1
          5  1411|?
-  2026-07-28  status=200 total=0 mine=0 center=39.470104,-104.907486,35
+  2026-07-28  status=200 total=0 mine=0 center=39.470104,-104.907486,35 tries=1
 
 === walking-stick-golf-course  (facility 2724) ===
-  VERDICT: GENUINELY EMPTY — GolfNow returned no tee times at all for any date tested. Not a bug: retag as no-online-booking.
+  VERDICT: NO VALID RESPONSE — the search API answered 3/3 dates with something that is not JSON (HTTP 404, 'Page Not Found'). See body_head before assuming anything.
   url        : https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search
   landed     : https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search  redirected=False
   http/title : 200  'Walking Stick Golf Course Tee Times - Pueblo, CO | GolfNow'
   predicate  : True
-  2026-07-25  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-26  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-  2026-07-28  status=None total=None mine=None center=None error=SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+  2026-07-25  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67546
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-26  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67541
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
+  2026-07-28  status=404 total=None mine=None center=None tries=2
+      error       : not JSON: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+      content-type: 'text/html; charset=utf-8'  bytes=67536
+      final url   : https://www.golfnow.com/api/tee-times/tee-time-search-results  redirected=False
+      html title  : 'Page Not Found'
+      | <!DOCTYPE html>
+      | <html lang="en">
+      | 
+      | <head>
+      | 	<meta charset="utf-8" />
+      | 	<base href="/" />
+      | 
+      | 	<noscript>
+      | 		<meta http-equiv="refresh" content="0;URL=/browser/unsupported" />
+      | 	</noscript>
+      | 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+      | 	
+      | 
+      | 	<meta name="referrer" content="default" />
