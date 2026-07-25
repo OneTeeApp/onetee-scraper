@@ -1,0 +1,124 @@
+probe date (Denver today): 2026-07-24
+========================================================================
+A. MEMBERSPORTS CLUB TOPOLOGY
+========================================================================
+
+--- club 3629: Kennedy (Aurora) — expects Babe Lind / Creek / Park nines + Par 3
+   GET /golfclubs/3629 -> 401 
+   GET /golfclubs/3629/golfcourses -> 404 
+   GET /golfclubs/3629/onlineBookingGolfCourses -> 404 
+   GET /golfclubs/3629/onlineBookingConfiguration -> 404 
+   POST teeTimes golfCourseId=0 -> 79 rows, courseIds {4669: 'Kennedy Par 3 or Footgolf'}
+   first row: {"teeTime": 420, "items": []}
+   POST teeTimes golfCourseId=-1 -> 79 rows, courseIds {4669: 'Kennedy Par 3 or Footgolf'}
+   first row: {"teeTime": 420, "items": []}
+
+--- club 3724: Boomerang + Highland Hills (Greeley) — SHARE ids today
+   GET /golfclubs/3724 -> 401 
+   GET /golfclubs/3724/golfcourses -> 404 
+   GET /golfclubs/3724/onlineBookingGolfCourses -> 404 
+   GET /golfclubs/3724/onlineBookingConfiguration -> 404 
+   POST teeTimes golfCourseId=0 -> 0 rows, courseIds {}
+   POST teeTimes golfCourseId=-1 -> 0 rows, courseIds {}
+
+--- club 3697: Foothills + Meadows (Denver/Littleton) — SHARE ids today
+   GET /golfclubs/3697 -> 401 
+   GET /golfclubs/3697/golfcourses -> 404 
+   GET /golfclubs/3697/onlineBookingGolfCourses -> 404 
+   GET /golfclubs/3697/onlineBookingConfiguration -> 404 
+   POST teeTimes golfCourseId=0 -> 85 rows, courseIds {4759: 'Foothills 18 Back Nine', 4758: 'Foothills Executive 9', 4757: 'Foothills Par 3'}
+   first row: {"teeTime": 360, "items": []}
+   POST teeTimes golfCourseId=-1 -> 85 rows, courseIds {4759: 'Foothills 18 Back Nine', 4758: 'Foothills Executive 9', 4757: 'Foothills Par 3'}
+   first row: {"teeTime": 360, "items": []}
+
+--- club 3821: Lincoln Park + Tiara Rado (Grand Junction) — SHARE ids today
+   GET /golfclubs/3821 -> 401 
+   GET /golfclubs/3821/golfcourses -> 404 
+   GET /golfclubs/3821/onlineBookingGolfCourses -> 404 
+   GET /golfclubs/3821/onlineBookingConfiguration -> 404 
+   POST teeTimes golfCourseId=0 -> 30 rows, courseIds {4918: 'Tiara Rado'}
+   first row: {"teeTime": 879, "items": []}
+   POST teeTimes golfCourseId=-1 -> 30 rows, courseIds {4918: 'Tiara Rado'}
+   first row: {"teeTime": 879, "items": []}
+
+--- club 3660: City Park (Denver) — control, single course
+   GET /golfclubs/3660 -> 401 
+   GET /golfclubs/3660/golfcourses -> 404 
+   GET /golfclubs/3660/onlineBookingGolfCourses -> 404 
+   GET /golfclubs/3660/onlineBookingConfiguration -> 404 
+   POST teeTimes golfCourseId=0 -> 75 rows, courseIds {4711: 'City Park'}
+   first row: {"teeTime": 420, "items": []}
+   POST teeTimes golfCourseId=-1 -> 75 rows, courseIds {4711: 'City Park'}
+   first row: {"teeTime": 420, "items": []}
+
+========================================================================
+B. TEEITUP — HYLAND HILLS SUB-COURSES
+========================================================================
+   facilities exposed by alias: 3
+      {'id': 9201, 'courseId': '54f14ee20c8ad60378b058ce', 'name': 'Hyland Hills Gold Course', 'timezone': None, 'alias': None}
+      {'id': 9202, 'courseId': '54f14ee20c8ad60378b058d0', 'name': 'Hyland Hills Golf Blue Course', 'timezone': None, 'alias': None}
+      {'id': 9203, 'courseId': '54f14ee20c8ad60378b058d3', 'name': 'Hyland Hills South Par 3', 'timezone': None, 'alias': None}
+   2026-07-24: 23 slots | labels {'Hyland Hills Gold Course': 7, 'Hyland Hills Golf Blue Course': 9, 'Hyland Hills South Par 3': 7}
+   2026-07-25: 138 slots | labels {'Hyland Hills Gold Course': 27, 'Hyland Hills Golf Blue Course': 39, 'Hyland Hills South Par 3': 72}
+
+========================================================================
+C. THE 14 COLORADO CAPTURE MISSES
+========================================================================
+
+--- emerald-greens-golf-course: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['emerald-greens-golf-club', 'emerald-canyon-golf-course']
+
+--- lake-arbor-golf-course: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['lake-arbor-golf-club', 'pelican-lakes-golf-country-club', 'the-lakes-at-ahwatukee', 'greenfield-lakes-golf-course', 'sun-city-lakes-east-golf-course', 'sun-city-lakes-west-golf-course']
+
+--- university-of-denver-golf-club-at-highlands-ranch [clubprophet] ids={'tenant': 'universityofdenver'}
+    url: https://universityofdenver.cps.golf/
+    2026-07-24: EXC HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+    2026-07-25: EXC HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+
+--- black-bear-golf-club: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['black-canyon-golf-course', 'clubcorp-at-black-bear-golf-club']
+
+--- desert-hawk-golf-course: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['desert-hawk-at-pueblo-west', 'desert-canyon-golf-club', 'desert-mirage-golf-course', 'desert-trails-golf-course', 'desert-springs-golf-course', 'desert-lakes-golf-club']
+
+--- pelican-lakes-golf-country-club [golfnow] ids={'golfnow_facility_id': '4719', 'golfnow_slug': 'pelican-lakes-golf-club-pelican-lakes-course'}
+    url: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search
+    2026-07-24: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search
+    2026-07-25: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search
+
+--- tamarack-golf-course [golfnow] ids={'golfnow_facility_id': '16424', 'golfnow_slug': 'tamarack-golf-course'}
+    url: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search
+    2026-07-24: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search
+    2026-07-25: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/search
+
+--- walking-stick-golf-course [golfnow] ids={'golfnow_facility_id': '2724', 'golfnow_slug': 'walking-stick-golf-course'}
+    url: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search
+    2026-07-24: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search
+    2026-07-25: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-course/search
+
+--- homestead-golf-course [quick18] ids={'subdomain': 'homestead'}
+    url: https://homestead.quick18.com/
+    2026-07-24: 0 slots (EMPTY)
+    2026-07-25: 0 slots (EMPTY)
+
+--- granby-ranch-golf-course: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['golf-granby-ranch']
+
+--- rollingstone-ranch-golf-club [teeitup] ids={'alias': 'rollingstone-ranch'}
+    url: 
+    2026-07-24: 0 slots (EMPTY)
+    2026-07-25: 0 slots (EMPTY)
+
+--- coyote-creek-golf-course [teesnap] ids={'subdomain': 'coyotecreek'}
+    url: https://coyotecreek.teesnap.net/
+    2026-07-24: EXC HTTPError: 500
+    2026-07-25: EXC HTTPError: 500
+
+--- hollydot-golf-course [teesnap] ids={'subdomain': 'hollydotgolf'}
+    url: https://hollydotgolf.teesnap.net/
+    2026-07-24: EXC HTTPError: 500
+    2026-07-25: EXC HTTPError: 500
+
+--- petteys-park-golf-course: NOT IN REGISTRY (slug drifted?)
+    similar slugs: ['the-course-at-petteys-park']
