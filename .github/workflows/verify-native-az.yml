@@ -1,0 +1,50 @@
+name: Verify Arizona native engines
+
+# native_probe.py only proved a course's WEBSITE links to a booking engine.
+# This calls the real adapters against those ids and reports whether they
+# return that course's actual tee sheet, which is the bar a row has to clear
+# before it moves off the GolfNow tag. Report only; no secrets needed.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_native_az.py"
+      - ".github/workflows/verify-native-az.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verify-native-az
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Verify
+        run: |
+          mkdir -p probe-results
+          python scripts/verify_native_az.py 2>&1 | tee probe-results/verify_az.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/verify_az.txt
+          git commit -m "verify AZ native engines [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push verify results after 5 attempts"; exit 1
