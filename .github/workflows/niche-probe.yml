@@ -23,6 +23,7 @@ jobs:
         with: {python-version: "3.12"}
       - run: pip install requests
 
+      # re-fire: confirm the Worker cron trigger is pruning on its own
       - name: Verify the deployed Worker end to end
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
