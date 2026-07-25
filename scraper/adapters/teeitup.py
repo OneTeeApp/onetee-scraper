@@ -73,9 +73,26 @@ class TeeItUpAdapter(Adapter):
     # per process, shared across threads.
     _META: dict[str, dict] = {}
     _META_LOCK = threading.Lock()
+    # alias -> raw /v2/courses payload, so the ids and the labels come from ONE
+    # call. kenna 429s the whole fleet off one host, so every saved request
+    # counts (probe-results/verify_fixes.txt section A shows live 429s).
+    _FACILITIES: dict[str, list] = {}
 
     def _headers(self, alias: str) -> dict:
         return {"x-be-alias": alias}
+
+    def _facilities_cached(self, alias: str) -> list[dict]:
+        """discover_facilities() with a per-alias cache. Raises on failure."""
+        with self._META_LOCK:
+            if alias in self._FACILITIES:
+                return self._FACILITIES[alias]
+        with _KENNA_SEM:
+            _kenna_throttle()
+            facilities = self.discover_facilities(alias)
+        facilities = facilities if isinstance(facilities, list) else []
+        with self._META_LOCK:
+            self._FACILITIES[alias] = facilities
+        return facilities
 
     def _facility_meta(self, alias: str) -> dict:
         """courseId -> {name, tz} for an alias (cached; empty dict on failure)."""
@@ -84,13 +101,11 @@ class TeeItUpAdapter(Adapter):
                 return self._META[alias]
         meta: dict = {}
         try:
-            with _KENNA_SEM:
-                _kenna_throttle()
-                for f in self.discover_facilities(alias):
-                    cid = f.get("courseId") or f.get("id")
-                    if cid is not None:
-                        meta[str(cid)] = {"name": f.get("name") or "",
-                                          "tz": f.get("timeZone") or ""}
+            for f in self._facilities_cached(alias):
+                cid = f.get("courseId") or f.get("id")
+                if cid is not None:
+                    meta[str(cid)] = {"name": f.get("name") or "",
+                                      "tz": f.get("timeZone") or ""}
         except Exception:  # noqa: BLE001 — fall back to state tz, no labels
             pass
         with self._META_LOCK:
@@ -134,11 +149,8 @@ class TeeItUpAdapter(Adapter):
 
     def _facility_ids(self, alias: str) -> str:
         """Resolve this alias's facility/course ids via /v2/courses."""
-        with _KENNA_SEM:
-            _kenna_throttle()
-            data = self.discover_facilities(alias)
         ids = []
-        for c in (data if isinstance(data, list) else []):
+        for c in self._facilities_cached(alias):
             fid = c.get("id") or c.get("facilityId") or c.get("courseId")
             if fid:
                 ids.append(str(fid))
@@ -151,30 +163,48 @@ class TeeItUpAdapter(Adapter):
                              "(booking URL did not yield one)")
         facility_id = course["ids"].get("facility_id")
 
-        # ALWAYS ask for the whole alias, then filter client-side.
+        # facilityIds is REQUIRED, not optional. Measured live on 10 pinned
+        # courses x 3 dates (probe-results/verify_fixes.txt section A): the
+        # call WITH the pinned id returns the real sheet — aguila 56/61/61,
+        # cave-creek 54/73/68, encanto-18 63/87/83, las-sendas 51/62/62,
+        # ak-chin 41/0/47 — while the bare per-alias call on the same alias
+        # and date returns a dayInfo with an EMPTY teetimes list every time.
+        # 869 slots vs 0.
         #
-        # kenna answers HTTP 500 to *any* facilityIds param as of 2026-07 —
-        # on every alias, including ones we publish from every day
-        # (probe-results/diag4.txt section E). The old code passed a pinned
-        # facility_id straight into the first call, so all ten pinned courses
-        # failed on every single scrape, and a second unguarded facilityIds
-        # retry then raised on any legitimately-empty day. The bare per-alias
-        # call returns every facility's slots anyway and each slot carries its
-        # own facilityId/courseId, so filtering here loses nothing.
-        try:
-            data = self._teetimes(alias, date)
-        except Exception as exc:  # noqa: BLE001
-            # Kept only in case kenna restores facilityIds; if it fails too,
-            # the caller sees the original bare-call error, not this one.
-            data = None
+        # a248c79 removed the param on the strength of one diag4 sample where
+        # every alias 500'd. That sample was transient: kenna's gateway
+        # intermittently 5xxs and 429s (this run caught live 429s too), which
+        # is exactly why get_json already retries 5xx. One bad sample is not
+        # an API change.
+        #
+        # Order: the pinned id first (it is the right answer for a shared
+        # alias), then the ids discovered from /v2/courses, then the bare call
+        # as a last resort. Retry only on FAILURE — an empty list is a real
+        # empty day (granby-ranch, rollingstone-ranch) and must report zero
+        # rather than raise, which was the other half of the old bug.
+        errors: list[Exception] = []
+
+        def try_call(fids: str | None):
+            """-> kenna's response, or None if this parameter shape failed."""
             try:
-                fids = self._facility_ids(alias)
-                if fids:
-                    data = self._teetimes(alias, date, fids)
-            except Exception:  # noqa: BLE001
-                data = None
-            if data is None:
-                raise exc
+                return self._teetimes(alias, date, fids)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+                return None
+
+        data = try_call(str(facility_id)) if facility_id else None
+        if data is None:
+            discovered = ""
+            try:
+                discovered = self._facility_ids(alias)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+            if discovered and discovered != str(facility_id or ""):
+                data = try_call(discovered)
+        if data is None:
+            data = try_call(None)
+        if data is None:
+            raise errors[0]
 
         blocks = data if isinstance(data, list) else [data]
         meta = self._facility_meta(alias)

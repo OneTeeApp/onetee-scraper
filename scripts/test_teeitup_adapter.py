@@ -1,16 +1,19 @@
 """Offline checks for TeeItUpAdapter. No network.
 
-Locks in the fix for the facilityIds regression (probe-results/diag4.txt
-section E): kenna now answers HTTP 500 to any `facilityIds` param, on every
-alias including controls we publish from daily. The adapter used to
+Locks in the CORRECTED behaviour after the facilityIds round trip.
 
-  * pass a pinned facility_id straight into the FIRST call, so all ten
-    pinned courses (four of which share the city-of-phoenix alias) failed
-    on every scrape, and
-  * retry with facilityIds, uncaught, whenever the bare call came back
-    empty — so every legitimately-empty day raised too.
+a248c79 stopped sending `facilityIds` at all, on the strength of one diag4
+sample in which every alias answered HTTP 500 to the param. #69 measured that
+claim against live sheets and it was wrong (probe-results/verify_fixes.txt
+section A): the pinned call returns the real sheet on every alias that has
+one, and the bare per-alias call returns an EMPTY teetimes list — 869 slots
+before, 0 after. kenna's gateway just 5xxs and 429s intermittently, which is
+why get_json retries 5xx in the first place.
 
-Now it always asks for the whole alias and filters client-side.
+So the adapter asks with ids first (pinned, else discovered), falls back to
+the bare call only when a call actually FAILS, and keeps filtering
+client-side so a shared alias can never publish a sibling's tee sheet. An
+empty response is an empty day and must not trigger a retry or a raise.
 
 Run: python scripts/test_teeitup_adapter.py
 """
@@ -33,7 +36,8 @@ def slot(utc: str, facility: int, course_id: int, cents: int = 6500) -> dict:
                        "holes": 18, "name": "Standard"}]}
 
 
-# One alias, four Phoenix munis. A bare call returns all of them.
+# One alias, four Phoenix munis. Served for any facilityIds call, so the
+# client-side filter is exercised even when kenna honours the param.
 ALL = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": [
     slot("2026-07-26T14:30:00.000Z", 287, 287),        # aguila
     slot("2026-07-26T15:00:00.000Z", 287, 287),
@@ -44,26 +48,34 @@ ALL = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": [
 EMPTY = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": []}]
 
 BOOM = RuntimeError("500 Server Error for url: .../v2/tee-times?facilityIds=287")
+BARE_BOOM = RuntimeError("429 Client Error for url: .../v2/tee-times")
+
+FACILITIES = [
+    {"id": 287, "courseId": 287, "name": "Aguila Golf Course",
+     "timeZone": "America/Phoenix"},
+    {"id": 4322, "courseId": 4322, "name": "Aguila 9",
+     "timeZone": "America/Phoenix"},
+    {"id": 288, "courseId": 288, "name": "Cave Creek Golf Course",
+     "timeZone": "America/Phoenix"},
+]
 
 
 class Fake(TeeItUpAdapter):
-    """Replays recorded responses; records every call's params."""
+    """Replays recorded responses; records every call's params.
 
-    def __init__(self, bare, with_ids=BOOM, facilities=None):
+    Defaults mirror what kenna actually does: the call with ids answers, the
+    bare call comes back empty.
+    """
+
+    def __init__(self, with_ids=ALL, bare=EMPTY, facilities=None):
         super().__init__()
-        self.bare = bare
         self.with_ids = with_ids
-        self.facilities = facilities if facilities is not None else [
-            {"id": 287, "courseId": 287, "name": "Aguila Golf Course",
-             "timeZone": "America/Phoenix"},
-            {"id": 4322, "courseId": 4322, "name": "Aguila 9",
-             "timeZone": "America/Phoenix"},
-            {"id": 288, "courseId": 288, "name": "Cave Creek Golf Course",
-             "timeZone": "America/Phoenix"},
-        ]
+        self.bare = bare
+        self.facilities = facilities if facilities is not None else FACILITIES
         self.calls: list[dict] = []
-        # per-instance meta cache so tests don't leak into each other
+        # per-instance caches so tests don't leak into each other
         self._META = {}
+        self._FACILITIES = {}
 
     def get_json(self, url, **kw):  # noqa: D102
         params = kw.get("params") or {}
@@ -104,17 +116,18 @@ def teetime_params(a: Fake) -> list[dict]:
 
 
 def main() -> None:
-    print("a pinned facility_id must never be sent to kenna")
-    a = Fake(ALL)
+    print("a pinned facility_id is sent first — that is the call that works")
+    a = Fake()
     out = a.fetch(AGUILA, DATE)
     sent = teetime_params(a)
-    check("first tee-times call carries no facilityIds",
-          sent and "facilityIds" not in sent[0], str(sent))
-    check("facilityIds is never sent at all",
-          all("facilityIds" not in p for p in sent), str(sent))
-    check("exactly one tee-times call", len(sent) == 1, str(len(sent)))
+    check("first tee-times call carries the pinned facilityIds",
+          bool(sent) and sent[0].get("facilityIds") == "287", str(sent))
+    check("exactly one tee-times call when it succeeds",
+          len(sent) == 1, str(len(sent)))
+    check("no bare fallback once ids answered",
+          all(p.get("facilityIds") for p in sent), str(sent))
 
-    print("\nsibling courses on a shared alias are filtered out")
+    print("\nsibling courses on a shared alias are still filtered out")
     check("only this facility's slots are kept", len(out) == 2, f"got {len(out)}")
     check("no sibling slot leaked",
           all(str(t.raw["facilityId"]) == "287" for t in out))
@@ -129,7 +142,7 @@ def main() -> None:
           f"{out[0].price_min}/{out[0].price_max}")
 
     print("\nthe 9-hole sibling resolves to its own facility")
-    a = Fake(ALL)
+    a = Fake()
     out = a.fetch(course("aguila-9-golf-course",
                          {"alias": "city-of-phoenix-golf-courses",
                           "facility_id": "4322"}), DATE)
@@ -137,26 +150,46 @@ def main() -> None:
           len(out) == 1 and str(out[0].raw["facilityId"]) == "4322",
           f"got {len(out)}")
 
-    print("\nan empty day is an empty day, not a facilityIds retry")
-    a = Fake(EMPTY)
-    out = a.fetch(course("granby-ranch", {"alias": "granby-ranch"}), DATE)
-    check("returns []", out == [], str(out))
-    check("no facilityIds retry was attempted",
-          all("facilityIds" not in p for p in teetime_params(a)),
+    print("\nan unpinned alias discovers its ids instead of asking bare")
+    a = Fake()
+    out = a.fetch(course("city-of-phoenix",
+                         {"alias": "city-of-phoenix-golf-courses"}), DATE)
+    check("discovered ids are sent",
+          teetime_params(a)[0].get("facilityIds") == "287,4322,288",
           str(teetime_params(a)))
-
-    print("\nunpinned multi-course alias still gets sub-course labels")
-    a = Fake(ALL)
-    out = a.fetch(course("city-of-phoenix", {"alias": "city-of-phoenix-golf-courses"}),
-                  DATE)
     check("every slot is returned", len(out) == 4, f"got {len(out)}")
     check("labels come from facility metadata",
           {t.course_label for t in out} == {"Aguila Golf Course", "Aguila 9",
                                             "Cave Creek Golf Course"},
           str({t.course_label for t in out}))
 
-    print("\na bare-call failure still raises the bare-call error")
-    a = Fake(BOOM, with_ids=BOOM)
+    print("\nan empty day is an empty day, not a retry and not a raise")
+    a = Fake(with_ids=EMPTY)
+    out = a.fetch(AGUILA, DATE)
+    check("returns []", out == [], str(out))
+    check("no second tee-times call", len(teetime_params(a)) == 1,
+          str(teetime_params(a)))
+
+    print("\na failed ids call falls back — pinned, then discovered, then bare")
+    a = Fake(with_ids=BOOM, bare=ALL)
+    out = a.fetch(AGUILA, DATE)
+    sent = teetime_params(a)
+    check("pinned tried first, bare tried last",
+          [p.get("facilityIds") for p in sent] == ["287", "287,4322,288", None],
+          str(sent))
+    check("the bare fallback's slots are still filtered", len(out) == 2,
+          f"got {len(out)}")
+
+    print("\ndiscovery failure does not block the bare fallback")
+    a = Fake(with_ids=BOOM, bare=ALL, facilities=RuntimeError("404"))
+    out = a.fetch(AGUILA, DATE)
+    check("bare call still made",
+          [p.get("facilityIds") for p in teetime_params(a)] == ["287", None],
+          str(teetime_params(a)))
+    check("slots returned", len(out) == 2, f"got {len(out)}")
+
+    print("\nwhen every shape fails, the FIRST error is what surfaces")
+    a = Fake(with_ids=BOOM, bare=BARE_BOOM)
     try:
         a.fetch(AGUILA, DATE)
         check("raises when kenna is down", False, "returned instead")
@@ -164,7 +197,7 @@ def main() -> None:
         check("raises when kenna is down", "500" in str(exc), str(exc)[:60])
 
     print("\nfacility metadata failure degrades, it does not raise")
-    a = Fake(ALL, facilities=RuntimeError("404"))
+    a = Fake(facilities=RuntimeError("404"))
     out = a.fetch(AGUILA, DATE)
     check("slots still returned without metadata", len(out) == 2, f"got {len(out)}")
     check("falls back to the state timezone",
