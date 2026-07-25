@@ -1,9 +1,57 @@
-MemberSports club scan: ids 3600..3900, cfgs [0, 1, 2, 3], date 2026-07-25
-(one POST per club per cfg; only clubs that return inventory are printed)
+MemberSports club scan (round 3): ids 3550..4000, cfgs [0, 1, 2, 3, 4, 5, 7], dates ['2026-07-25', '2026-07-27'], workers 3
+PASS 1: cfg 0 over the whole range, with retry/backoff.
+
+  club 3629: 4669='Kennedy Par 3 or Footgolf'
+  club 3660: 4711='City Park Back Nine'
+  club 3663: 4714='Coal Creek'
+  club 3674: 4730='Coyote Creek'
+  club 3682: 4738='Eagle Ranch'
+  club 3689: 4748='Championship', 4749='Par 3'
+  club 3691: 4751='Evergreen'
+  club 3697: 4757='Foothills Par 3', 4758='Foothills Executive 9', 4759='Foothills 18'
+  club 3703: 20589='Fox Hollow (Canyon / Meadow) | Fox Hollow (Links / Canyon) | Fox Hollow (Canyon) | Fox Hollow (Meadow) | Fox Hollow (Links)'
+  club 3707: 4774='Redlands Mesa'
+  club 3713: 4781='Harvard Gulch Par 3'
+  club 3724: 4793='Highland Hills'
+  club 3739: 4808='Lincoln Park'
+
+PASS 1 done: 13 clubs with inventory, 2 never answered cleanly.
+  UNKNOWN (all attempts failed — NOT proven empty):
+    3642, 3643
+
+PASS 2: cfgs [0, 1, 2, 3, 4, 5, 7] for the 13 live clubs.
 
 club 3629:
-      4669  cfgs=[0]  slots=  50  Kennedy Par 3 or Footgolf
-club 3642:
-      4686  cfgs=[0]  slots=  11  Boomerang Links
+      4669  cfgs=[0]  slots=   73  Kennedy Par 3 or Footgolf
+club 3660:
+      4711  cfgs=[0]  slots=   16  City Park Back Nine
+club 3663:
+      4714  cfgs=[0]  slots=   18  Coal Creek
+club 3674:
+      4730  cfgs=[0]  slots=   32  Coyote Creek
+club 3682:
+      4738  cfgs=[0]  slots=   30  Eagle Ranch
+club 3689:
+      4748  cfgs=[0]  slots=   32  Championship
+      4749  cfgs=[0]  slots=   69  Par 3
+club 3691:
+      4751  cfgs=[0]  slots=   13  Evergreen
+club 3697:
+      4757  cfgs=[0]  slots=   52  Foothills Par 3
+      4758  cfgs=[0]  slots=   30  Foothills Executive 9
+      4759  cfgs=[0]  slots=   26  Foothills 18
+club 3703:
+     20589  cfgs=[0]  slots=   22  Fox Hollow (Canyon / Meadow) | Fox Hollow (Links / Canyon) | Fox Hollow (Canyon) | Fox Hollow (Meadow) | Fox Hollow (Links)
+club 3707:
+      4774  cfgs=[0]  slots=   57  Redlands Mesa
+club 3713:
+      4781  cfgs=[0]  slots=   20  Harvard Gulch Par 3
+club 3724:
+      4793  cfgs=[0]  slots=   16  Highland Hills
+club 3739:
+      4808  cfgs=[0]  slots=   51  Lincoln Park
 
-2 clubs with inventory in 3600..3900
+HTTP status histogram:
+  403: 701
+  200: 359
+  429: 71
