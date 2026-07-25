@@ -1,0 +1,204 @@
+diag_misses — Denver today 2026-07-24
+
+========================================================================
+A. QUICK18 — Homestead parses to 0 rows; Thorncreek is the control
+========================================================================
+   homestead.quick18.com 2026-07-25: HTTP 200 18275B  text/html; charset=utf-8
+      tables=3 rows=6
+      banner 'closed': ..." = 'hidden';\r\n                closeButton.focus();\r\n            }\r\n\r\n            function closeDrawer() {\r\n                drawer.classList.remove('waitlist-drawer--open');\r\n      "
+      row: ['Tee Times', 'My Account', 'Specials']
+      row: ['Date:', '']
+      row: ['Courses:', '[All] [All 18 Hole] [All 9']
+      row: ['Time:', 'Any Morning Afternoon', 'Players:', 'Any 1 2 3 4 5 6 7 8']
+      row: ['', 'Search Tee Times']
+      row: ['Tee Time', 'Course', 'Players', '18 Resident Riding', '18 Resident Walking', '18 Non-Resident Riding', '18 Non-Resident Walking', '9 Resident Riding', '9 Resident Walking', '9 Non-Resident Riding', '9 Non-Resident Walking']
+   homestead.quick18.com 2026-07-30: HTTP 200 19175B  text/html; charset=utf-8
+      tables=3 rows=6
+      banner 'closed': ..." = 'hidden';\r\n                closeButton.focus();\r\n            }\r\n\r\n            function closeDrawer() {\r\n                drawer.classList.remove('waitlist-drawer--open');\r\n      "
+      row: ['Tee Times', 'My Account', 'Specials']
+      row: ['Date:', '']
+      row: ['Courses:', '[All] [All 18 Hole] [All 9']
+      row: ['Time:', 'Any Morning Afternoon', 'Players:', 'Any 1 2 3 4 5 6 7 8']
+      row: ['', 'Search Tee Times']
+      row: ['Tee Time', 'Course', 'Players', '18 Resident Riding', '18 Resident Walking', '18 Non-Resident Riding', '18 Non-Resident Walking', '9 Resident Riding', '9 Resident Walking', '9 Non-Resident Riding', '9 Non-Resident Walking']
+   homestead.play18.com 2026-07-25: HTTP 200 58B  text/html; charset=utf-8
+      tables=0 rows=0
+   homestead.play18.com 2026-07-30: HTTP 200 58B  text/html; charset=utf-8
+      tables=0 rows=0
+   thorncreek.quick18.com 2026-07-25: HTTP 200 38946B  text/html; charset=utf-8
+      tables=3 rows=18
+      banner 'not available': ...'                                                       <div class="mtrxAvailMessage">Rate not available for date selected</div>\r\n                            </td>\r\n                '
+      row: ['Tee Times', 'My Account', 'Specials']
+      row: ['Date:', '']
+      row: ['Courses:', '[All] [All 18 Hole] [All 9']
+      row: ['Time:', 'Any Morning Afternoon', 'Players:', 'Any 1 2 3 4 5 6 7 8 9 10 1']
+      row: ['', 'Search Tee Times']
+      row: ['Tee Time', 'Course', 'Players', '18 Holes Walking', '18 Holes Riding', '9 Holes Walking', '9 Holes Riding']
+   thorncreek.quick18.com 2026-07-30: HTTP 200 44772B  text/html; charset=utf-8
+      tables=3 rows=21
+      banner 'not available': ...'                                                       <div class="mtrxAvailMessage">Rate not available for date selected</div>\r\n                            </td>\r\n                '
+      row: ['Tee Times', 'My Account', 'Specials']
+      row: ['Date:', '']
+      row: ['Courses:', '[All] [All 18 Hole] [All 9']
+      row: ['Time:', 'Any Morning Afternoon', 'Players:', 'Any 1 2 3 4 5 6 7 8 9 10 1']
+      row: ['', 'Search Tee Times']
+      row: ['Tee Time', 'Course', 'Players', '18 Holes Walking', '18 Holes Riding', '9 Holes Walking', '9 Holes Riding']
+
+========================================================================
+B. TEESNAP — hollydot / petteys park 500 on the tee-sheet API
+========================================================================
+
+--- hollydotgolf.teesnap.net
+   homepage: HTTP 200 58115B  text/html; charset=UTF-8
+   window.courses present: True
+      'window.courses = [{"id":1550,"created_at":"2023-05-18T16:09:13.000000Z","updated_at":"2026-07-10T17:43:01.000000Z","deleted_at":null,"property_id":1329,"key":"hollydotgolf","name":"Hollydot Golf Course","description":nul'
+   /customer-api/teetimes-day: HTTP 200 58115B  text/html; charset=UTF-8
+      body[:200]='<!DOCTYPE html>\n<!--[if lt IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->\n<!--[if IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8"> <![endif]-->\n<!--'
+   /customer-api/courses: HTTP 404 24B  application/json
+      body[:200]='{"message":"Not Found."}'
+   /api/teetimes-day: HTTP 404 84B  application/json
+      body[:200]='{"message":"Requested resource not found. If error persists, please contact admin."}'
+
+--- petteyspark.teesnap.net
+   homepage: HTTP 200 55600B  text/html; charset=UTF-8
+   window.courses present: True
+      'window.courses = [{"id":1239,"created_at":"2021-01-26T01:09:41.000000Z","updated_at":"2026-07-13T16:03:38.000000Z","deleted_at":null,"property_id":1081,"key":"petteyspark","name":"The Course at Petteys Park","description'
+   /customer-api/teetimes-day: HTTP 200 55600B  text/html; charset=UTF-8
+      body[:200]='<!DOCTYPE html>\n<!--[if lt IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->\n<!--[if IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8"> <![endif]-->\n<!--'
+   /customer-api/courses: HTTP 404 24B  application/json
+      body[:200]='{"message":"Not Found."}'
+   /api/teetimes-day: HTTP 404 84B  application/json
+      body[:200]='{"message":"Requested resource not found. If error persists, please contact admin."}'
+
+--- coyotecreek.teesnap.net
+   homepage: HTTP 200 59633B  text/html; charset=UTF-8
+   window.courses present: True
+      'window.courses = [{"id":90,"created_at":"2016-06-21T18:50:30.000000Z","updated_at":"2019-05-07T20:03:36.000000Z","deleted_at":null,"property_id":85,"key":"coyotecreek","name":"Coyote Creek Golf Course","description":null'
+   /customer-api/teetimes-day: HTTP 200 59675B  text/html; charset=UTF-8
+      body[:200]='<!DOCTYPE html>\n<!--[if lt IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->\n<!--[if IE 7]><html lang="en" ng-app="app" class="no-js lt-ie9 lt-ie8"> <![endif]-->\n<!--'
+   /customer-api/courses: HTTP 404 24B  application/json
+      body[:200]='{"message":"Not Found."}'
+   /api/teetimes-day: HTTP 404 84B  application/json
+      body[:200]='{"message":"Requested resource not found. If error persists, please contact admin."}'
+
+--- meadowhills.teesnap.net
+   homepage: HTTP 200 1218B  text/html; charset=UTF-8
+   window.courses present: False
+   /customer-api/teetimes-day: HTTP 200 1218B  text/html; charset=UTF-8
+      body[:200]='<!DOCTYPE html>\n<html>\n    <head>\n        <title>Unkown Property</title>\n\n        <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">\n\n        <style>\n     '
+   /customer-api/courses: HTTP 200 1218B  text/html; charset=UTF-8
+      body[:200]='<!DOCTYPE html>\n<html>\n    <head>\n        <title>Unkown Property</title>\n\n        <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">\n\n        <style>\n     '
+   /api/teetimes-day: HTTP 504 534B  text/html
+      body[:200]='<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<'
+
+========================================================================
+C. CLUB PROPHET — token route 404s for two tenants
+========================================================================
+
+--- universityofdenver.cps.golf
+   /identityapi/myconnect/token/short: HTTP 404 0B  
+   /identityapi/connect/token: HTTP 400 27B  application/json; charset=UTF-8
+   /identityapi/myconnect/token: HTTP 415 143B  application/problem+json; charset=utf-8
+   /onlineres/api/token: HTTP 404 0B  
+   /onlineres/: HTTP 404 0B  
+   /: HTTP 200 7403B  text/html
+      '<title>': '<title>Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="v'
+      'Club Prophet': 'Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="viewport'
+
+--- emeraldgreens.cps.golf
+   /identityapi/myconnect/token/short: HTTP 404 0B  
+   /identityapi/connect/token: HTTP 400 27B  application/json; charset=UTF-8
+   /identityapi/myconnect/token: HTTP 415 175B  application/problem+json; charset=utf-8
+   /onlineres/api/token: HTTP 404 0B  
+   /onlineres/: HTTP 404 0B  
+   /: HTTP 200 7403B  text/html
+      '<title>': '<title>Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="v'
+      'Club Prophet': 'Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="viewport'
+
+--- eagletrace.cps.golf
+   /identityapi/myconnect/token/short: HTTP 404 0B  
+   /identityapi/connect/token: HTTP 400 27B  application/json; charset=UTF-8
+   /identityapi/myconnect/token: HTTP 415 143B  application/problem+json; charset=utf-8
+   /onlineres/api/token: HTTP 404 0B  
+   /onlineres/: HTTP 404 0B  
+   /: HTTP 200 7403B  text/html
+      '<title>': '<title>Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="v'
+      'Club Prophet': 'Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="viewport'
+
+--- indianpeaks.cps.golf
+   /identityapi/myconnect/token/short: HTTP 400 230B  application/problem+json; charset=utf-8
+   /identityapi/connect/token: HTTP 400 27B  application/json; charset=UTF-8
+   /identityapi/myconnect/token: HTTP 415 143B  application/problem+json; charset=utf-8
+   /onlineres/api/token: HTTP 404 0B  
+   /onlineres/: HTTP 404 0B  
+   /: HTTP 200 7445B  text/html
+      '<title>': '<title>Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="v'
+      'Club Prophet': 'Club Prophet Systems : Online reservation V4</title>\n    <base href="/onlineresweb/">\n    <meta name="viewport'
+
+--- flatirons.cps.golf
+   /identityapi/myconnect/token/short: EXC ConnectionError
+   /identityapi/connect/token: EXC ConnectionError
+   /identityapi/myconnect/token: EXC ConnectionError
+   /onlineres/api/token: EXC ConnectionError
+   /onlineres/: EXC ConnectionError
+   /: EXC ConnectionError
+
+========================================================================
+D. LAKE ARBOR — portal is prophetservices, not cps.golf
+========================================================================
+   https://secure.west.prophetservices.com/LakeArborGC/: HTTP 200 56685B  text/html; charset=utf-8
+      final=https://secure.west.prophetservices.com/LakeArborGC/(S(dhblyt4du2swogil3oqxmf05))/Account/nLogOn?IsRequestLogin=True
+      title='<title>Log On</title>\r\n    <meta http-equiv="X-UA-Compatible" content="IE=edge" />\r\n    <meta name="author" co'
+      mentions 'password'
+      mentions 'Sign In'
+      mentions 'nLogon'
+      mentions 'Guest'
+   https://secure.west.prophetservices.com/LakeArborGC/Account/nLogon: HTTP 200 56685B  text/html; charset=utf-8
+      final=https://secure.west.prophetservices.com/LakeArborGC/(S(f303kmfh1i2xw5vlblrx50ht))/Account/nLogon
+      title='<title>Log On</title>\r\n    <meta http-equiv="X-UA-Compatible" content="IE=edge" />\r\n    <meta name="author" co'
+      mentions 'password'
+      mentions 'Sign In'
+      mentions 'nLogon'
+      mentions 'Guest'
+   https://lakearbor.cps.golf/: HTTP 403 5643B  text/html; charset=UTF-8
+      final=https://lakearbor.cps.golf/
+      title='<title>Just a moment...</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta http-e'
+
+========================================================================
+E. TEEITUP — rollingstone / granby ranch resolve but return 0 slots
+========================================================================
+
+--- alias rollingstone-ranch
+   facilities: [(9218, 'Rollingstone Ranch')]
+   2026-07-25: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-26: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-27: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-28: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-29: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-30: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-31: 1 facility blocks, 0 raw teetimes, [None]
+
+--- alias granby-ranch
+   facilities EXC HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/granby-ranch/facilities
+
+--- alias golf-granby-ranch
+   facilities: [(2637, 'Granby Ranch Golf Course')]
+   2026-07-25: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-26: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-27: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-28: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-29: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-30: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-31: 1 facility blocks, 0 raw teetimes, [None]
+
+--- alias indian-peaks-golf-course
+   facilities: [(2485, 'Indian Peaks Golf Course')]
+   2026-07-25: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-26: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-27: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-28: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-29: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-30: 1 facility blocks, 0 raw teetimes, [None]
+   2026-07-31: 1 facility blocks, 0 raw teetimes, [None]
+
+done
