@@ -1,0 +1,224 @@
+co_frontend_probe: Colorado + frontend follow-ups
+dates probed: ['2026-07-25', '2026-07-26', '2026-07-27']
+API: https://onetee-api.damp-snow-8025.workers.dev
+Report only. Nothing here edits the CSV, the registry, or D1.
+
+========================================================================
+A. SUB-COURSE LABELS: adapter -> D1 -> read API
+========================================================================
+The widget renders displayName(name, label). A label that the
+adapter produces but D1 or the API drops is invisible to a golfer,
+so all three layers have to agree before this is closed.
+
+------------------------------------------------------------------------
+kennedy-golf-course  [membersports]  ids={'club_id': '3629', 'secondary_id': '20573', 'config_ids': [0, 1, 2]}
+   adapter 2026-07-25: 97 slots | labels {'Kennedy (Creek 9 only)': 1, 'Kennedy (West 9 only)': 33, 'Kennedy Par 3 or Footgolf': 40, 'Kennedy (Babe Lind / Creek)': 23}
+   adapter 2026-07-26: 136 slots | labels {'Kennedy (Creek 9 only)': 3, 'Kennedy (West 9 only)': 44, 'Kennedy Par 3 or Footgolf': 55, 'Kennedy (Babe Lind / Creek)': 34}
+   adapter 2026-07-27: 194 slots | labels {'Kennedy (Creek / Babe Lind)': 48, 'Kennedy (West 9 only)': 68, 'Kennedy (Babe Lind 9 only)': 4, 'Kennedy Par 3 or Footgolf': 74}
+   D1: 'Kennedy Par 3 or Footgolf' active x166
+   D1: 'Kennedy (West 9 only)' active x140
+   D1: 'Kennedy (Babe Lind / Creek)' active x56
+   D1: 'Kennedy (Creek / Babe Lind)' active x47
+   D1: 'Kennedy (Babe Lind 9 only)' active x4
+   D1: 'Kennedy (Creek 9 only)' active x3
+   D1: '(empty)' inactive x240
+   D1: 'Kennedy Par 3 or Footgolf' inactive x60
+   D1: 'Kennedy (West 9 only)' inactive x42
+   D1: 'Kennedy (Babe Lind / Creek)' inactive x35
+   D1: 'Kennedy (Creek 9 only)' inactive x7
+   D1: 'Kennedy (Babe Lind 9 only)' inactive x1
+   API: 416 upcoming rows | labels {'Kennedy Par 3 or Footgolf': 166, 'Kennedy (West 9 only)': 140, 'Kennedy (Babe Lind / Creek)': 56, 'Kennedy (Creek 9 only)': 3, 'Kennedy (Babe Lind 9 only)': 4, 'Kennedy (Creek / Babe Lind)': 47}
+   API display names: {'Kennedy Par 3 or Footgolf': 166, 'Kennedy (West 9 only)': 140, 'Kennedy (Babe Lind / Creek)': 56, 'Kennedy (Creek 9 only)': 3, 'Kennedy (Babe Lind 9 only)': 4, 'Kennedy (Creek / Babe Lind)': 47}
+------------------------------------------------------------------------
+the-greg-mastriona-golf-courses-at-hyland-hills  [teeitup]  ids={'alias': 'hyland-hills-park-recreation-district'}
+   adapter 2026-07-25: 107 slots | labels {'Hyland Hills Gold Course': 25, 'Hyland Hills Golf Blue Course': 34, 'Hyland Hills South Par 3': 48}
+   adapter 2026-07-26: 154 slots | labels {'Hyland Hills Gold Course': 29, 'Hyland Hills Golf Blue Course': 50, 'Hyland Hills South Par 3': 75}
+   adapter 2026-07-27: 200 slots | labels {'Hyland Hills Gold Course': 54, 'Hyland Hills Golf Blue Course': 71, 'Hyland Hills South Par 3': 75}
+   D1: 'Hyland Hills South Par 3' active x124
+   D1: 'Hyland Hills Golf Blue Course' active x85
+   D1: 'Hyland Hills Gold Course' active x55
+   D1: 'Hyland Hills South Par 3' inactive x46
+   D1: 'Hyland Hills Gold Course' inactive x20
+   D1: 'Hyland Hills Golf Blue Course' inactive x15
+   API: 264 upcoming rows | labels {'Hyland Hills South Par 3': 124, 'Hyland Hills Golf Blue Course': 85, 'Hyland Hills Gold Course': 55}
+   API display names: {'Hyland Hills South Par 3': 124, 'Hyland Hills Golf Blue Course': 85, 'Hyland Hills Gold Course': 55}
+------------------------------------------------------------------------
+fox-hollow-golf-course  [membersports]  ids={'club_id': '3703', 'secondary_id': '20589', 'config_ids': [0, 7]}
+   adapter 2026-07-25: 18 slots | labels {'Fox Hollow (Links / Canyon)': 2, 'Fox Hollow (Canyon / Meadow)': 2, 'Fox Hollow (Canyon)': 1, 'Fox Hollow (Links)': 12, 'Fox Hollow (Meadow)': 1}
+   adapter 2026-07-26: 39 slots | labels {'Fox Hollow (Links / Canyon)': 1, 'Fox Hollow (Canyon / Meadow)': 8, 'Fox Hollow (Meadow / Links)': 1, 'Fox Hollow (Links)': 14, 'Fox Hollow (Canyon)': 14, 'Fox Hollow (Meadow)': 1}
+   adapter 2026-07-27: 51 slots | labels {'Fox Hollow (Links)': 12, 'Fox Hollow (Meadow / Links)': 1, 'Fox Hollow (Canyon / Meadow)': 12, 'Fox Hollow (Links / Canyon)': 17, 'Fox Hollow (Canyon)': 5, 'Fox Hollow (Meadow)': 4}
+   D1: 'Fox Hollow (Links)' active x38
+   D1: 'Fox Hollow (Canyon / Meadow)' active x22
+   D1: 'Fox Hollow (Canyon)' active x21
+   D1: 'Fox Hollow (Links / Canyon)' active x19
+   D1: 'Fox Hollow (Meadow)' active x7
+   D1: 'Fox Hollow (Meadow / Links)' active x2
+   D1: '(empty)' inactive x137
+   D1: 'Fox Hollow (Links)' inactive x17
+   D1: 'Fox Hollow (Links / Canyon)' inactive x5
+   D1: 'Fox Hollow (Meadow)' inactive x4
+   D1: 'Fox Hollow (Canyon / Meadow)' inactive x3
+   D1: 'Fox Hollow (Canyon)' inactive x2
+   API: 109 upcoming rows | labels {'Fox Hollow (Links / Canyon)': 19, 'Fox Hollow (Canyon / Meadow)': 22, 'Fox Hollow (Canyon)': 21, 'Fox Hollow (Meadow)': 7, 'Fox Hollow (Links)': 38, 'Fox Hollow (Meadow / Links)': 2}
+   API display names: {'Fox Hollow (Links / Canyon)': 19, 'Fox Hollow (Canyon / Meadow)': 22, 'Fox Hollow (Canyon)': 21, 'Fox Hollow (Meadow)': 7, 'Fox Hollow (Links)': 38, 'Fox Hollow (Meadow / Links)': 2}
+------------------------------------------------------------------------
+broken-tee-golf-course  [membersports]  ids={'club_id': '3689', 'secondary_id': '4748'}
+   adapter 2026-07-25: 83 slots | labels {'Par 3': 59, 'Championship': 24}
+   adapter 2026-07-26: 101 slots | labels {'Championship': 29, 'Par 3': 71, 'Championship  Back Nine': 1}
+   adapter 2026-07-27: 117 slots | labels {'Par 3': 76, 'Championship': 41}
+   D1: 'Par 3' active x187
+   D1: 'Championship' active x93
+   D1: 'Championship  Back Nine' active x1
+   D1: '(empty)' inactive x300
+   D1: 'Championship ' inactive x113
+   D1: 'Par 3' inactive x97
+   D1: 'Championship' inactive x60
+   D1: 'Championship  Back Nine' inactive x5
+   API: 281 upcoming rows | labels {'Par 3': 187, 'Championship': 93, 'Championship  Back Nine': 1}
+   API display names: {'Broken Tee Golf Course · Par 3': 187, 'Broken Tee Golf Course · Championship': 93, 'Broken Tee Golf Course · Championship  Back Nine': 1}
+------------------------------------------------------------------------
+foothills-golf-course  [membersports]  ids={'club_id': '3697', 'secondary_id': '4758', 'config_ids': [0, 3]}
+   adapter 2026-07-25: 88 slots | labels {'Foothills Par 3': 42, 'Foothills Executive 9': 21, 'Foothills 18': 25}
+   adapter 2026-07-26: 129 slots | labels {'Foothills Par 3': 63, 'Foothills 18 Back Nine': 1, 'Foothills Executive 9': 37, 'Foothills 18': 28}
+   adapter 2026-07-27: 128 slots | labels {'Foothills Executive 9': 49, 'Foothills Par 3': 48, 'Foothills 18': 31}
+   D1: 'Foothills Par 3' active x150
+   D1: 'Foothills Executive 9' active x106
+   D1: 'Foothills 18' active x80
+   D1: 'Foothills 18 Back Nine' active x1
+   D1: '(empty)' inactive x288
+   D1: 'Foothills Par 3' inactive x81
+   D1: 'Foothills 18' inactive x36
+   D1: 'Foothills Executive 9' inactive x33
+   D1: 'Foothills 18 Back Nine' inactive x10
+   API: 337 upcoming rows | labels {'Foothills Par 3': 150, 'Foothills Executive 9': 106, 'Foothills 18': 80, 'Foothills 18 Back Nine': 1}
+   API display names: {'Foothills Par 3': 150, 'Foothills Executive 9': 106, 'Foothills 18': 80, 'Foothills 18 Back Nine': 1}
+
+========================================================================
+B. ROWS WITH NO STATE — the blocker for retiring stateOf()
+========================================================================
+   25547 active rows; 135 of them have no state, across 3 course/city pairs
+
+   gold-canyon-golf-resort-dinosaur-mountain-sidewinder city='Gold Canyon' x90
+      platform=None  NOT IN REGISTRY — slug drift, needs investigating
+   grayhawk-golf-club-raptor-talon                    city='Scottsdale' x37
+      platform=None  NOT IN REGISTRY — slug drift, needs investigating
+   mountain-view-golf-course-fort-huachuca            city='Sierra Vista' x8
+      platform=None  NOT IN REGISTRY — slug drift, needs investigating
+
+   read API: 2000 rows sampled, 58 with no state
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+      gold-canyon-golf-resort-dinosaur-mountain-sidewinder  city='Gold Canyon'
+
+========================================================================
+C. THE 14 CO CAPTURE MISSES, re-measured against today's registry
+========================================================================
+------------------------------------------------------------------------
+emerald-greens-golf-club  [clubprophet]  status=needs_ids  ids={'tenant': 'emeraldgreens'}
+   2026-07-25: HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+   2026-07-26: HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+   2026-07-27: HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+------------------------------------------------------------------------
+lake-arbor-golf-club  [clubprophet]  status=unsupported  ids={}
+   2026-07-25: ValueError: lake-arbor-golf-club: no Club Prophet tenant
+   2026-07-26: ValueError: lake-arbor-golf-club: no Club Prophet tenant
+   2026-07-27: ValueError: lake-arbor-golf-club: no Club Prophet tenant
+------------------------------------------------------------------------
+university-of-denver-golf-club-at-highlands-ranch  [clubprophet]  status=needs_ids  ids={'tenant': 'universityofdenver'}
+   2026-07-25: HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+   2026-07-26: HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+   2026-07-27: HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+------------------------------------------------------------------------
+clubcorp-at-black-bear-golf-club  [golfnow]  status=experimental  ids={'golfnow_facility_id': '2484', 'golfnow_slug': 'black-bear-golf-club'}
+   2026-07-25: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/sea
+   2026-07-26: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/sea
+   2026-07-27: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/sea
+------------------------------------------------------------------------
+desert-hawk-at-pueblo-west  [golfnow]  status=experimental  ids={'golfnow_facility_id': '5635', 'golfnow_slug': 'desert-hawk-at-pueblo-west'}
+   2026-07-25: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-we
+   2026-07-26: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-we
+   2026-07-27: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-we
+------------------------------------------------------------------------
+pelican-lakes-golf-country-club  [golfnow]  status=experimental  ids={'golfnow_facility_id': '4719', 'golfnow_slug': 'pelican-lakes-golf-club-pelican-lakes-course'}
+   2026-07-25: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-
+   2026-07-26: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-
+   2026-07-27: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-
+------------------------------------------------------------------------
+tamarack-golf-course  [golfnow]  status=experimental  ids={'golfnow_facility_id': '16424', 'golfnow_slug': 'tamarack-golf-course'}
+   2026-07-25: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/se
+   2026-07-26: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/se
+   2026-07-27: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/se
+------------------------------------------------------------------------
+walking-stick-golf-course  [golfnow]  status=experimental  ids={'golfnow_facility_id': '2724', 'golfnow_slug': 'walking-stick-golf-course'}
+   2026-07-25: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-cours
+   2026-07-26: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-cours
+   2026-07-27: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-cours
+------------------------------------------------------------------------
+homestead-golf-course  [membersports]  status=ready  ids={'club_id': '3807', 'secondary_id': '4902', 'config_ids': [0, 7]}
+   2026-07-25: 6 slots
+   2026-07-26: 25 slots
+   2026-07-27: 61 slots
+------------------------------------------------------------------------
+golf-granby-ranch  [teeitup]  status=ready  ids={'alias': 'golf-granby-ranch'}
+   2026-07-25: 0 slots  (EMPTY)
+   2026-07-26: 0 slots  (EMPTY)
+   2026-07-27: 0 slots  (EMPTY)
+------------------------------------------------------------------------
+rollingstone-ranch-golf-club  [teeitup]  status=ready  ids={'alias': 'rollingstone-ranch'}
+   2026-07-25: 0 slots  (EMPTY)
+   2026-07-26: 0 slots  (EMPTY)
+   2026-07-27: 0 slots  (EMPTY)
+------------------------------------------------------------------------
+coyote-creek-golf-course  [membersports]  status=ready  ids={'club_id': '3674', 'secondary_id': '4730'}
+   2026-07-25: 24 slots
+   2026-07-26: 22 slots
+   2026-07-27: 56 slots
+------------------------------------------------------------------------
+hollydot-golf-course  [teesnap]  status=ready  ids={'subdomain': 'hollydotgolf'}
+   2026-07-25: 29 slots
+   2026-07-26: 72 slots
+   2026-07-27: 72 slots
+------------------------------------------------------------------------
+the-course-at-petteys-park  [teesnap]  status=ready  ids={'subdomain': 'petteyspark'}
+   2026-07-25: 53 slots
+   2026-07-26: 59 slots
+   2026-07-27: 71 slots
+------------------------------------------------------------------------
+indian-peaks-golf-course  [clubprophet]  status=ready  ids={'tenant': 'indianpeaks', 'website_id': 'f04abbc1-368f-40f4-096d-08d89aea9574', 'course_ids': [10, 11]}
+   2026-07-25: 14 slots
+   2026-07-26: 17 slots
+   2026-07-27: 20 slots
+
+------------------------------------------------------------------------
+NOW CAPTURING (5):
+   homestead-golf-course: up to 61 slots
+   coyote-creek-golf-course: up to 56 slots
+   hollydot-golf-course: up to 72 slots
+   the-course-at-petteys-park: up to 71 slots
+   indian-peaks-golf-course: up to 20 slots
+
+STILL OPEN (10):
+   emerald-greens-golf-club: HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+   lake-arbor-golf-club: ValueError: lake-arbor-golf-club: no Club Prophet tenant
+   university-of-denver-golf-club-at-highlands-ranch: HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+   clubcorp-at-black-bear-golf-club: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/sea
+   desert-hawk-at-pueblo-west: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-we
+   pelican-lakes-golf-country-club: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-
+   tamarack-golf-course: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16424-tamarack-golf-course/se
+   walking-stick-golf-course: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2724-walking-stick-golf-cours
+   golf-granby-ranch: returns zero on every date
+   rollingstone-ranch-golf-club: returns zero on every date
+
+done
