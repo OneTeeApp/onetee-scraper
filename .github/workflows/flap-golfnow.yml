@@ -1,0 +1,80 @@
+name: Is the GolfNow 404 a course or a throttle
+
+# Third and last question in this chain. diag-golfnow found the 404; the
+# crosscheck showed it moves — Cedaredge, a course we serve, 404'd on its own
+# page minutes after the same request returned 99 tee times. What both runs
+# share is that failures CLUMP, in runs of three, which is a rate limiter's
+# signature rather than a missing record's.
+#
+# So: alternate a course that works with a course that never does, from one
+# page, and vary only the spacing. If failures follow the spacing, the four
+# "broken" facilities were never broken and the adapter is retrying wrong. If
+# they follow the course, the facilities really have no inventory.
+#
+# ~28 requests, read only, and the slow phase is gentler than a person
+# clicking through dates.
+
+on:
+  workflow_dispatch:
+    inputs:
+      good:
+        description: "A facility that returns tee times"
+        default: "cedaredge-golf-club-golfnow"
+      bad:
+        description: "A facility that 404s"
+        default: "clubcorp-at-black-bear-golf-club"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/flap_golfnow.py"
+      - ".github/workflows/flap-golfnow.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flap-golfnow
+  cancel-in-progress: true
+
+jobs:
+  flap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Alternate and time
+        timeout-minutes: 14
+        run: |
+          python3 scripts/flap_golfnow.py \
+            --good "${{ github.event.inputs.good || 'cedaredge-golf-club-golfnow' }}" \
+            --bad  "${{ github.event.inputs.bad  || 'clubcorp-at-black-bear-golf-club' }}" \
+            2>&1 | tee flap.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -10 probe-results/golfnow-flap.txt 2>/dev/null \
+            || tail -n 20 flap.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit the findings
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/golfnow-flap.txt probe-results/golfnow-flap.json
+          git commit -m "GolfNow flap test [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the flap test after 5 attempts"; exit 1
