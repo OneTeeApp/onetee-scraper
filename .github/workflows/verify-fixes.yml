@@ -1,0 +1,50 @@
+name: Verify shipped fixes (#69)
+
+# Issues #66-#68 shipped three fixes whose only evidence so far is "the code
+# looks right". This runs the OLD code path and the NEW one against the same
+# live sheets on the same dates and prints both counts, so the gain is
+# measured. Report only; no secrets, no writes to D1.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_fixes.py"
+      - ".github/workflows/verify-fixes.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verify-fixes
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Verify
+        run: |
+          mkdir -p probe-results
+          python scripts/verify_fixes.py 2>&1 | tee probe-results/verify_fixes.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/verify_fixes.txt
+          git commit -m "verify shipped fixes [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push verify-fixes results after 5 attempts"; exit 1
