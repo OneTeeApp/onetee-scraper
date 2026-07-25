@@ -1,0 +1,51 @@
+name: Teesnap course id scope (subdomain or global)
+
+# diag_teesnap.txt found ids that CANNOT be courses on their own tenant —
+# text notices out of courses[].infos, and property ids — answering with full
+# tee sheets. If teetimes-day resolves ?course= globally then those sheets
+# belong to other clubs, and the slots the old regex "recovered" were foreign
+# data published under our names. Same id, several subdomains, same date.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_teesnap2.py"
+      - ".github/workflows/diag-teesnap2.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-teesnap2
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Diagnose
+        run: |
+          mkdir -p probe-results
+          python scripts/diag_teesnap2.py 2>&1 | tee probe-results/diag_teesnap2.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/diag_teesnap2.txt
+          git commit -m "teesnap window.courses ground truth [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push teesnap diag results after 5 attempts"; exit 1
