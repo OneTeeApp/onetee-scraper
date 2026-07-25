@@ -80,6 +80,18 @@ jobs:
             2>&1 | tee phones.log
 
       - name: Rebuild the directory with the numbers folded in
+        # if: always() — and this is the whole reason the first run shipped
+        # nothing useful. The lookup step has a 90-minute cap and hit it, so it
+        # ended as a failure; without this guard the rebuild was SKIPPED while
+        # the commit step (which does say always) went ahead and committed the
+        # directory built before the lookup ran. The result looked like a
+        # success: local/phones.json arrived with 80 numbers in it and
+        # directory.json still had the 5 that came from the CSVs. The numbers
+        # were found, crawled for, committed — and then not used.
+        #
+        # The lookup is deliberately slow and is expected to be cut off
+        # sometimes. Whatever it found by then still has to reach the directory.
+        if: always()
         run: python3 build_directory.py
 
       - name: Summary
