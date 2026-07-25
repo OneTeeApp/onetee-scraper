@@ -1,0 +1,201 @@
+diag_teesnap: ground truth for window.courses vs what answers
+date probed: 2026-07-26
+Report only. Nothing here edits the adapter, the registry, or D1.
+
+========================================================================
+heathergardens.teesnap.net   [CASUALTY 78 -> 0]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 148, 'key': 'heathergardens', 'name': 'Heather Gardens Golf Course', 'enabled': True, 'deleted_at': None, 'holes': 'nine', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (1):
+       148  TOP-LEVEL courses[0]  'Heather Gardens Golf Course'
+
+  old regex ids: [148, 131]
+  new top-level ids: [148]
+  dropped by the change: [131]
+
+  what each id returns on 2026-07-26:
+       148 [top-level] HTTP 200  0 raw slots / 0 counted
+       131 [dropped  ] HTTP 200  78 raw slots / 78 counted first=2026-07-26T07:00:00
+
+  raw window.courses (first 4000 chars):
+[{"id": 148, "created_at": "2016-11-02T09:57:31.000000Z", "updated_at": "2019-05-07T20:11:20.000000Z", "deleted_at": null, "property_id": 131, "key": "heathergardens", "name": "Heather Gardens Golf Course", "description": null, "cancellable": true, "advance": 14, "min_players": 1, "max_players": 4, "default_players": 4, "core_id": 191, "slope": "114", "par": "32", "rating": "62.2", "enabled": true, "holes": "nine", "addons": "available", "cimage_id": null, "hours_cancellation": 12, "section_options": "front_only", "sequence": null, "cancellation_policy_enabled": false, "cancellation_policy_message": null, "cancellation_amount": null, "cancellation_charge_type": null, "course_type": null, "start_availability_time": null, "start_date": "2026-07-25", "end_date": "2026-08-08", "players_array": [1, 2, 3, 4], "holes_array": [9], "addons_array": ["on", "off"], "addons_default": "on", "holes_default": 9, "holes_regex": "/(9)/", "customer_enabled": true, "infos": []}]
+
+========================================================================
+mtmassivegolf.teesnap.net   [CASUALTY 144 -> 76]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 966, 'key': 'mtmassivegolf', 'name': 'Mt. Massive GC', 'enabled': True, 'deleted_at': None, 'holes': 'both_default_eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (4):
+       966  TOP-LEVEL courses[0]  'Mt. Massive GC'
+      1933  nested    courses[0].infos[0]  ''
+      1934  nested    courses[0].infos[1]  ''
+      1935  nested    courses[0].infos[2]  ''
+
+  old regex ids: [966, 1933, 1934, 1935, 862]
+  new top-level ids: [966]
+  dropped by the change: [862, 1933, 1934, 1935]
+
+  what each id returns on 2026-07-26:
+       966 [top-level] HTTP 200  76 raw slots / 76 counted first=2026-07-26T09:40:00
+      1933 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1934 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1935 [dropped  ] HTTP 200  0 raw slots / 0 counted
+       862 [dropped  ] HTTP 200  68 raw slots / 68 counted first=2026-07-26T06:36:00
+
+  raw window.courses (first 4000 chars):
+[{"id": 966, "created_at": "2019-06-12T02:58:23.000000Z", "updated_at": "2026-07-20T23:54:48.000000Z", "deleted_at": null, "property_id": 862, "key": "mtmassivegolf", "name": "Mt. Massive GC", "description": null, "cancellable": true, "advance": 14, "min_players": 1, "max_players": 4, "default_players": 4, "core_id": 1113, "slope": "120", "par": "72", "rating": "68.6", "enabled": true, "holes": "both_default_eighteen", "addons": "unavailable", "cimage_id": null, "hours_cancellation": 12, "section_options": "front_only", "sequence": null, "cancellation_policy_enabled": true, "cancellation_policy_message": "There will be a $25 per player fee for no shows. This no show policy requires you to put your credit card on file, but will not be charged during booking. If you need to cancel within 12 hours of the tee time please call us at (719) 486-2176.", "cancellation_amount": "25.00", "cancellation_charge_type": "dollar", "course_type": null, "start_availability_time": "12:00 AM", "start_date": "2026-07-25", "end_date": "2026-08-08", "players_array": [1, 2, 3, 4], "holes_array": [9, 18], "addons_array": ["off"], "addons_default": "off", "holes_default": 18, "holes_regex": "/(9|(18))/", "customer_enabled": true, "infos": [{"id": 1933, "created_at": "2026-07-17T18:20:04.000000Z", "updated_at": "2026-07-17T18:20:04.000000Z", "deleted_at": null, "course_id": 966, "icon": "cart", "text": "**** Online Rates Do Not Include Carts Due To Limited Availability will be First Come First Served Basis ****"}, {"id": 1934, "created_at": "2026-07-17T18:20:42.000000Z", "updated_at": "2026-07-17T18:20:42.000000Z", "deleted_at": null, "course_id": 966, "icon": "golf-ball", "text": "Mt Massive Rules: NO Outside Alcohol NO Sharing of Clubs NO Groups of 5 Players OR More"}, {"id": 1935, "created_at": "2026-07-17T18:21:18.000000Z", "updated_at": "2026-07-17T18:21:18.000000Z", "deleted_at": null, "course_id": 966, "icon": "golf-ball", "text": "Did you know the course sits at an elevation of over 10,00 feet above sea level? May want to double check your club selection. . . Have fun!"}]}]
+
+========================================================================
+lakehavasu.teesnap.net   [FIXED, and the only tenant with 2 real top-level courses]
+========================================================================
+  window.courses parsed: 2 top-level entries
+    [0] {'id': 307, 'key': 'west', 'name': 'West', 'enabled': True, 'deleted_at': None, 'holes': 'eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+    [1] {'id': 308, 'key': 'east', 'name': 'East', 'enabled': True, 'deleted_at': None, 'holes': 'eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (4):
+       307  TOP-LEVEL courses[0]  'West'
+      1517  nested    courses[0].infos[0]  ''
+       308  TOP-LEVEL courses[1]  'East'
+      1557  nested    courses[1].infos[0]  ''
+
+  old regex ids: [307, 1517, 308, 1557, 280]
+  new top-level ids: [307, 308]
+  dropped by the change: [280, 1517, 1557]
+
+  what each id returns on 2026-07-26:
+       307 [top-level] HTTP 200  0 raw slots / 0 counted
+      1517 [dropped  ] HTTP 200  60 raw slots / 60 counted first=2026-07-26T08:00:00
+       308 [top-level] HTTP 200  75 raw slots / 75 counted first=2026-07-26T05:42:00
+      1557 [dropped  ] HTTP 500
+       280 [dropped  ] HTTP 500
+
+========================================================================
+golfpagosa.teesnap.net   [unchanged 44 -> 44]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 339, 'key': 'golfpagosa', 'name': 'Pagosa Springs Golf Club', 'enabled': True, 'deleted_at': None, 'holes': 'both_default_eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (1):
+       339  TOP-LEVEL courses[0]  'Pagosa Springs Golf Club'
+
+  old regex ids: [339, 310]
+  new top-level ids: [339]
+  dropped by the change: [310]
+
+  what each id returns on 2026-07-26:
+       339 [top-level] HTTP 200  44 raw slots / 44 counted first=2026-07-26T08:00:00
+       310 [dropped  ] HTTP 200  0 raw slots / 0 counted
+
+========================================================================
+hollydotgolf.teesnap.net   [FIXED RAISED -> 72]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 1550, 'key': 'hollydotgolf', 'name': 'Hollydot Golf Course', 'enabled': True, 'deleted_at': None, 'holes': 'both_default_eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (1):
+      1550  TOP-LEVEL courses[0]  'Hollydot Golf Course'
+
+  old regex ids: [1550, 1329, 1767]
+  new top-level ids: [1550]
+  dropped by the change: [1329, 1767]
+
+  what each id returns on 2026-07-26:
+      1550 [top-level] HTTP 200  72 raw slots / 72 counted first=2026-07-26T07:30:00
+      1329 [dropped  ] HTTP 500
+      1767 [dropped  ] HTTP 200  0 raw slots / 0 counted
+
+========================================================================
+petteyspark.teesnap.net   [FIXED RAISED -> 59]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 1239, 'key': 'petteyspark', 'name': 'The Course at Petteys Park', 'enabled': True, 'deleted_at': None, 'holes': 'both_default_nine', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (2):
+      1239  TOP-LEVEL courses[0]  'The Course at Petteys Park'
+      1388  nested    courses[0].infos[0]  ''
+
+  old regex ids: [1239, 1388, 1081]
+  new top-level ids: [1239]
+  dropped by the change: [1081, 1388]
+
+  what each id returns on 2026-07-26:
+      1239 [top-level] HTTP 200  59 raw slots / 59 counted first=2026-07-26T09:10:00
+      1388 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1081 [dropped  ] HTTP 500
+
+========================================================================
+stoneridgegc.teesnap.net   [FIXED RAISED -> 68]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 1320, 'key': 'stoneridgegc', 'name': 'StoneRidge Golf Course', 'enabled': True, 'deleted_at': None, 'holes': 'eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (7):
+      1320  TOP-LEVEL courses[0]  'StoneRidge Golf Course'
+      1440  nested    courses[0].infos[0]  ''
+      1441  nested    courses[0].infos[1]  ''
+      1442  nested    courses[0].infos[2]  ''
+      1443  nested    courses[0].infos[3]  ''
+      1470  nested    courses[0].infos[4]  ''
+      1546  nested    courses[0].infos[5]  ''
+
+  old regex ids: [1320, 1440, 1441, 1442, 1443, 1470, 1546, 1145]
+  new top-level ids: [1320]
+  dropped by the change: [1145, 1440, 1441, 1442, 1443, 1470, 1546]
+
+  what each id returns on 2026-07-26:
+      1320 [top-level] HTTP 200  68 raw slots / 68 counted first=2026-07-26T07:00:00
+      1440 [dropped  ] HTTP 500
+      1441 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1442 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1443 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1470 [dropped  ] HTTP 500
+      1546 [dropped  ] HTTP 500
+      1145 [dropped  ] HTTP 500
+
+========================================================================
+sundancegolfclub.teesnap.net   [FIXED RAISED -> 90]
+========================================================================
+  window.courses parsed: 1 top-level entries
+    [0] {'id': 1801, 'key': 'sundancegolfclub', 'name': 'Sundance Golf Club', 'enabled': True, 'deleted_at': None, 'holes': 'both_default_eighteen', 'min_players': 1, 'max_players': 4}
+        all keys: ['addons', 'addons_array', 'addons_default', 'advance', 'cancellable', 'cancellation_amount', 'cancellation_charge_type', 'cancellation_policy_enabled', 'cancellation_policy_message', 'cimage_id', 'core_id', 'course_type', 'created_at', 'customer_enabled', 'default_players', 'deleted_at', 'description', 'enabled', 'end_date', 'holes', 'holes_array', 'holes_default', 'holes_regex', 'hours_cancellation', 'id', 'infos', 'key', 'max_players', 'min_players', 'name', 'par', 'players_array', 'property_id', 'rating', 'section_options', 'sequence', 'slope', 'start_availability_time', 'start_date', 'updated_at']
+        current filter verdict: kept
+
+  every id anywhere under window.courses (4):
+      1801  TOP-LEVEL courses[0]  'Sundance Golf Club'
+      1759  nested    courses[0].infos[0]  ''
+      1784  nested    courses[0].infos[1]  ''
+      1785  nested    courses[0].infos[2]  ''
+
+  old regex ids: [1801, 1759, 1784, 1785, 1441, 1858, 1909]
+  new top-level ids: [1801]
+  dropped by the change: [1441, 1759, 1784, 1785, 1858, 1909]
+
+  what each id returns on 2026-07-26:
+      1801 [top-level] HTTP 200  90 raw slots / 90 counted first=2026-07-26T05:14:00
+      1759 [dropped  ] HTTP 200  13 raw slots / 13 counted first=2026-07-26T09:00:00
+      1784 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1785 [dropped  ] HTTP 200  60 raw slots / 60 counted first=2026-07-26T08:00:00
+      1441 [dropped  ] HTTP 200  0 raw slots / 0 counted
+      1858 [dropped  ] HTTP 422
+      1909 [dropped  ] HTTP 200  0 raw slots / 0 counted
+
+done
