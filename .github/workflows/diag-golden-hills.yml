@@ -1,0 +1,50 @@
+name: Golden Hills alias 404
+
+# verify_fixes.txt section A: alias=golden-hills-golf-club-az answers HTTP 404
+# on kenna both with and without facilityIds, while every other pinned Arizona
+# alias answers normally. This finds out whether the alias is stale, the club
+# has left TeeItUp, or the registry row was never right. Report only.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_golden_hills.py"
+      - ".github/workflows/diag-golden-hills.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-golden-hills
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Diagnose
+        run: |
+          mkdir -p probe-results
+          python scripts/diag_golden_hills.py 2>&1 | tee probe-results/diag_golden_hills.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/diag_golden_hills.txt
+          git commit -m "golden hills alias diagnosis [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push golden hills diag results after 5 attempts"; exit 1
