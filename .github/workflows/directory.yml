@@ -1,0 +1,75 @@
+name: Build + verify the course directory
+
+# Regenerates directory.json (and the Worker's bundled copy) from the state
+# CSVs, then checks it tells golfers the truth before it can ship.
+#
+# Separate from the state-status workflow on purpose. That one commits with
+# [skip ci], which is right for a report nobody deploys — but the directory
+# lands in worker/directory.gen.js, and a [skip ci] commit there would update
+# the file without ever deploying it, leaving the API serving the previous
+# directory indefinitely. This workflow commits normally so the existing
+# worker/** trigger on deploy-worker picks the change up.
+#
+# The verify step is the one that matters: it fails if a course we are
+# actively selling tee times for is tagged "call the pro shop" or "members
+# only". That is a lie to a golfer, and it is invisible from the inside.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*_golf_courses_booking.csv"
+      - "build_directory.py"
+      - "scripts/verify_directory.py"
+      - ".github/workflows/directory.yml"
+  schedule:
+    - cron: "17 14 * * *"        # after state-status, so it verifies fresh live data
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: directory
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: python3 build_directory.py | tee directory.log
+
+      - name: Verify
+        id: verify
+        run: python3 scripts/verify_directory.py 2>&1 | tee -a directory.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat directory.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Only publish a directory that passed. A verify failure means the file
+      # on disk contradicts the live feed, and committing it would deploy that
+      # contradiction to the site.
+      - name: Commit
+        if: steps.verify.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add directory.json worker/directory.gen.js
+          git diff --cached --quiet && { echo "directory unchanged"; exit 0; }
+          git commit -m "Rebuild course directory from the state CSVs"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the directory after 5 attempts"; exit 1
