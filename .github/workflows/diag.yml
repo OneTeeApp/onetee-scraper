@@ -9,7 +9,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "scripts/diag_subcourses.py"
+      - "scripts/diag_subcourses*.py"
       - ".github/workflows/diag.yml"
 
 permissions:
@@ -33,14 +33,14 @@ jobs:
       - name: Probe
         run: |
           mkdir -p probe-results
-          python scripts/diag_subcourses.py 2>&1 | tee probe-results/diag.txt
+          python scripts/diag_subcourses2.py 2>&1 | tee probe-results/diag2.txt
 
       - name: Commit
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add probe-results/diag.txt
+          git add probe-results/diag2.txt
           git commit -m "diag: sub-courses + capture misses [skip ci]" || exit 0
           # Retry: other workflows commit to probe-results/ too, and losing the
           # race used to fail the job and throw away the results.
