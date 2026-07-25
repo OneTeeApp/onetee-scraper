@@ -1,15 +1,15 @@
-now Denver: 2026-07-24T18:07:19 | now Phoenix: 2026-07-24T17:07:19
+now Denver: 2026-07-24T18:18:20 | now Phoenix: 2026-07-24T17:18:20
 API: https://onetee-api.damp-snow-8025.workers.dev
 
 == /api/health ==
-   {'ok': True, 'total': 28577, 'active': 14954}
+   {'ok': True, 'total': 28577, 'active': 14885}
 
 == 1. PAST TIMES: any returned slot earlier than local now? (want 0) ==
    2000 slots returned, 0 in the past
-   include_past=1 sanity (should be > 0): 10
+   include_past=1 sanity (should be > 0): 12
 
 == 2. STATE field ==
-   rows missing state: 17
+   rows missing state: 19
    ?state=AZ rows that aren't AZ: 0
 
 == 3. VENUE DEDUPE: '-golfnow' slugs exposed? (want 0) ==
@@ -26,7 +26,7 @@ API: https://onetee-api.damp-snow-8025.workers.dev
       same-time multi-course slots: 0 | example: None
 
 == 5. OPEN SPOTS coverage ==
-   620/2000 rows with no open_spots | by platform: {'clubcaddie': 137, 'golfnow': 334, 'clubprophet': 44, 'teesnap': 87, 'supersaas': 18}
+   627/2000 rows with no open_spots | by platform: {'golfnow': 344, 'clubcaddie': 133, 'clubprophet': 43, 'teesnap': 89, 'supersaas': 18}
 
 == 6. CITY coverage ==
    rows with no city: 0 | cities with parens: 0
@@ -35,5 +35,21 @@ API: https://onetee-api.damp-snow-8025.workers.dev
     {'https://booking.noteefy.app/e/ba16828e-77e6-425f-b63d-ac27e785f69d'}
 
 == 8. D1 elapsed-active rows (the Worker cron should keep this small) ==
-    {'elapsed_active': 10}
-   oldest elapsed-active row: [{'teetime': '2026-07-24T17:06:00', 'state': 'AZ', 'course_slug': 'las-barrancas-golf-course'}]
+    {'elapsed_active': 12}
+   oldest elapsed-active row: [{'teetime': '2026-07-24T17:16', 'state': 'AZ', 'course_slug': 'the-500-club'}]
+== registered cron triggers for onetee-api ==
+{
+  "result": {
+    "schedules": [
+      {
+        "cron": "*/5 * * * *",
+        "created_on": "2026-07-24T23:48:10.069202Z",
+        "modified_on": "2026-07-25T00:11:37.105028Z"
+      }
+    ]
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}
+
