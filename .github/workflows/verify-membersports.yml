@@ -1,0 +1,51 @@
+name: Verify MemberSports club leads
+
+# Homestead (quick18, publishing nothing) and Meadows (needs_ids) each have a
+# MemberSports club id inferred by elimination from a city website. Before
+# either is registered we need the item names off those sheets, because a club
+# id that belongs to a NEIGHBOUR is the failure we already hit twice
+# (Boomerang/Highland Hills, Lincoln Park/Tiara Rado). Report only, no secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_membersports.py"
+      - ".github/workflows/verify-membersports.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verify-membersports
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Verify
+        run: |
+          mkdir -p probe-results
+          python scripts/verify_membersports.py 2>&1 | tee probe-results/verify_membersports.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/verify_membersports.txt
+          git commit -m "verify MemberSports club leads [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push MemberSports verify results after 5 attempts"; exit 1
