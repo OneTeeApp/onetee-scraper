@@ -12,6 +12,11 @@ This fills that in from the one source that is unambiguously allowed and
 unambiguously authoritative: the course's own public website, the same page a
 golfer would land on from a search result.
 
+Only courses we do NOT serve tee times for are looked up. A course a golfer
+can book through OneTee never renders a directory card, so its phone number
+would be a number nobody sees, bought with a request to somebody else's web
+server. That takes the crawl from 459 sites to 189.
+
 RULES THIS OBEYS
 ----------------
 Public pages only. No logins, no forms, no cookies carried between hosts.
@@ -56,6 +61,8 @@ import requests
 
 DIRECTORY = "directory.json"
 OUT = "local/phones.json"
+API = "https://onetee-api.damp-snow-8025.workers.dev"
+STATUS = "probe-results/state-status.json"
 
 UA = ("Mozilla/5.0 (compatible; OneTeeDirectoryBot/1.0; "
       "+https://oneteeapp.com/about) contact: hello@oneteeapp.com")
@@ -193,6 +200,40 @@ def phone_for(session: requests.Session, site: str, state: str,
     return "", ("lowconf" if best[1] else reason)
 
 
+def live_venues(api: str, status_path: str) -> tuple[set, str]:
+    """Venues we are already serving tee times for. (ids, where they came from)
+
+    These are skipped: a course a golfer can book through OneTee never shows a
+    directory card, so a phone number for it would be a number nobody sees,
+    bought with a request to somebody else's web server. Skipping them roughly
+    halves the crawl.
+
+    Live truth comes from the API. If that is unreachable, the last committed
+    state-status report is used instead — stale by up to a day, which at worst
+    means re-checking a course that just went live. Both failing means we
+    crawl everything, which is wasteful but never wrong.
+    """
+    try:
+        r = requests.get(api.rstrip("/") + "/api/courses", timeout=30)
+        ids = {c.get("venue_id") or c.get("course_slug")
+               for c in r.json().get("courses", [])}
+        ids.discard(None)
+        if ids:
+            return ids, "the live API"
+    except (requests.RequestException, ValueError):
+        pass
+    try:
+        with open(status_path) as fh:
+            doc = json.load(fh)
+        ids = {it["slug"] for st in doc.get("states", [])
+               for it in st.get("detail", {}).get("live", [])}
+        if ids:
+            return ids, f"{status_path} (API unreachable)"
+    except (OSError, ValueError, KeyError):
+        pass
+    return set(), "nowhere — checking every course"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--states", help="comma-separated, e.g. AZ,CO")
@@ -203,6 +244,10 @@ def main() -> int:
                     help="seconds between requests")
     ap.add_argument("--timeout", type=int, default=15)
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--api", default=API)
+    ap.add_argument("--include-live", action="store_true",
+                    help="also look up courses we already serve tee times for "
+                         "(their number is never rendered — see live_venues)")
     a = ap.parse_args()
 
     with open(DIRECTORY) as fh:
@@ -214,14 +259,19 @@ def main() -> int:
         with open(a.out) as fh:
             known = json.load(fh)
 
+    live, live_src = (set(), "skipped") if a.include_live else \
+        live_venues(a.api, STATUS)
+
     todo = [c for c in courses
             if c["website"]
             and (not states or c["state"] in states)
+            and c["venue_id"] not in live
             and (a.refresh or not (known.get(c["venue_id"]) or c["phone"]))]
     if a.limit:
         todo = todo[:a.limit]
-    print(f"{len(todo)} course sites to check "
-          f"(of {len(courses)}; {len(known)} already known)", flush=True)
+    print(f"{len(todo)} course sites to check (of {len(courses)}; "
+          f"{len(live)} already serving tee times, from {live_src}; "
+          f"{len(known)} numbers already known)", flush=True)
 
     session = requests.Session()
     session.headers.update({"User-Agent": UA,

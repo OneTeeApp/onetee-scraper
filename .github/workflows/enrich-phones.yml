@@ -41,12 +41,15 @@ permissions:
 
 concurrency:
   group: enrich-phones
-  cancel-in-progress: false
+  # Supersede a run in flight. A queued duplicate would re-crawl the same
+  # hosts an hour later for the same answers, which is both wasteful and
+  # impolite to them.
+  cancel-in-progress: true
 
 jobs:
   enrich:
     runs-on: ubuntu-latest
-    timeout-minutes: 330        # ~450 sites x up to 6 pages x 1.5s, worst case
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,6 +61,10 @@ jobs:
         run: python3 build_directory.py
 
       - name: Look up phone numbers
+        # Step-level, so a run that overruns still reaches the commit below
+        # with whatever it found. A job-level timeout would cancel the job
+        # outright and throw away an hour of deliberately slow crawling.
+        timeout-minutes: 90
         run: |
           python3 scripts/enrich_phones.py \
             ${{ github.event.inputs.states && format('--states {0}', github.event.inputs.states) || '' }} \
