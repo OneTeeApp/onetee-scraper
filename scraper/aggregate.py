@@ -79,13 +79,20 @@ def fetch_course(course: dict, date: dt.date) -> FetchResult:
 def run(date: dt.date, registry_path: str, out_path: str,
         platforms: set[str] | None, courses: set[str] | None,
         include_raw: bool, workers: int, exclude: set[str] | None = None,
-        shard: str | None = None) -> dict:
+        shard: str | None = None, states: set[str] | None = None) -> dict:
     set_env_shard_count(shard)          # so per-host throttles pace at 1/N
     registry = load_registry(registry_path)
     targets = [c for c in registry
                if (not platforms or c["platform"] in platforms)
                and (not exclude or c["platform"] not in exclude)
-               and (not courses or c["slug"] in courses)]
+               and (not courses or c["slug"] in courses)
+               # State filter is for isolating ONE state while debugging, and
+               # for per-state health gates. It is deliberately NOT how the
+               # hourly scan partitions work: --shard hashes courses evenly,
+               # whereas states differ ~10x in size, so state-sharding the
+               # scan would leave one runner doing California while the rest
+               # idle. Divide the REPORTING by state; divide the RUNTIME by hash.
+               and (not states or c.get("state") in states)]
     targets = apply_shard(targets, shard)
     log.info("fetching %d courses for %s%s", len(targets), date,
              f" (shard {shard})" if shard else "")
@@ -128,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--include-raw", action="store_true")
     p.add_argument("--workers", type=int, default=5)  # polite: retry handles 429
     p.add_argument("--shard", help="i/N — process a deterministic 1/N slice")
+    p.add_argument("--states", help="comma-separated state filter, e.g. CO,AZ")
     p.add_argument("-v", "--verbose", action="store_true")
     a = p.parse_args(argv)
 
@@ -138,7 +146,8 @@ def main(argv: list[str] | None = None) -> int:
         set(a.courses.split(",")) if a.courses else None,
         a.include_raw, a.workers,
         set(a.exclude.split(",")) if a.exclude else None,
-        a.shard)
+        a.shard,
+        {s.strip().upper() for s in a.states.split(",")} if a.states else None)
     return 0
 
 

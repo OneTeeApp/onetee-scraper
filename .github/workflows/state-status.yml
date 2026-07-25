@@ -1,0 +1,95 @@
+name: State coverage status
+
+# The macro health check. Runs the per-state funnel against live D1 counts,
+# commits the report and the dashboard, and FAILS if a state regressed.
+#
+# This is the thing that has to still work at fifty states. It does not name
+# courses in its pass/fail decision — it compares one number per state
+# (live venues) against the last committed run. A single broken adapter shows
+# up as "AZ live 133 -> 112", which is one line to read, and the blocker table
+# in the committed report says which platform to look at.
+#
+# The regression gate is deliberately asymmetric: a DROP fails the job, a RISE
+# is committed silently. Coverage going up never needs a human.
+
+on:
+  schedule:
+    - cron: "41 13 * * *"        # daily, well after the hourly scans settle
+  workflow_dispatch:
+    inputs:
+      tolerance:
+        description: "Allowed drop in live venues per state before failing"
+        default: "3"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/state_status.py"
+      - "scripts/state_dashboard.py"
+      - ".github/workflows/state-status.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: state-status
+  cancel-in-progress: true
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests
+
+      - name: Keep the previous run for comparison
+        run: |
+          mkdir -p probe-results
+          cp probe-results/state-status.json probe-results/.previous.json \
+            2>/dev/null || echo '{"states":[]}' > probe-results/.previous.json
+
+      - name: Build the funnel against live D1 counts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          python scripts/state_status.py --d1 \
+            --json probe-results/state-status.json \
+            2>&1 | tee probe-results/state-status.txt
+          python scripts/state_dashboard.py probe-results/state-status.json \
+            -o probe-results/onetee-status.html \
+            --stamp "as of $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          sed -n '1,14p' probe-results/state-status.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # .previous.json is untracked and `git add` below is explicit, so it
+          # never gets committed — and the regression step still needs it.
+          git add probe-results/state-status.json probe-results/state-status.txt \
+                  probe-results/onetee-status.html
+          git commit -m "State coverage status [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push state status after 5 attempts"; exit 1
+
+      - name: Fail on regression
+        if: always()
+        run: |
+          python scripts/state_regression.py \
+            probe-results/.previous.json probe-results/state-status.json \
+            --tolerance "${{ github.event.inputs.tolerance || 3 }}"
