@@ -196,6 +196,23 @@ def main() -> None:
     except RuntimeError as exc:
         check("raises when kenna is down", "500" in str(exc), str(exc)[:60])
 
+    print("\ndiscovery asks the route that is actually alive, first")
+    a = Fake()
+    a.discover_facilities("city-of-phoenix-golf-courses")
+    meta = [c["url"] for c in a.calls if "/tee-times" not in c["url"]]
+    check("/alias/<alias>/facilities is tried before /v2/courses",
+          bool(meta) and meta[0].endswith(
+              "/alias/city-of-phoenix-golf-courses/facilities"), str(meta))
+    check("and nothing else is asked once it answers", len(meta) == 1, str(meta))
+    a = Fake(facilities=RuntimeError("404"))
+    try:
+        a.discover_facilities("city-of-phoenix-golf-courses")
+    except Exception:  # noqa: BLE001 — both routes down is the point here
+        pass
+    meta = [c["url"] for c in a.calls if "/tee-times" not in c["url"]]
+    check("/v2/courses is still tried when the alias route fails",
+          any(u.endswith("/v2/courses") for u in meta), str(meta))
+
     print("\nfacility metadata failure degrades, it does not raise")
     a = Fake(facilities=RuntimeError("404"))
     out = a.fetch(AGUILA, DATE)

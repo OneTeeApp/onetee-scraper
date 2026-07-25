@@ -127,14 +127,24 @@ class TeeItUpAdapter(Adapter):
     def discover_facilities(self, alias: str) -> list[dict]:
         """Return facility metadata (ids, names) for an alias.
 
-        Most aliases answer /v2/courses, but some (Granby Ranch) 404 there
-        while still resolving on the older /alias/<alias>/facilities route,
-        so fall back to it."""
+        /alias/<alias>/facilities is tried FIRST. It used to be the fallback,
+        on the belief that most aliases answer /v2/courses and only a few
+        (Granby Ranch) needed the older route. That is no longer true, if it
+        ever was: probe-results/diag_kenna_routes.txt section 2 put twelve
+        live registry aliases through both routes and /v2/courses answered
+        0/12 while /alias/<alias>/facilities answered 12/12. Leading with the
+        dead route cost one wasted request per alias against the host that
+        429s the whole fleet.
+
+        /v2/courses is kept as the fallback rather than deleted — it is the
+        newer route and may come back — but a 404 there is now the expected
+        case, not the exception.
+        """
         try:
-            data = self.get_json(f"{API_BASE}/v2/courses",
-                                 headers=self._headers(alias))
-        except Exception:  # noqa: BLE001 — some aliases 404 on /v2/courses
             data = self.get_json(f"{API_BASE}/alias/{alias}/facilities",
+                                 headers=self._headers(alias))
+        except Exception:  # noqa: BLE001 — try the newer route before failing
+            data = self.get_json(f"{API_BASE}/v2/courses",
                                  headers=self._headers(alias))
         return data if isinstance(data, list) else data.get("courses", [])
 

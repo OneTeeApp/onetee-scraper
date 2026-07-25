@@ -3334,12 +3334,12 @@
    "platform": "teeitup",
    "booking_url": "https://golden-hills-golf-club-az.book.teeitup.com/?course=1295",
    "ids": {
-    "alias": "golden-hills-golf-club-az",
+    "alias": "golden-hills-golf-club",
     "facility_id": "1295"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "kenna alias is golden-hills-golf-club, NOT the -az vanity host: golden-hills-golf-club-az answers HTTP 404 'Booking Engine Settings not found' on every kenna route while every sibling AZ alias answers (probe-results/diag_golden_hills.txt). The correct alias lists exactly facility 1295 'Golden Hills Golf Club' and returned 51 slots for 2026-07-26; the club's former name arizona-golf-resort resolves to the identical sheet. Alias pinned in build_registry EXTRA_IDS. Booking URL left on the -az host on purpose - it serves a real 29KB tenant page, while arizona-golf-resort.book.teeitup.com serves the same ~10KB shell as a nonsense subdomain (diag_kenna_routes.txt section 1), so the vanity host and the API alias are separate namespaces."
   },
   {
    "slug": "las-sendas-golf-club",

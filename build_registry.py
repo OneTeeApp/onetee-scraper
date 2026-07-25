@@ -80,6 +80,18 @@ EXTRA_IDS = {
     "pole creek golf club":              {"alias": "pole-creek-golf-club"},
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
     "rollingstone ranch golf club":      {"alias": "rollingstone-ranch"},
+    # Golden Hills: the host is golden-hills-golf-club-az.book.teeitup.com but
+    # kenna has never heard of that alias — 404 "Booking Engine Settings not
+    # found" on every route, while every sibling Arizona alias answers
+    # (probe-results/diag_golden_hills.txt). Dropping the -az suffix resolves,
+    # lists exactly facility 1295 "Golden Hills Golf Club" (so the pinned id
+    # was right all along) and returns 51 slots for tomorrow. The club's former
+    # name, arizona-golf-resort, resolves to the identical sheet. The
+    # booking_url stays on the -az host: it serves a real 29KB tenant page,
+    # while arizona-golf-resort.book.teeitup.com serves the same ~10KB shell as
+    # a deliberately nonsense subdomain (diag_kenna_routes.txt section 1) — the
+    # vanity host and the API alias are two different namespaces.
+    "golden hills golf club":            {"alias": "golden-hills-golf-club"},
 
     # Broadlands: the public booking front door is Noteefy (that's what the
     # Booking URL must point users to), but the tee sheet is scraped from the
