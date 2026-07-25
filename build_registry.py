@@ -212,6 +212,13 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         status = "needs_ids"             # uuid harvested at runtime
     elif platform == "teeitup" and not ids.get("alias"):
         status = "needs_ids"             # e.g. Troon wrapper, no direct alias
+    elif platform == "clubprophet" and not ids.get("tenant"):
+        # The adapter mints its anonymous token from <tenant>.cps.golf. Lake
+        # Arbor's portal is secure.west.prophetservices.com instead, where every
+        # route redirects to a Log On page (probe-results/diag3.txt section D),
+        # so there is no anonymous tee sheet to read. It was sitting at "ready"
+        # with empty ids, i.e. failing on every single scrape.
+        status = "unsupported"
     elif platform == "membersports" and not ids.get("club_id"):
         # A shared city portal can leave a course pointing at its neighbour's
         # golfClubId. Better to publish nothing than someone else's tee sheet.
