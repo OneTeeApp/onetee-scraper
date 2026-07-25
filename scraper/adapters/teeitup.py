@@ -150,54 +150,75 @@ class TeeItUpAdapter(Adapter):
             raise ValueError(f"{course['slug']}: missing TeeItUp alias "
                              "(booking URL did not yield one)")
         facility_id = course["ids"].get("facility_id")
+
+        # ALWAYS ask for the whole alias, then filter client-side.
+        #
+        # kenna answers HTTP 500 to *any* facilityIds param as of 2026-07 —
+        # on every alias, including ones we publish from every day
+        # (probe-results/diag4.txt section E). The old code passed a pinned
+        # facility_id straight into the first call, so all ten pinned courses
+        # failed on every single scrape, and a second unguarded facilityIds
+        # retry then raised on any legitimately-empty day. The bare per-alias
+        # call returns every facility's slots anyway and each slot carries its
+        # own facilityId/courseId, so filtering here loses nothing.
         try:
-            data = self._teetimes(alias, date, facility_id)
-        except Exception:
-            # Some courses 404/500 on the bare call (or a stale facility_id);
-            # discover the real facility ids from /v2/courses and retry.
-            fids = self._facility_ids(alias)
-            if not fids:
-                raise
-            data = self._teetimes(alias, date, fids)
+            data = self._teetimes(alias, date)
+        except Exception as exc:  # noqa: BLE001
+            # Kept only in case kenna restores facilityIds; if it fails too,
+            # the caller sees the original bare-call error, not this one.
+            data = None
+            try:
+                fids = self._facility_ids(alias)
+                if fids:
+                    data = self._teetimes(alias, date, fids)
+            except Exception:  # noqa: BLE001
+                data = None
+            if data is None:
+                raise exc
 
         blocks = data if isinstance(data, list) else [data]
-        # if the bare call returned nothing, try explicit facility ids once
-        if not any(b.get("teetimes") for b in blocks) and not facility_id:
-            fids = self._facility_ids(alias)
-            if fids:
-                data = self._teetimes(alias, date, fids)
-                blocks = data if isinstance(data, list) else [data]
-
         meta = self._facility_meta(alias)
         state_tz = _STATE_TZ.get(course.get("state", ""), "America/Denver")
-        blocks = data if isinstance(data, list) else [data]
+
+        # A pinned facility_id means this registry row is ONE course inside a
+        # shared alias (four Phoenix munis share city-of-phoenix-golf-courses),
+        # so anything belonging to a sibling must be dropped or we would
+        # publish another course's tee sheet under this name.
+        want = {p.strip() for p in str(facility_id).split(",")
+                if p.strip()} if facility_id else set()
+        slots = []
+        for block in blocks:
+            for slot in (block or {}).get("teetimes", []) or []:
+                if want and not ({str(slot.get("facilityId")),
+                                  str(slot.get("courseId"))} & want):
+                    continue
+                slots.append(slot)
+
         # label slots per sub-course only when this response actually spans
         # multiple courses (multi-course facility like Hyland Hills)
-        seen_cids = {str(s.get("courseId")) for b in blocks
-                     for s in b.get("teetimes", []) if s.get("courseId")}
+        seen_cids = {str(s.get("courseId")) for s in slots if s.get("courseId")}
         multi = len(seen_cids) > 1
 
         out: list[TeeTime] = []
-        for block in blocks:
-            for slot in block.get("teetimes", []):
-                rates = slot.get("rates") or []
-                cents = [r[k] for r in rates
-                         for k in ("greenFeeWalking", "greenFeeCart")
-                         if isinstance(r.get(k), (int, float))]
-                holes = sorted({r.get("holes") for r in rates
-                                if r.get("holes")})
-                fmeta = meta.get(str(slot.get("courseId")), {})
-                out.append(self.base_tee_time(
-                    course,
-                    teetime=self._to_local(slot.get("teetime", ""),
-                                           fmeta.get("tz") or state_tz),
-                    course_label=(fmeta.get("name") or "") if multi else "",
-                    holes=[h for h in holes if h],
-                    # maxPlayers reflects how many can still book (probe: with
-                    # bookedPlayers=2 it reads 2, i.e. remaining seats)
-                    open_spots=slot.get("maxPlayers"),
-                    price_min=min(cents) / 100 if cents else None,
-                    price_max=max(cents) / 100 if cents else None,
-                    raw=slot,
-                ))
+        for slot in slots:
+            rates = slot.get("rates") or []
+            cents = [r[k] for r in rates
+                     for k in ("greenFeeWalking", "greenFeeCart")
+                     if isinstance(r.get(k), (int, float))]
+            holes = sorted({r.get("holes") for r in rates
+                            if r.get("holes")})
+            fmeta = meta.get(str(slot.get("courseId")), {})
+            out.append(self.base_tee_time(
+                course,
+                teetime=self._to_local(slot.get("teetime", ""),
+                                       fmeta.get("tz") or state_tz),
+                course_label=(fmeta.get("name") or "") if multi else "",
+                holes=[h for h in holes if h],
+                # maxPlayers reflects how many can still book (probe: with
+                # bookedPlayers=2 it reads 2, i.e. remaining seats)
+                open_spots=slot.get("maxPlayers"),
+                price_min=min(cents) / 100 if cents else None,
+                price_max=max(cents) / 100 if cents else None,
+                raw=slot,
+            ))
         return out
