@@ -84,10 +84,18 @@ jobs:
           } 2>&1 | tee probe-results/deploy.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main || true
           git add probe-results/deploy.txt
           git commit -m "worker deploy result [skip ci]" || exit 0
-          git push
+          # Retry the push. The probe workflow writes to probe-results/ too, so
+          # a single push loses the race whenever the two overlap — which is
+          # what happened on the cron-trigger deploy: wrangler had already
+          # succeeded, but the job went red on a non-fast-forward push and the
+          # log never landed, which read from the outside as a failed deploy.
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the deploy log after 5 attempts"; exit 1
 
       - name: Fail if deploy errored
         if: steps.deploy.outcome != 'success'
@@ -95,4 +103,6 @@ jobs:
           echo "wrangler deploy did not succeed — see probe-results/deploy.txt"
           exit 1
 
-# re-trigger: CLOUDFLARE_DEPLOY_TOKEN secret added by Brian 2026-07-24
+# re-trigger: re-deploy and capture the log, to confirm the */5 cron trigger
+# registered (evidence says it did — D1's oldest elapsed-active row is ~1 minute
+# old with nothing else pruning — but the log that would prove it was lost).
