@@ -1,0 +1,206 @@
+probe date (Denver today): 2026-07-24
+
+========================================================================
+A1. MEMBERSPORTS SPA — API ROUTES IN THE JS BUNDLE
+========================================================================
+   GET app.membersports.com -> 200 86718 bytes
+   scripts: ['https://kit.fontawesome.com/7aa4bc216c.js', 'https://code.jquery.com/jquery-3.5.1.slim.min.js', 'https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js', 'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js', 'https://cdn.plaid.com/link/v2/stable/link-initialize.js', 'https://cdn.payroc.com/js/hosted-fields/hosted-fields-1.6.0.172441.js', 'polyfills-VTE7VX4U.js', 'scripts-6ZV3PROI.js', 'main-OEGNPC3I.js']
+   https://kit.fontawesome.com/7aa4bc216c.js -> 403
+   jquery-3.5.1.slim.min.js: 72380 bytes, 0 route strings
+   popper.min.js: 21233 bytes, 0 route strings
+   bootstrap.min.js: 60044 bytes, 0 route strings
+   link-initialize.js: 165168 bytes, 0 route strings
+   hosted-fields-1.6.0.172441.js: 83407 bytes, 0 route strings
+   polyfills-VTE7VX4U.js: 34790 bytes, 0 route strings
+   scripts-6ZV3PROI.js: 451211 bytes, 0 route strings
+   main-OEGNPC3I.js: 10213074 bytes, 0 route strings
+
+   0 distinct api routes; 0 club/course-ish:
+
+========================================================================
+A2. MEMBERSPORTS — configurationTypeId x golfClubGroupId SWEEP (golfCourseId=0)
+========================================================================
+   -N in the rows column means HTTP N.
+
+--- club 3629: Kennedy (Aurora)  (registry URL hints cfg=19)
+   cfg= 0 grp=0 ->   79 rows  {4669: 'Kennedy Par 3 or Footgolf'}
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park'}
+   cfg= 1 grp=0 ->   85 rows  {20573: 'Kennedy (Babe Lind / Creek)'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=0 ->   85 rows  {20573: 'Kennedy (West 9 only)'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3629: {4669: 'Kennedy Par 3 or Footgolf', 20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+
+--- club 3724: Boomerang / Highland Hills (Greeley)  (registry URL hints cfg=5)
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3724: {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+
+--- club 3697: Foothills / Meadows  (registry URL hints cfg=3)
+   cfg= 0 grp=0 ->   85 rows  {4759: 'Foothills 18 Back Nine', 4758: 'Foothills Executive 9', 4757: 'Foothills Par 3'}
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3697: {4759: 'Foothills 18 Back Nine', 4758: 'Foothills Executive 9', 4757: 'Foothills Par 3', 20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+
+--- club 3821: Lincoln Park / Tiara Rado (Grand Junction)  (registry URL hints cfg=4)
+   cfg= 0 grp=0 ->   30 rows  {4918: 'Tiara Rado'}
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3821: {4918: 'Tiara Rado', 20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+
+--- club 3660: City Park / Denver linked clubs  (registry URL hints cfg=1)
+   cfg= 0 grp=0 ->   75 rows  {4711: 'City Park'}
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3660: {4711: 'City Park', 20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4827: 'Overland Park'}
+
+--- club 3703: Fox Hollow (control, cfg 7)  (registry URL hints cfg=7)
+   cfg= 0 grp=0 ->   81 rows  {20589: 'Fox Hollow (Links)'}
+   cfg= 0 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 1 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 2 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 3 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 4 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 5 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 6 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg= 7 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=19 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   cfg=26 grp=1 ->   87 rows  {20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+   UNION of course ids for club 3703: {20589: 'Fox Hollow (Links)', 20573: 'Kennedy (Babe Lind / Creek)', 4928: 'Wellshire', 4751: 'Evergreen Back Nine', 4781: 'Harvard Gulch Par 3', 4669: 'Kennedy Par 3 or Footgolf', 4932: 'Willis Case', 4711: 'City Park', 4827: 'Overland Park'}
+
+
+========================================================================
+B. THE SIX MIS-SLUGGED CO COURSES, UNDER THEIR REAL SLUGS
+========================================================================
+
+--- emerald-greens-golf-club [clubprophet] ids={'tenant': 'emeraldgreens'}
+    url: https://emeraldgreens.cps.golf/  city=Denver CO
+    2026-07-24: EXC HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+    2026-07-25: EXC HTTPError: 404 Client Error: Not Found for url: https://emeraldgreens.cps.golf/identityapi/myconnect/token/short
+
+--- lake-arbor-golf-club [clubprophet] ids={}
+    url: https://secure.west.prophetservices.com/LakeArborGC/Account/nLogon  city=Arvada CO
+    2026-07-24: EXC ValueError: lake-arbor-golf-club: no Club Prophet tenant
+    2026-07-25: EXC ValueError: lake-arbor-golf-club: no Club Prophet tenant
+
+--- clubcorp-at-black-bear-golf-club [golfnow] ids={'golfnow_facility_id': '2484', 'golfnow_slug': 'black-bear-golf-club'}
+    url: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search  city=Parker CO
+    2026-07-24: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search
+    2026-07-25: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2484-black-bear-golf-club/search
+
+--- desert-hawk-at-pueblo-west [golfnow] ids={'golfnow_facility_id': '5635', 'golfnow_slug': 'desert-hawk-at-pueblo-west'}
+    url: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search  city=Pueblo CO
+    2026-07-24: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search
+    2026-07-25: EXC RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5635-desert-hawk-at-pueblo-west/search
+
+--- golf-granby-ranch [teeitup] ids={'alias': 'golf-granby-ranch'}
+    url: https://golf-granby-ranch.book.teeitup.golf/  city=Granby CO
+    2026-07-24: 0 slots (EMPTY)
+    2026-07-25: 0 slots (EMPTY)
+
+--- the-course-at-petteys-park [teesnap] ids={'subdomain': 'petteyspark'}
+    url: https://petteyspark.teesnap.net/  city=Brush CO
+    2026-07-24: EXC HTTPError: 500
+    2026-07-25: EXC HTTPError: 500
+
+========================================================================
+C1. THE FIVE GENUINELY-BROKEN CO COURSES (re-run)
+========================================================================
+
+--- university-of-denver-golf-club-at-highlands-ranch [clubprophet] ids={'tenant': 'universityofdenver'}
+    url: https://universityofdenver.cps.golf/  city=Littleton CO
+    2026-07-24: EXC HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+    2026-07-25: EXC HTTPError: 404 Client Error: Not Found for url: https://universityofdenver.cps.golf/identityapi/myconnect/token/short
+
+--- homestead-golf-course [quick18] ids={'subdomain': 'homestead'}
+    url: https://homestead.quick18.com/  city=Denver CO
+    2026-07-24: 0 slots (EMPTY)
+    2026-07-25: 0 slots (EMPTY)
+
+--- rollingstone-ranch-golf-club [teeitup] ids={'alias': 'rollingstone-ranch'}
+    url:   city=Steamboat Springs CO
+    2026-07-24: 0 slots (EMPTY)
+    2026-07-25: 0 slots (EMPTY)
+
+--- coyote-creek-golf-course [teesnap] ids={'subdomain': 'coyotecreek'}
+    url: https://coyotecreek.teesnap.net/  city=Fort Lupton CO
+    2026-07-24: EXC HTTPError: 500
+    2026-07-25: EXC HTTPError: 500
+
+--- hollydot-golf-course [teesnap] ids={'subdomain': 'hollydotgolf'}
+    url: https://hollydotgolf.teesnap.net/  city=Colorado City CO
+    2026-07-24: EXC HTTPError: 500
+    2026-07-25: EXC HTTPError: 500
+
+========================================================================
+C2. FAILURE DETAIL FOR THE FOUR BROKEN ADAPTER CASES
+========================================================================
+
+-- clubprophet: is universityofdenver.cps.golf still a CPS tenant?
+   https://universityofdenver.cps.golf/ -> 200 final=https://universityofdenver.cps.golf/ len=7403
+     title: Club Prophet Systems : Online reservation V4
+   https://universityofdenver.cps.golf/onlineresweb/search-teetime -> 200 final=https://universityofdenver.cps.golf/onlineresweb/search-teetime len=7403
+     title: Club Prophet Systems : Online reservation V4
+   https://universityofdenver.cps.golf/identityapi/myconnect/token/short -> 404 final=https://universityofdenver.cps.golf/identityapi/myconnect/token/short len=0
+
+-- teesnap: raw response for the two 500s
+   GET https://coyotecreek.teesnap.net/ -> 200 len=59673 has_window_courses=True
+   course=1 -> 500 <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">          <style>       
+   course=2 -> 500 <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">          <style>       
+   GET https://hollydotgolf.teesnap.net/ -> 200 len=58107 has_window_courses=True
+   course=1 -> 500 <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">          <style>       
+   course=2 -> 500 <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">          <style>       
+
+-- quick18 homestead: does the site still serve a tee sheet?
+   https://homestead.quick18.com/ -> 200 final=https://homestead.quick18.com/ len=4008
+   https://homestead.quick18.com/teetimes/searchmatrix -> 200 final=https://homestead.quick18.com/teetimes/searchmatrix len=18258
+
+-- teeitup rollingstone-ranch: does the alias resolve?
+   alias 'rollingstone-ranch': 1 facilities [(9218, 'Rollingstone Ranch')]
+   alias 'rollingstone-ranch-golf-club': EXC HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/rollingstone-ranch-golf-club/facilities
+   alias 'rolling-stone-ranch': EXC HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/alias/rolling-stone-ranch/facilities
