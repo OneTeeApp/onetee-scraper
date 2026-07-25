@@ -1,0 +1,53 @@
+name: Browser native-engine probe
+
+# native_probe.py got a WAF 403 from 17 course websites and a JS-only shell
+# from suncityaz.org, so for those it proved nothing either way. This reloads
+# them in a real headless Chromium — an ordinary browser fetching a public
+# page. No challenge is solved, no credentials are entered, no TLS fingerprint
+# is forged; anything still gated is reported and left alone.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/browser_native_probe.py"
+      - ".github/workflows/browser-native-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browser-native-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Probe
+        run: |
+          mkdir -p probe-results
+          python scripts/browser_native_probe.py 2>&1 | tee probe-results/browser_native.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/browser_native.txt
+          git commit -m "browser native probe [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push browser probe results after 5 attempts"; exit 1
