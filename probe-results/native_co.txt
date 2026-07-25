@@ -1,0 +1,44 @@
+native_probe MODE=co: 7 courses, 4 workers, up to 4 followed links each
+Reports only. Nothing here edits the CSV or the registry.
+
+--- Eagle Trace Golf Club
+    website: https://www.eagletracegolfclub.com
+    homepage: HTTP 200 191506B  final=https://www.eagletracegolfclub.com/
+    hit clubprophet  eagletrace.cps.golf   [homepage]
+    hit clubprophet  eagletrace.cps.golf&quot   [homepage]
+    RESULT: NATIVE -> clubprophet
+
+--- Emerald Greens Golf Club
+    website: https://www.windsorgardensdenver.org
+    homepage: HTTP 200 5307B  final=https://www.windsorgardensdenver.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Homestead Golf Course
+    website: https://www.golflakewood.com
+    homepage: HTTP 403 372B  final=https://www.golflakewood.com/
+    RESULT: SITE-403
+
+--- Lake Arbor Golf Club
+    website: https://www.lakearborgolf.com
+    homepage: HTTP 200 151246B  final=https://lakearborgolf.com/
+    hit prophetsvc   secure.west.prophetservices.com/CityOfArvadaWebstore/(S(tfszhz1auwerzf0xdshwkurs))/   [homepage]
+    hit prophetsvc   secure.west.prophetservices.com/LakeArborGC/(S(pbqp1mqtlgvedtgfzh24m2my))/Account/nLogon#Hash#Hash   [homepage]
+    RESULT: NATIVE -> prophetsvc
+
+--- Meadows Golf Club
+    website: https://www.foothillsgolf.org
+    homepage: HTTP 200 166733B  final=https://www.foothillsgolf.org/
+    hit membersports app.membersports.com/online-store/3811/4906/225   [homepage]
+    RESULT: NATIVE -> membersports
+
+--- Rollingstone Ranch Golf Club
+    website: https://www.rollingstoneranchgolf.com
+    homepage: HTTP 403 919B  final=https://www.rollingstoneranchgolf.com/
+    RESULT: SITE-403
+
+--- University of Denver Golf Club at Highlands Ranch
+    website: https://highlandsranchgolf.du.edu
+    homepage: HTTP 403 5736B  final=https://highlandsranchgolf.du.edu/
+    RESULT: SITE-403
+
+done

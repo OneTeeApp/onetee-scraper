@@ -1,0 +1,240 @@
+native_probe MODE=az: 41 courses, 4 workers, up to 4 followed links each
+Reports only. Nothing here edits the CSV or the registry.
+
+--- SunBird Golf Club
+    website: https://www.sunbirdgolf.com/
+    homepage: HTTP 403 919B  final=https://www.sunbirdgolf.com/
+    RESULT: SITE-403
+
+--- Desert Mirage Golf Course (Golf Ranch Glendale)
+    website: https://www.golfdm.com
+    homepage: HTTP 403 919B  final=https://www.golfdm.com/
+    RESULT: SITE-403
+
+--- Painted Mountain Golf Resort
+    website: https://www.paintedmountaingolf.com/
+    homepage: HTTP 200 44597B  final=https://www.paintedmountaingolf.com/
+    hit foreup       foreupsoftware.com/index.php/booking/21954/9443#/store   [homepage]
+    hit foreup       foreupsoftware.com/index.php/booking/21954/9443#/store/   [homepage]
+    hit foreup       foreupsoftware.com/index.php/booking/21954/9443#/store/giftcards   [homepage]
+    RESULT: NATIVE -> foreup
+
+--- Viewpoint Golf Resort
+    website: https://www.viewpointgolfresort.com/
+    homepage: HTTP 403 919B  final=https://www.viewpointgolfresort.com/
+    RESULT: SITE-403
+
+--- Westbrook Village Golf Club (Vistas & Lakes)
+    website: https://www.westbrookvillagegolf.com
+    homepage: HTTP 200 69834B  final=https://westbrookvillagegolf.com/
+    -> https://westbrookvillagegolf.com/uploads/photos/shares/design/scorecards/2023-Lakes-Scorecard.jpg: HTTP 200 0B
+    -> https://westbrookvillagegolf.com/uploads/photos/shares/design/scorecards/2023-Vistas-Scorecard.jpg: HTTP 200 0B
+    -> https://westbrookvillagegolf.com/uploads/files/shares/2026/rates/FY26_Summer_Rates_May.pdf: HTTP 200 0B
+    -> https://westbrookvillagegolf.com/uploads/files/shares/2026/rates/FY26_Summer_Schedule.pdf?v=20260501: HTTP 200 0B
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Quail Run Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Riverview Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Sun City Country Club
+    website: https://www.suncitycountryclub.org
+    homepage: HTTP 403 919B  final=https://www.suncitycountryclub.org/
+    RESULT: SITE-403
+
+--- Sun City Lakes East Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Sun City Lakes West Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Sun City North Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Sun City South Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Union Hills Golf Club
+    website: https://www.unionhillscc.com
+    homepage: HTTP 200 73935B  final=https://www.unionhillscc.com/
+    hit quick18      unionhills.quick18.com/teetimes/searchmatrix   [homepage]
+    hit quick18      unionhills.quick18.com/teetimes/searchmatrix?teedate=20250425   [homepage]
+    hit quick18      unionhills.quick18.com/teetimes/searchmatrix?teedate=20250425&q={search_term_string}   [homepage]
+    RESULT: NATIVE -> quick18
+
+--- Willowbrook Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Willowcreek Golf Course (RCSC)
+    website: https://suncityaz.org
+    homepage: HTTP 200 1528B  final=https://suncityaz.org/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Hillcrest Golf Club
+    website: https://www.hillcrestgolfclub.com
+    homepage: HTTP 200 47490B  final=https://www.hillcrestgolfclub.com/
+    hit foreup       foreupsoftware.com/index.php/booking/21953/9442#/store/giftcards   [homepage]
+    hit foreup       foreupsoftware.com/index.php/booking/21953/9442#teetimes   [homepage]
+    RESULT: NATIVE -> foreup
+
+--- Arizona Traditions Golf Club
+    website: https://www.aztraditions.com
+    homepage: HTTP 200 166942B  final=https://www.aztraditions.com/
+    hit ezlinks      Arizonatraditionseagle.ezlinks.com   [homepage]
+    RESULT: NATIVE -> ezlinks
+
+--- Falcon Dunes Golf Course
+    website: https://56fss.com/falcon-dunes-golf-course/
+    homepage: HTTP 200 447311B  final=https://56fss.com/falcon-dunes-golf-course/
+    hit prophetsvc   secure.west.prophetservices.com/FalconDunesV3/   [homepage]
+    RESULT: NATIVE -> prophetsvc
+
+--- Wickenburg Ranch Golf & Social Club (Big Wick)
+    website: https://www.wickenburgranch.com/golf
+    homepage: HTTP 200 90246B  final=https://www.wickenburgranch.com/golf
+    -> https://www.wickenburgranch.com/golf#sidebar-nav: HTTP 200 90246B
+    -> https://www.wickenburgranch.com/golf/big-wick-public: HTTP 200 87805B
+    -> https://www.wickenburgranch.com/golf/lil-wick: HTTP 200 88542B
+    -> https://www.wickenburgranch.com/golf/membership-benefits: HTTP 200 77637B
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Santa Rita Golf Club
+    website: https://santaritagolf.com
+    homepage: HTTP 522 7256B  final=https://santaritagolf.com/
+    RESULT: SITE-522
+
+--- Douglas Municipal Golf Course
+    website: https://douglasaz.gov/
+    homepage: HTTP 200 147867B  final=https://douglasaz.gov/
+    -> https://douglasaz.gov/Calendar.aspx?EID=3560: HTTP 200 125410B
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- The Highlands at Dove Mountain (Heritage Highlands)
+    website: https://www.thehighlandsatdovemountain.com/
+    homepage: HTTP 200 906751B  final=https://www.thehighlandsatdovemountain.com/
+    -> https://www.thehighlandsatdovemountain.com/web/pages/golf: HTTP 200 883324B
+    hit golfnow      www.golfnow.com/courses/1050060-the-highlands-at-dove-mountain-details#ratings-snapshot   [linked]
+    hit golfnow      www.golfnow.com/tee-times/facility/512-the-highlands-at-dove-mountain/search#sortby=Date&view=Grouping&holes=3&timeperiod=3&timemax=42&timemin=10&players=0&pricemax=10000&pricemin=0   [linked]
+    RESULT: GOLFNOW-ONLY (site itself links to GolfNow)
+
+--- Palo Duro Creek Golf Course
+    website: https://www.facebook.com/p/Palo-Duro-Creek-Golf-Course-100068769133106/
+    homepage: HTTP 400 1542B  final=https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2Fp%2FPalo-Duro-Creek-Golf-Course-100068769133106%2F
+    RESULT: SITE-400
+
+--- The Preserve Golf Club at SaddleBrooke
+    website: https://www.golfthepreserve.com
+    homepage: HTTP 403 919B  final=https://www.golfthepreserve.com/
+    RESULT: SITE-403
+
+--- Mountain View Golf Course (Fort Huachuca)
+    website: https://huachuca.armymwr.com/programs/mountain-view-golf-course
+    homepage: HTTP 200 101050B  final=https://huachuca.armymwr.com/programs/mountain-view-golf-course
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Forty Niner Country Club
+    website: https://www.fortyninercc.com/
+    homepage: HTTP 200 259404B  final=https://fortyninercc.com/
+    -> https://fortyninercc.com/golf-at-forty-niner/: HTTP 200 296692B
+    hit ezlinks      fortyniner.ezlinksgolf.com/index.html#/search   [linked]
+    hit teeitup      forty-niner-country-club.book.teeitup.com/   [linked]
+    RESULT: NATIVE -> ezlinks, teeitup
+
+--- Quail Canyon Golf Course
+    website: http://www.quailcanyongolf.com/
+    homepage: HTTP 200 345600B  final=https://shaber.net/eskisehirde-silahli-kavga-1-olu-2-yarali.html
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Twin Lakes Golf Course
+    website: https://cityofwillcox.org/golf/
+    homepage: HTTP 403 5615B  final=https://cityofwillcox.org/golf/
+    RESULT: SITE-403
+
+--- Agave Highlands Golf Course (formerly Verde Santa Fe)
+    website: https://www.agavehighlands.com/
+    homepage: HTTP 200 984745B  final=https://www.agavehighlands.com/
+    hit golfnow      www.golfnow.com/tee-times/facility/9655-agave-highlands/search   [homepage]
+    hit quick18      agavehighlands.quick18.com/teetimes/searchmatrix   [homepage]
+    hit quick18      agavehighlands.quick18.com/teetimes/searchmatrix?teedate={search_term_string}   [homepage]
+    hit quick18      agavehighlands.quick18.com\/teetimes\/searchmatrix?teedate={search_term_string}\   [homepage]
+    RESULT: NATIVE -> quick18
+
+--- Continental Country Club
+    website: https://www.continentalgolfclub.com/
+    homepage: HTTP 200 29179B  final=https://www.continentalgolfclub.com/
+    hit foreup       foreupsoftware.com/index.php/booking/22092/9809#teetimes   [homepage]
+    RESULT: NATIVE -> foreup
+
+--- Pinewood Country Club
+    website: https://pinewoodcountryclubaz.com/
+    homepage: HTTP 200 154585B  final=https://pinewoodcountryclubaz.com/
+    RESULT: NONE-FOUND (phone/walk-in, or an engine we do not recognise)
+
+--- Chaparral Golf & Country Club
+    website: https://www.chaparralgolfbhc.com/
+    homepage: HTTP 200 23395B  final=https://www.chaparralgolfbhc.com/
+    hit foreup       foreupsoftware.com/index.php/booking/20246/4086#teetimes   [homepage]
+    RESULT: NATIVE -> foreup
+
+--- Los Lagos Golf Club
+    website: https://www.loslagoslinks.com/
+    homepage: HTTP 403 919B  final=https://www.loslagoslinks.com/
+    RESULT: SITE-403
+
+--- Valle Vista Golf Club
+    website: https://www.vallevistart66az.com/
+    homepage: HTTP 403 919B  final=https://www.vallevistart66az.com/
+    RESULT: SITE-403
+
+--- Cocopah Rio Colorado Golf Course
+    website: (none in CSV)
+    RESULT: NO-WEBSITE — needs a manual look
+
+--- Desert Hills Golf Course
+    website: https://www.yumaaz.gov/
+    homepage: HTTP 403 366B  final=https://www.yumaaz.gov/
+    RESULT: SITE-403
+
+--- Desert Hills Par 3 Golf Course
+    website: https://www.yumaaz.gov/
+    homepage: HTTP 403 366B  final=https://www.yumaaz.gov/
+    RESULT: SITE-403
+
+--- Dave White Municipal Golf Course
+    website: https://casagrandeaz.gov/219/Golf
+    homepage: HTTP 200 93167B  final=https://casagrandeaz.gov/219/Golf
+    hit foreup       foreupsoftware.com/index.php/booking/20384/4487#/teetimes   [homepage]
+    RESULT: NATIVE -> foreup
+
+--- Mission Royale Golf Club
+    website: https://www.missionroyalegolfclub.com/
+    homepage: HTTP 403 919B  final=https://www.missionroyalegolfclub.com/
+    RESULT: SITE-403
+
+--- Palm Creek Golf & RV Resort
+    website: https://www.sunoutdoors.com/arizona/palm-creek-resort-residences/golf
+    homepage: HTTP 403 434B  final=https://www.sunoutdoors.com/arizona/palm-creek-resort-residences/golf
+    RESULT: SITE-403
+
+--- Robson Ranch Golf Club
+    website: https://www.robsonranchgolf.com/
+    homepage: HTTP 403 919B  final=https://www.robsonranchgolf.com/
+    RESULT: SITE-403
+
+done
