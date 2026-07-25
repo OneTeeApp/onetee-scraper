@@ -1,0 +1,128 @@
+{
+  "_readme": [
+    "Hand-verified phone numbers. This file outranks local/phones.json and is",
+    "NEVER written by scripts/enrich_phones.py — that is the entire reason it",
+    "exists. The monthly crawl scrapes whatever tel: link a course site happens",
+    "to expose, and on a corporately-managed course that is a switchboard in",
+    "another state (Black Bear shipped a Dallas number for a Parker, CO course",
+    "until the area-code penalty landed). A number checked by a human should",
+    "not be silently replaced by one lifted off a management company's page.",
+    "",
+    "A wrong phone number is worse than no phone number: a golfer calls it and",
+    "reaches a stranger. So entries with phone=null are recorded here on",
+    "purpose, with the reason, so the next pass does not spend an afternoon",
+    "re-researching a course that is closed or has no published line at all.",
+    "",
+    "confidence: high   = the course's own site, its parks/city department, or",
+    "                     two independent sources agreeing",
+    "            medium = one credible source (course Facebook page, county",
+    "                     tourism page) with nothing contradicting it"
+  ],
+  "checked": "2026-07-25",
+  "courses": {
+    "eads-golf-course": {
+      "phone": "(719) 691-5868",
+      "confidence": "medium",
+      "source": "course Facebook page contact block",
+      "note": "9-hole municipal in Kiowa County."
+    },
+    "elmwood-golf-course": {
+      "phone": "(719) 561-4946",
+      "confidence": "high",
+      "source": "elmwoodgolfcourse.com — the course's own site — and its chronogolf listing, agreeing",
+      "note": "pueblocitygolf.com, which the CSV listed, is a dead domain. The Pueblo city multi-course site is pueblocitygolfcourses.com. chronogolf.com/club/elmwood-golf-club--2 exists but is a directory-only placeholder with no booking widget (checked 2026-07-25), and the course's own site says 'Call for a Tee Time'. Stays phone."
+    },
+    "f-h-park-and-recreation-district": {
+      "phone": "(970) 774-6362",
+      "confidence": "medium",
+      "source": "district Facebook page contact block",
+      "note": "Haxtun. The district operates the course."
+    },
+    "hugo-golf-club": {
+      "phone": "(719) 743-2492",
+      "confidence": "medium",
+      "source": "course Facebook page contact block"
+    },
+    "lake-estes-golf-course": {
+      "phone": "(970) 586-8176",
+      "confidence": "high",
+      "source": "evrpd.colorado.gov (Estes Valley Recreation and Park District) and its chronogolf listing, agreeing",
+      "note": "evrpd.com/golf/ is a JS redirect stub, not the real page. chronogolf.com/club/lake-estes-executive-9 was reported as live online booking; checked 2026-07-25 and it is a directory-only placeholder — course facts and a phone number, no tee sheet, no booking widget. NOT flipped to online. Same no-online-booking pin the CSV already notes for Mossland."
+    },
+    "las-animas-golf-course": {
+      "phone": "(719) 456-2511",
+      "confidence": "high",
+      "source": "two independent listings agreeing, including its chronogolf listing",
+      "note": "chronogolf.com/club/las-animas-public-golf-course is a directory-only placeholder (checked 2026-07-25) — no tee sheet, no booking widget. NOT flipped to online."
+    },
+    "mossland-memorial-golf-course": {
+      "phone": "(719) 765-4659",
+      "confidence": "high",
+      "source": "course Facebook page plus a second listing agreeing",
+      "note": "Flagler."
+    },
+    "plainsman-golf-club": {
+      "phone": "(970) 358-4321",
+      "confidence": "medium",
+      "source": "course Facebook page contact block",
+      "note": "The CSV said Joes; the course is in KIRK. City corrected."
+    },
+    "prairie-pines-golf-club": {
+      "phone": "(719) 346-8207",
+      "confidence": "high",
+      "source": "course Facebook page plus a second listing agreeing",
+      "note": "Burlington."
+    },
+    "quint-valley-golf-club": {
+      "phone": "(303) 822-5509",
+      "confidence": "medium",
+      "source": "course Facebook page contact block",
+      "note": "A competing number, (303) 822-8377, appears in older directory listings. Publishing the one the course itself shows."
+    },
+    "sedgwick-county-golf-course": {
+      "phone": "(970) 474-3574",
+      "confidence": "medium",
+      "source": "county/regional listing",
+      "note": "Julesburg. colorado.com, which the CSV listed as the website, is a state tourism portal rather than the course."
+    },
+    "smoky-river-golf-club": {
+      "phone": "(719) 767-5021",
+      "confidence": "medium",
+      "source": "course Facebook page contact block",
+      "note": "Cheyenne Wells."
+    },
+    "springfield-municipal-golf-course": {
+      "phone": "(719) 523-6236",
+      "confidence": "medium",
+      "source": "bacacountyco.gov tourism page for the course",
+      "note": "Honor-system course with no staffed pro shop — the number reaches the county, not a starter."
+    },
+    "stratton-golf-course": {
+      "phone": "(719) 348-5412",
+      "confidence": "medium",
+      "source": "town/community listing for the Stratton, CO course",
+      "note": "stratton.com, which the CSV listed, is Stratton Mountain Resort in VERMONT. Wrong course entirely; website corrected."
+    },
+
+    "challenger-golf-course": {
+      "phone": null,
+      "hold": "Directory listings disagree on the number and none is the course's own site. Not publishing a coin flip.",
+      "city": "Crestone"
+    },
+    "mountain-meadows-golf-club": {
+      "phone": null,
+      "hold": "One source only, and the course appears to be defunct. Also a trap: mtgolfclub.com and mountainmeadowsgc.com are a Mountain Meadows in POMONA, CALIFORNIA — not Red Feather Lakes. Do not copy a number off either.",
+      "city": "Red Feather Lakes"
+    },
+    "prairie-golf-course": {
+      "phone": null,
+      "hold": "No web presence and no published number anywhere. Nothing to verify against, so nothing to publish.",
+      "city": "Cope"
+    },
+    "saint-andrews-at-westcliffe": {
+      "phone": null,
+      "hold": "CLOSED since 2017; listed for sale in 2019. Two sources. Directories still carry a number for it — which is exactly how a golfer ends up calling a course that does not exist. Should be removed from the directory, not given a phone number.",
+      "city": "Westcliffe"
+    }
+  }
+}

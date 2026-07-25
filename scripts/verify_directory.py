@@ -10,9 +10,15 @@ along. These are the four things that can go wrong, in the order they hurt:
      members-only. This is worse than not listing it, so it fails the build.
   2. A BROKEN JOIN. Directory venue_id and feed venue_id disagree, so a
      course renders twice — once live, once greyed. Fails.
-  3. NOWHERE TO GO. An entry with neither a booking URL nor a website is a
-     card with a tag and no action. Tolerated in small numbers (the CSV
-     genuinely lacks a site for a couple of courses), fails past a ceiling.
+  3. NOWHERE TO GO. A card with a tag and no way to act on it. This used to
+     mean "no booking URL and no website", which was the wrong test twice
+     over. A phone number IS an action — thirteen rural Colorado courses have
+     a verified pro-shop line and no site, and those cards work fine. And a
+     dead end somebody already investigated is not the same as one nobody has
+     looked at: the four courses held in local/phones.curated.json are dead
+     ends ON PURPOSE, because publishing a guessed number is worse. So the
+     gate counts venues with no link, no phone, and no recorded hold, and
+     those are the only ones it can usefully shout about.
   4. NO NUMBER TO CALL. "Call to book" with no phone is honest but useless.
      Reported, never fatal — the monthly enrichment pass is what fixes it,
      and a slow fill should not redden the daily gate.
@@ -41,6 +47,7 @@ def main() -> int:
     ap.add_argument("--directory", default="directory.json")
     ap.add_argument("--registry", default="registry.json")
     ap.add_argument("--status", default="probe-results/state-status.json")
+    ap.add_argument("--curated", default="local/phones.curated.json")
     ap.add_argument("--max-no-action", type=int, default=5)
     a = ap.parse_args()
 
@@ -103,15 +110,33 @@ def main() -> int:
                          f"entry (broken join — these render twice):\n    "
                          + "\n    ".join(unjoined[:10]))
 
-    no_action = [c for c in courses if not c["action_url"]]
-    if len(no_action) > a.max_no_action:
-        fatal.append(f"{len(no_action)} entries with no booking URL and no "
-                     f"website (ceiling {a.max_no_action}): "
+    held = set()
+    try:
+        with open(a.curated) as fh:
+            held = {v for v, e in (json.load(fh).get("courses") or {}).items()
+                    if isinstance(e, dict) and e.get("hold")}
+    except (OSError, ValueError):
+        pass
+
+    nolink = [c for c in courses if not c["action_url"]]
+    dead = [c for c in nolink if not c["phone"]]
+    unexplained = [c for c in dead if c["venue_id"] not in held]
+    if nolink:
+        notes.append(f'{len(nolink)} with no link at all, {len(nolink) - len(dead)} '
+                     f'of them reachable by phone: '
+                     + ", ".join(f'{c["state"]} {c["name"]}' for c in nolink))
+    if len(dead) - len(unexplained):
+        notes.append(f'{len(dead) - len(unexplained)} dead card(s) held on '
+                     f'purpose — see local/phones.curated.json for why')
+    if len(unexplained) > a.max_no_action:
+        fatal.append(f"{len(unexplained)} entries with no link, no phone and no "
+                     f"recorded reason (ceiling {a.max_no_action}): "
                      + ", ".join(f'{c["state"]} {c["name"]}'
-                                 for c in no_action[:8]))
-    elif no_action:
-        notes.append(f'{len(no_action)} with no link at all: '
-                     + ", ".join(f'{c["state"]} {c["name"]}' for c in no_action))
+                                 for c in unexplained[:8]))
+    elif unexplained:
+        notes.append(f'{len(unexplained)} card(s) with nothing to click and '
+                     f'nothing to call: '
+                     + ", ".join(f'{c["state"]} {c["name"]}' for c in unexplained))
 
     phoneless = [c for c in courses
                  if c["booking_method"] == "phone" and not c["phone"]]
