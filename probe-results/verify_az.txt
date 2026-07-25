@@ -1,0 +1,138 @@
+verify_native_az: calling the real adapters against the engines native_az.txt found
+dates: 2026-07-26, 2026-07-28, 2026-08-01
+Report only. Nothing here edits the CSV or the registry.
+
+======================================================================
+A. adapters we already run
+======================================================================
+
+--- Painted Mountain Golf Resort  [foreup]
+    from: foreupsoftware.com/index.php/booking/21954/9443
+    ids:  {'course_id': '21954', 'schedule_id': '9443'}
+    2026-07-26: 50 slots  06:00-13:00  $0-$42
+        sample: 2026-07-26T06:00 holes=[9, 18] spots=1 label=''
+    2026-07-28: 57 slots  06:00-13:00  $0-$36
+        sample: 2026-07-28T06:00 holes=[9, 18] spots=2 label=''
+    2026-08-01: 0 slots
+    VERDICT: CONFIRMED (107 slots over 3 days)
+
+--- Hillcrest Golf Club  [foreup]
+    from: foreupsoftware.com/index.php/booking/21953/9442
+    ids:  {'course_id': '21953', 'schedule_id': '9442'}
+    2026-07-26: 37 slots  06:15-11:15  $0-$50
+        sample: 2026-07-26T06:15 holes=[9, 18] spots=2 label=''
+    2026-07-28: 56 slots  06:00-13:00  $0-$47
+        sample: 2026-07-28T06:00 holes=[9, 18] spots=1 label=''
+    2026-08-01: 0 slots
+    VERDICT: CONFIRMED (93 slots over 3 days)
+
+--- Continental Country Club  [foreup]
+    from: foreupsoftware.com/index.php/booking/22092/9809
+    ids:  {'course_id': '22092', 'schedule_id': '9809'}
+    2026-07-26: 0 slots
+    2026-07-28: 2 slots  10:30-13:30  $0-$80
+        sample: 2026-07-28T10:30 holes=[9, 18] spots=1 label=''
+    2026-08-01: 0 slots
+    VERDICT: CONFIRMED (2 slots over 3 days)
+
+--- Chaparral Golf & Country Club  [foreup]
+    from: foreupsoftware.com/index.php/booking/20246/4086
+    ids:  {'course_id': '20246', 'schedule_id': '4086'}
+    2026-07-26: 46 slots  08:48-17:48  $0-$30
+        sample: 2026-07-26T08:48 holes=[9, 18] spots=4 label=''
+    2026-07-28: 58 slots  05:48-17:48  $0-$30
+        sample: 2026-07-28T05:48 holes=[9, 18] spots=3 label=''
+    2026-08-01: 61 slots  05:48-17:48  $0-$30
+        sample: 2026-08-01T05:48 holes=[9, 18] spots=4 label=''
+    VERDICT: CONFIRMED (165 slots over 3 days)
+
+--- Dave White Municipal Golf Course  [foreup]
+    from: foreupsoftware.com/index.php/booking/20384/4487
+    ids:  {'course_id': '20384', 'schedule_id': '4487'}
+    2026-07-26: 78 slots  06:15-17:52  $14-$24
+        sample: 2026-07-26T06:15 holes=[9, 18] spots=4 label=''
+    2026-07-28: 85 slots  06:52-17:52  $0-$24
+        sample: 2026-07-28T06:52 holes=[9, 18] spots=4 label=''
+    2026-08-01: 0 slots
+    VERDICT: CONFIRMED (163 slots over 3 days)
+
+--- Union Hills Golf Club  [quick18]
+    from: unionhills.quick18.com/teetimes/searchmatrix
+    ids:  {'subdomain': 'unionhills'}
+    2026-07-26: 68 slots  05:53-16:53  $20-$60
+        sample: 2026-07-26T05:53:00 holes=[18] spots=4 label=''
+    2026-07-28: 89 slots  05:38-16:45  $16-$44
+        sample: 2026-07-28T05:38:00 holes=[18] spots=4 label=''
+    2026-08-01: 94 slots  05:38-16:53  $18-$60
+        sample: 2026-08-01T05:38:00 holes=[18] spots=2 label=''
+    VERDICT: CONFIRMED (251 slots over 3 days)
+
+--- Agave Highlands Golf Course  [quick18]
+    from: agavehighlands.quick18.com/teetimes/searchmatrix
+    ids:  {'subdomain': 'agavehighlands'}
+    2026-07-26: 74 slots  06:28-16:52  $34-$54
+        sample: 2026-07-26T06:28:00 holes=[9, 18] spots=2 label=''
+    2026-07-28: 74 slots  06:28-16:52  $34-$64
+        sample: 2026-07-28T06:28:00 holes=[9, 18] spots=3 label=''
+    2026-08-01: 76 slots  06:28-16:52  $34-$64
+        sample: 2026-08-01T06:28:00 holes=[9, 18] spots=4 label=''
+    VERDICT: CONFIRMED (224 slots over 3 days)
+
+--- Forty Niner Country Club  [teeitup]
+    from: forty-niner-country-club.book.teeitup.com/
+    ids:  {'alias': 'forty-niner-country-club'}
+    2026-07-26: 71 slots  06:52-16:52  $25-$49
+        sample: 2026-07-26T06:52:00 holes=[18] spots=1 label=''
+    2026-07-28: 78 slots  06:30-16:52  $22-$39
+        sample: 2026-07-28T06:30:00 holes=[18] spots=1 label=''
+    2026-08-01: 81 slots  06:00-16:52  $25-$49
+        sample: 2026-08-01T06:00:00 holes=[18] spots=4 label=''
+    VERDICT: CONFIRMED (230 slots over 3 days)
+
+======================================================================
+B. EZLinks portals (plain HTTP; the fleet uses the browser fetcher,
+   so a Cloudflare block here is not evidence the portal is wrong)
+======================================================================
+
+--- Arizona Traditions Golf Club  [ezlinks]
+    from: Arizonatraditionseagle.ezlinks.com
+    portal: Arizonatraditionseagle
+    https://Arizonatraditionseagle.ezlinksgolf.com: HTTP 403 5773B  <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class
+    https://Arizonatraditionseagle.ezlinks.com: HTTP 403 5773B  <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class
+
+--- Arizona Traditions Golf Club  [ezlinks]
+    from: Arizonatraditionseagle.ezlinks.com
+    ids:  {'portal': 'Arizonatraditionseagle'}
+    2026-07-26: ERROR HTTPError: 403 Client Error: Forbidden for url: https://arizonatraditionseagle.ezlinksgolf.com/api/search/search
+    2026-07-28: ERROR HTTPError: 403 Client Error: Forbidden for url: https://arizonatraditionseagle.ezlinksgolf.com/api/search/search
+    2026-08-01: ERROR HTTPError: 403 Client Error: Forbidden for url: https://arizonatraditionseagle.ezlinksgolf.com/api/search/search
+    VERDICT: NO INVENTORY (0 slots over 3 days)
+
+--- Forty Niner Country Club  [ezlinks]
+    from: fortyniner.ezlinksgolf.com/index.html#/search
+    portal: fortyniner
+    https://fortyniner.ezlinksgolf.com: HTTP 403 5773B  <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class
+    https://fortyniner.ezlinks.com: HTTP 403 5773B  <!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--> <!--[if IE 7]>    <html class
+
+--- Forty Niner Country Club  [ezlinks]
+    from: fortyniner.ezlinksgolf.com/index.html#/search
+    ids:  {'portal': 'fortyniner'}
+    2026-07-26: ERROR HTTPError: 403 Client Error: Forbidden for url: https://fortyniner.ezlinksgolf.com/api/search/search
+    2026-07-28: ERROR HTTPError: 403 Client Error: Forbidden for url: https://fortyniner.ezlinksgolf.com/api/search/search
+    2026-08-01: ERROR HTTPError: 403 Client Error: Forbidden for url: https://fortyniner.ezlinksgolf.com/api/search/search
+    VERDICT: NO INVENTORY (0 slots over 3 days)
+
+======================================================================
+C. prophetservices portals — anonymous, or login-gated like Lake Arbor?
+======================================================================
+
+--- Falcon Dunes Golf Course
+    url: https://secure.west.prophetservices.com/FalconDunesV3/
+    HTTP 200 54371B  final=https://secure.west.prophetservices.com/FalconDunesV3/(S(pe2vwzaj2tixkqabkho0gtk1))/Account/nLogOn
+    login-gated by URL? True
+      page mentions: 'password'
+      page mentions: 'sign in'
+      page mentions: 'log on'
+      page mentions: 'tee time'
+
+done
