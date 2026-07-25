@@ -13,22 +13,58 @@ Discovery + fetch (both plain HTTP):
                         bookings: [...] } }
 
 Prices are strings ("55.00"); times are ISO ("2026-07-24T09:40:00").
+
+THE HAZARD THAT SHAPES THIS FILE — `?course=` IS RESOLVED GLOBALLY.
+
+The tenant subdomain is decorative. teetimes-day looks the id up in one
+system-wide table and does not check that the id belongs to the host that
+asked. Measured directly (probe-results/diag_teesnap2.txt): ten ids were
+requested against four different tenants on the same date and every single
+one came back byte-identical on all four — `?course=966` returned the same
+63 times, the same 41.00/60.00 prices and the same fingerprint d6cb518250e1
+from heathergardens, lakehavasu, mtmassivegolf and sundancegolfclub alike,
+and the control id 1 returned HTTP 500 from all four rather than "unknown
+here".
+
+The consequence is that a wrong id does not fail loudly — it succeeds with
+somebody else's tee sheet, which we would then publish under our course's
+name. That is a worse bug than capturing nothing. probe-results/
+diag_teesnap.txt has the receipts: heathergardens' property_id 131 answers
+with 78 slots while its one real course (148) is empty for the day, and text
+notices out of `courses[].infos` — lakehavasu 1517, sundance 1785 — answer
+with 60 slots each. None of those are courses on those tenants.
+
+So: an id may be used ONLY if it is a top-level entry of that tenant's own
+`window.courses`. There is deliberately no regex fallback, and pinned ids
+are checked against discovery. Returning zero for a tenant we cannot read is
+correct; guessing is not.
 """
 from __future__ import annotations
 
 import datetime as dt
 import json
 import re
+import threading
 from typing import Any
 
 from .base import Adapter
 from ..models import TeeTime
 
-COURSES_RE = re.compile(r"window\.courses\s*=\s*(\[.*?\]);", re.S)
+# (There used to be a COURSES_RE non-greedy `window.courses = (\[.*?\]);`
+# here. It is gone on purpose: it stops at the first "];" inside a nested
+# array, and anything that recovers ids by pattern rather than by parsing can
+# hand us an id this tenant does not own. Parse or fail — see the docstring.)
 
 
 class TeesnapAdapter(Adapter):
     platform = "teesnap"
+
+    # subdomain -> discovered top-level courses. The fleet scrapes several
+    # dates per course, and the homepage answer does not change between them;
+    # Teesnap also resets connections from datacenter IPs, so every fetch we
+    # can skip is one less chance to trip _get_text's retry loop.
+    _COURSES: dict[str, list[dict]] = {}
+    _COURSES_LOCK = threading.Lock()
 
     def _get_text(self, url: str) -> str:
         """GET page text with retry — Teesnap intermittently resets the
@@ -105,6 +141,14 @@ class TeesnapAdapter(Adapter):
 
         Disabled/deleted courses are skipped; a live one that simply has no
         sheet for the day answers 200 with an empty list, which is harmless.
+
+        There is NO regex fallback. The old one anchored on `"id":<n>,
+        "created_at"` across a 30000-char slice, which matches the embedded
+        property object and every row of `courses[].infos` — and because
+        `?course=` resolves globally (see the module docstring), those ids
+        return other clubs' sheets rather than failing. An unparseable
+        homepage now yields [], and the caller raises, which is the honest
+        outcome.
         """
         html = self._get_text(f"https://{sub}.teesnap.net/")
         out: list[dict] = []
@@ -117,34 +161,42 @@ class TeesnapAdapter(Adapter):
             if c.get("key") is None and c.get("name") is None:
                 continue
             out.append({"id": cid, "name": (c.get("name") or "").strip()})
-        if out:
-            return out
-        # Fallback for a shape we can't parse: the old anchor, which
-        # over-collects but is better than returning nothing.
-        start = html.find("window.courses")
-        region = html[start:start + 30000] if start >= 0 else html
-        ids: list[str] = []
-        for i in re.findall(r'"id":\s*(\d+)\s*,\s*"created_at"', region):
-            if i not in ids:
-                ids.append(i)
-        if not ids:
-            for i in re.findall(r'"id":\s*(\d+),[^{}]*"key"', html):
-                if i not in ids:
-                    ids.append(i)
-        return [{"id": int(i)} for i in ids]
+        return out
+
+    def _courses_cached(self, sub: str) -> list[dict]:
+        """discover_courses() memoised per subdomain. Raises on fetch failure."""
+        with self._COURSES_LOCK:
+            if sub in self._COURSES:
+                return self._COURSES[sub]
+        found = self.discover_courses(sub)
+        with self._COURSES_LOCK:
+            self._COURSES[sub] = found
+        return found
 
     def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
         sub = course["ids"]["subdomain"]
-        course_ids = course["ids"].get("teesnap_course_ids")
-        names: dict[int, str] = {}
-        if not course_ids:
-            discovered = self.discover_courses(sub)
+        pinned = course["ids"].get("teesnap_course_ids")
+        discovered = self._courses_cached(sub)
+        names = {c["id"]: (c.get("name") or course["name"])
+                 for c in discovered}
+
+        if pinned:
+            # A pinned id still has to belong to this tenant. Because the id
+            # space is global, a stale or mistyped pin does not 404 — it
+            # quietly serves another club's sheet under this course's name.
+            owned = {c["id"] for c in discovered}
+            course_ids = [int(i) for i in pinned if int(i) in owned]
+            foreign = [int(i) for i in pinned if int(i) not in owned]
+            if foreign:
+                print(f"    {course['slug']}: ignoring pinned Teesnap id(s) "
+                      f"{foreign} — not in {sub}'s own window.courses "
+                      f"(ids are global; see adapters/teesnap.py)")
+        else:
             course_ids = [c["id"] for c in discovered]
-            names = {c["id"]: (c.get("name") or course["name"])
-                     for c in discovered}
+
         if not course_ids:
             raise RuntimeError(f"{course['slug']}: no Teesnap course id in "
-                               "window.courses")
+                               f"{sub}'s window.courses")
 
         multi = len(course_ids) > 1
         out: list[TeeTime] = []
