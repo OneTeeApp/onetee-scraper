@@ -1,0 +1,82 @@
+name: Diagnose the silent GolfNow facilities
+
+# Five Colorado courses list GolfNow as their only online booking channel and
+# return nothing: Black Bear, Desert Hawk, Pelican Lakes, Tamarack, Walking
+# Stick. The adapter itself is fine — Grandote Peaks and The Ridge at Castle
+# Pines North are live through it — so this asks what is different about those
+# five rather than rewriting anything.
+#
+# Runs here because the sandbox has no outbound network: the only way to see
+# golfnow.com is a CI runner, and the only way to see the ANSWER is to commit
+# it. Output lands in probe-results/golfnow-diag.txt (+ .json).
+#
+# Read only, and no heavier than a visitor opening five facility pages.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slugs:
+        description: "Comma-separated slugs (blank = all CO golfnow)"
+        default: ""
+      offsets:
+        description: "Day offsets from today to probe"
+        default: "0,1,3"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_golfnow.py"
+      - ".github/workflows/diag-golfnow.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-golfnow
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Probe
+        # Step-level so a hang still reaches the commit below with partial
+        # findings, which are worth more than a cancelled job's nothing.
+        timeout-minutes: 14
+        run: |
+          python3 scripts/diag_golfnow.py \
+            ${{ github.event.inputs.slugs && format('--slugs {0}', github.event.inputs.slugs) || '' }} \
+            --offsets "${{ github.event.inputs.offsets || '0,1,3' }}" \
+            2>&1 | tee golfnow-diag.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "VERDICT|probing" probe-results/golfnow-diag.txt 2>/dev/null \
+            | head -40 >> $GITHUB_STEP_SUMMARY || tail -n 30 golfnow-diag.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit the findings
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # [skip ci]: this is a report. Nothing deploys from it, and a normal
+          # commit would fire every push-triggered probe in the repo.
+          git add probe-results/golfnow-diag.txt probe-results/golfnow-diag.json
+          git commit -m "GolfNow facility diagnosis [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the diagnosis after 5 attempts"; exit 1
