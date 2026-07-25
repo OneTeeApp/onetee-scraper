@@ -1,0 +1,58 @@
+name: Colorado + frontend follow-ups
+
+# Answers three open items in one run: whether sub-course labels survive
+# adapter -> D1 -> read API for the five multi-sheet venues; exactly which
+# rows still carry no `state` (the blocker for retiring the widget's
+# stateOf() city-inference hack); and which of the 14 CO capture misses are
+# already closed by registry changes made since diag.txt was written.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/co_frontend_probe.py"
+      - ".github/workflows/co-frontend-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: co-frontend-probe
+  cancel-in-progress: true
+
+env:
+  API: https://onetee-api.damp-snow-8025.workers.dev
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          mkdir -p probe-results
+          python scripts/co_frontend_probe.py 2>&1 | tee probe-results/co_frontend.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/co_frontend.txt
+          git commit -m "Colorado + frontend follow-up probe [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push co/frontend probe results after 5 attempts"; exit 1
