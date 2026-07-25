@@ -1,26 +1,26 @@
 verify_fixes (#69): before/after for the three shipped fixes
 dates: 2026-07-26, 2026-07-28, 2026-08-01
 Report only. Nothing here edits the CSV, the registry, or D1.
-registry: 366 booking sources
+registry: 367 booking sources
 
 ========================================================================
-A. TeeItUp pinned facilities — old facilityIds call vs new bare call
+A. TeeItUp — the a248c79 bare call (BEFORE) vs 41794cd's chain (AFTER)
 ========================================================================
 10 pinned rows in the registry
 
 --- aguila-9-golf-course  alias=city-of-phoenix-golf-courses facility_id=4322
-    2026-07-26  BEFORE 0
+    2026-07-26  BEFORE 305
     2026-07-26  AFTER  0
-    2026-07-28  BEFORE 0
+    2026-07-28  BEFORE 388
     2026-07-28  AFTER  0
-    2026-08-01  BEFORE 0
+    2026-08-01  BEFORE 363
     2026-08-01  AFTER  0
 --- aguila-golf-course  alias=city-of-phoenix-golf-courses facility_id=287
-    2026-07-26  BEFORE 56
+    2026-07-26  BEFORE 305
     2026-07-26  AFTER  0
-    2026-07-28  BEFORE 61
+    2026-07-28  BEFORE 388
     2026-07-28  AFTER  0
-    2026-08-01  BEFORE 61
+    2026-08-01  BEFORE 363
     2026-08-01  AFTER  0
 --- ak-chin-southern-dunes-golf-club  alias=ak-chin-southern-dunes-golf-club-tgaz facility_id=3608
     2026-07-26  BEFORE 41
@@ -30,26 +30,26 @@ A. TeeItUp pinned facilities — old facilityIds call vs new bare call
     2026-08-01  BEFORE 47
     2026-08-01  AFTER  0
 --- cave-creek-golf-course  alias=city-of-phoenix-golf-courses facility_id=288
-    2026-07-26  BEFORE 54
+    2026-07-26  BEFORE 305
     2026-07-26  AFTER  0
-    2026-07-28  BEFORE 73
+    2026-07-28  BEFORE 388
     2026-07-28  AFTER  0
-    2026-08-01  BEFORE 68
+    2026-08-01  BEFORE 363
     2026-08-01  AFTER  0
 --- encanto-18-golf-course  alias=city-of-phoenix-golf-courses facility_id=289
-    2026-07-26  BEFORE 63
+    2026-07-26  BEFORE 305
     2026-07-26  AFTER  0
-    2026-07-28  BEFORE 87
+    2026-07-28  BEFORE 388
     2026-07-28  AFTER  0
-    2026-08-01  BEFORE 83
+    2026-08-01  BEFORE 363
     2026-08-01  AFTER  0
 --- golden-hills-golf-club  alias=golden-hills-golf-club-az facility_id=1295
-    2026-07-26  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-26&facility)
-    2026-07-26  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-26)
-    2026-07-28  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-28&facility)
-    2026-07-28  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-28)
-    2026-08-01  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-01&facility)
-    2026-08-01  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-01)
+    2026-07-26  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-26)
+    2026-07-26  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-26&facility)
+    2026-07-28  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-28)
+    2026-07-28  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-28&facility)
+    2026-08-01  BEFORE RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-01)
+    2026-08-01  AFTER  RAISED (HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-01&facility)
 --- great-eagle-golf-club  alias=great-eagle-golf-club facility_id=3178
     2026-07-26  BEFORE 0
     2026-07-26  AFTER  0
@@ -63,10 +63,10 @@ A. TeeItUp pinned facilities — old facilityIds call vs new bare call
     2026-07-28  BEFORE 62
     2026-07-28  AFTER  0
     2026-08-01  BEFORE 62
-    2026-08-01  AFTER  0
+    2026-08-01  AFTER  RAISED (HTTPError: 429)
 --- mccormick-ranch-golf-club  alias=mccormick-ranch facility_id=7078
-    2026-07-26  BEFORE 0
-    2026-07-26  AFTER  0
+    2026-07-26  BEFORE RAISED (HTTPError: 429)
+    2026-07-26  AFTER  RAISED (HTTPError: 429)
     2026-07-28  BEFORE RAISED (HTTPError: 429)
     2026-07-28  AFTER  RAISED (HTTPError: 429)
     2026-08-01  BEFORE RAISED (HTTPError: 429)
@@ -79,7 +79,7 @@ A. TeeItUp pinned facilities — old facilityIds call vs new bare call
     2026-08-01  BEFORE RAISED (HTTPError: 429)
     2026-08-01  AFTER  RAISED (HTTPError: 429)
 
-A TOTAL over 10 courses x 3 dates: before=869  after=0  delta=+-869
+A TOTAL over 10 courses x 3 dates: before=4487  after=0  delta=+-4487
 
 ========================================================================
 B. Teesnap discovery — old regex + raise-on-any vs new JSON parse
@@ -89,61 +89,64 @@ B. Teesnap discovery — old regex + raise-on-any vs new JSON parse
 --- heather-gardens-golf-course  heathergardens.teesnap.net
     old ids: [148, 131]
     new ids: [(148, 'Heather Gardens Golf Course')]
-    ids the old regex invented (property ids): [131]
-    2026-07-26  BEFORE 78   AFTER 0
-    2026-07-28  BEFORE 78   AFTER 0
-    2026-08-01  BEFORE 78   AFTER 0
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [131]
+    2026-07-26  BEFORE 78   AFTER 0   of BEFORE, 78 came from ids we do not own
+    2026-07-28  BEFORE 78   AFTER 0   of BEFORE, 78 came from ids we do not own
+    2026-08-01  BEFORE 78   AFTER 0   of BEFORE, 78 came from ids we do not own
 --- hollydot-golf-course  hollydotgolf.teesnap.net
     old ids: [1550, 1329, 1767]
     new ids: [(1550, 'Hollydot Golf Course')]
-    ids the old regex invented (property ids): [1329, 1767]
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [1329, 1767]
     2026-07-26  BEFORE RAISED (HTTPError: 500)   AFTER 72
     2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 72
     2026-08-01  BEFORE RAISED (HTTPError: 500)   AFTER 26
 --- lake-havasu-golf-club  lakehavasu.teesnap.net
     old ids: [307, 1517, 308, 1557, 280]
     new ids: [(307, 'West'), (308, 'East')]
-    ids the old regex invented (property ids): [280, 1517, 1557]
-    2026-07-26  BEFORE RAISED (HTTPError: 500)   AFTER 75
-    2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 71
-    2026-08-01  BEFORE RAISED (HTTPError: 500)   AFTER 75
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [280, 1517, 1557]
+    2026-07-26  BEFORE RAISED (HTTPError: 500)   AFTER 75   of BEFORE, 60 came from ids we do not own
+    2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 71   of BEFORE, 60 came from ids we do not own
+    2026-08-01  BEFORE RAISED (HTTPError: 500)   AFTER 75   of BEFORE, 60 came from ids we do not own
 --- mount-massive-golf-course  mtmassivegolf.teesnap.net
     old ids: [966, 1933, 1934, 1935, 862]
     new ids: [(966, 'Mt. Massive GC')]
-    ids the old regex invented (property ids): [862, 1933, 1934, 1935]
-    2026-07-26  BEFORE 144   AFTER 76
-    2026-07-28  BEFORE 125   AFTER 76
-    2026-08-01  BEFORE 156   AFTER 76
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [862, 1933, 1934, 1935]
+    2026-07-26  BEFORE 144   AFTER 76   of BEFORE, 68 came from ids we do not own
+    2026-07-28  BEFORE 125   AFTER 76   of BEFORE, 49 came from ids we do not own
+    2026-08-01  BEFORE 156   AFTER 76   of BEFORE, 80 came from ids we do not own
 --- pagosa-springs-golf-club  golfpagosa.teesnap.net
     old ids: [339, 310]
     new ids: [(339, 'Pagosa Springs Golf Club')]
-    ids the old regex invented (property ids): [310]
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [310]
     2026-07-26  BEFORE 44   AFTER 44
     2026-07-28  BEFORE 44   AFTER 44
     2026-08-01  BEFORE 44   AFTER 44
 --- stoneridge-golf-course  stoneridgegc.teesnap.net
     old ids: [1320, 1440, 1441, 1442, 1443, 1470, 1546, 1145]
     new ids: [(1320, 'StoneRidge Golf Course')]
-    ids the old regex invented (property ids): [1145, 1440, 1441, 1442, 1443, 1470, 1546]
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [1145, 1440, 1441, 1442, 1443, 1470, 1546]
     2026-07-26  BEFORE RAISED (HTTPError: 500)   AFTER 68
-    2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 68
+    2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 68   of BEFORE, 65 came from ids we do not own
     2026-08-01  BEFORE RAISED (HTTPError: 500)   AFTER 58
 --- sundance-golf-club  sundancegolfclub.teesnap.net
     old ids: [1801, 1759, 1784, 1785, 1441, 1858, 1909]
     new ids: [(1801, 'Sundance Golf Club')]
-    ids the old regex invented (property ids): [1441, 1759, 1784, 1785, 1858, 1909]
-    2026-07-26  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 90
-    2026-07-28  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 0
-    2026-08-01  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 93
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [1441, 1759, 1784, 1785, 1858, 1909]
+    2026-07-26  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 90   of BEFORE, 73 came from ids we do not own
+    2026-07-28  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 0   of BEFORE, 73 came from ids we do not own
+    2026-08-01  BEFORE RAISED (HTTPError: 422 Client Error: Unprocessable Content for url: https://sundancegolfclub.teesnap.net/customer-api/teetimes-da)   AFTER 84   of BEFORE, 25 came from ids we do not own
 --- the-course-at-petteys-park  petteyspark.teesnap.net
     old ids: [1239, 1388, 1081]
     new ids: [(1239, 'The Course at Petteys Park')]
-    ids the old regex invented (property ids): [1081, 1388]
+    ids the old regex invented — NOT in this tenant's window.courses, so property ids, infos[] notice ids, or plain foreign courses: [1081, 1388]
     2026-07-26  BEFORE RAISED (HTTPError: 500)   AFTER 59
     2026-07-28  BEFORE RAISED (HTTPError: 500)   AFTER 64
     2026-08-01  BEFORE RAISED (HTTPError: 400 Client Error: Bad Request for url: https://petteyspark.teesnap.net/customer-api/teetimes-day?course=1388&d)   AFTER 71
 
-B TOTAL over 8 courses x 3 dates: before=791  after=1322  delta=+531
+B TOTAL over 8 courses x 3 dates: before=791  after=1313  delta=+522
+  of that before= total, 847 slots came from ids that are NOT in the asking tenant's own window.courses.
+  ?course= is resolved globally (diag_teesnap2.txt), so those are other clubs' tee times. Dropping them is the fix, not the cost.
+  like-for-like on ids we actually own: before=-56  after=1313  delta=+1369
 
 ========================================================================
 C. Arizona re-tags — native capture that did not exist before
@@ -161,7 +164,7 @@ C. Arizona re-tags — native capture that did not exist before
 --- Continental Country Club  [foreup] {'course_id': '22092', 'schedule_id': '9809'}  role=primary status=ready
     venue continental-country-club also carries: [('continental-country-club-golfnow', 'golfnow', 'supplement')]
     2026-07-26  BEFORE 0 (no native row existed)   AFTER 0
-    2026-07-28  BEFORE 0 (no native row existed)   AFTER 2
+    2026-07-28  BEFORE 0 (no native row existed)   AFTER 3
     2026-08-01  BEFORE 0 (no native row existed)   AFTER 0
 --- Chaparral Golf & Country Club  [foreup] {'course_id': '20246', 'schedule_id': '4086'}  role=primary status=ready
     venue chaparral-golf-country-club also carries: [('chaparral-golf-country-club-golfnow', 'golfnow', 'supplement')]
@@ -189,6 +192,6 @@ C. Arizona re-tags — native capture that did not exist before
     2026-07-28  BEFORE 0 (no native row existed)   AFTER RAISED (HTTPError: 429)
     2026-08-01  BEFORE 0 (no native row existed)   AFTER RAISED (HTTPError: 429)
 
-C TOTAL over 8 courses x 3 dates: before=0  after=1005  delta=+1005
+C TOTAL over 8 courses x 3 dates: before=0  after=1006  delta=+1006
 
 done
