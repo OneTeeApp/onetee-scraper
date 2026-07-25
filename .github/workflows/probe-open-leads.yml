@@ -1,0 +1,53 @@
+name: Probe the leads still open after #67/#68
+
+# Arizona Traditions' EZLinks portal only ever got a plain-HTTP Cloudflare 403,
+# which proves nothing because the fleet reads EZLinks in a browser anyway; and
+# Emerald Greens / DU Highlands Ranch sit at clubprophet "ready" with no
+# website_id or course_ids, so browser_cps has never attempted them. This runs
+# both through a real headless Chromium. Report only, no secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/probe_open_leads.py"
+      - ".github/workflows/probe-open-leads.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-open-leads
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install requests beautifulsoup4 playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Probe
+        run: |
+          mkdir -p probe-results
+          python scripts/probe_open_leads.py 2>&1 | tee probe-results/open_leads.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/open_leads.txt
+          git commit -m "probe open leads [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push open-leads results after 5 attempts"; exit 1
