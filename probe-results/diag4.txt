@@ -1,0 +1,158 @@
+diag4 — Denver today 2026-07-25
+
+========================================================================
+A. QUICK18 — is Homestead's sheet actually empty? (7 days, control)
+========================================================================
+   homestead 2026-07-26: HTTP 200 18083B | 0 time cells | no-tee-times banner=False
+   homestead 2026-07-27: HTTP 200 19175B | 0 time cells | no-tee-times banner=False
+   homestead 2026-07-28: HTTP 200 19175B | 0 time cells | no-tee-times banner=False
+   homestead 2026-07-29: HTTP 200 19175B | 0 time cells | no-tee-times banner=False
+   homestead 2026-07-30: HTTP 200 19175B | 0 time cells | no-tee-times banner=False
+   homestead 2026-07-31: HTTP 200 19175B | 0 time cells | no-tee-times banner=False
+   homestead 2026-08-01: HTTP 200 19174B | 0 time cells | no-tee-times banner=False
+   thorncreek 2026-07-26: HTTP 200 33201B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-07-27: HTTP 200 78094B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-07-28: HTTP 200 46620B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-07-29: HTTP 200 38207B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-07-30: HTTP 200 42919B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-07-31: HTTP 200 55890B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+   thorncreek 2026-08-01: HTTP 200 63115B | 0 time cells | no-tee-times banner=False
+      messages: ['Rate not available for date selected']
+
+========================================================================
+B. TEESNAP — the real adapter call, with course id and params
+========================================================================
+
+--- golfpagosa.teesnap.net  (CONTROL)
+   homepage HTTP 200 60392B | course ids ['339', '310'] | names ['Pagosa Springs Golf Club', 'Pagosa Springs Golf Club', 'Pagosa Springs Golf Club', 'Pagosa Springs Golf Club', 'Pagosa Springs Golf Club']
+   id=339 2026-07-26 holes=18: HTTP 200 47034B application/json | 44 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "rackRatePrice": "101.00", "price": "90.90", "priceWithAddOn": "90.90", "taxInclusive": false}, {"roundType": "NINE_HOLE", "rackRatePrice": "81.00", "price": "72.90", "priceWithAddOn": "72.90", "taxInclusive": false}]
+   id=339 2026-07-26 holes=9: HTTP 200 47034B application/json | 44 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "rackRatePrice": "101.00", "price": "90.90", "priceWithAddOn": "90.90", "taxInclusive": false}, {"roundType": "NINE_HOLE", "rackRatePrice": "81.00", "price": "72.90", "priceWithAddOn": "72.90", "taxInclusive": false}]
+   id=339 2026-07-28 holes=18: HTTP 200 37952B application/json | 44 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "rackRatePrice": "101.00", "price": "90.90", "priceWithAddOn": "90.90", "taxInclusive": false}, {"roundType": "NINE_HOLE", "rackRatePrice": "81.00", "price": "72.90", "priceWithAddOn": "72.90", "taxInclusive": false}]
+   id=339 2026-07-28 holes=9: HTTP 200 37952B application/json | 44 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "rackRatePrice": "101.00", "price": "90.90", "priceWithAddOn": "90.90", "taxInclusive": false}, {"roundType": "NINE_HOLE", "rackRatePrice": "81.00", "price": "72.90", "priceWithAddOn": "72.90", "taxInclusive": false}]
+   id=310 2026-07-26 holes=18: HTTP 200 83B application/json | 0 slots
+   id=310 2026-07-26 holes=9: HTTP 200 83B application/json | 0 slots
+   id=310 2026-07-28 holes=18: HTTP 200 83B application/json | 0 slots
+   id=310 2026-07-28 holes=9: HTTP 200 83B application/json | 0 slots
+
+--- mtmassivegolf.teesnap.net  (CONTROL)
+   homepage HTTP 200 63347B | course ids ['966', '1933', '1934', '1935', '862'] | names ['Mt. Massive GC', 'Mt. Massive Golf Course', 'Mt. Massive GC', 'Mt. Massive Golf Course', 'Mt. Massive GC']
+   id=966 2026-07-26 holes=18: HTTP 200 46078B application/json | 76 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "41.00", "priceWithAddOn": "55.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "60.00", "priceWithAddOn": "88.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=966 2026-07-26 holes=9: HTTP 200 46078B application/json | 76 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "41.00", "priceWithAddOn": "55.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "60.00", "priceWithAddOn": "88.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=966 2026-07-28 holes=18: HTTP 200 35752B application/json | 76 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "36.00", "priceWithAddOn": "50.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "55.00", "priceWithAddOn": "83.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=966 2026-07-28 holes=9: HTTP 200 35752B application/json | 76 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "36.00", "priceWithAddOn": "50.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "55.00", "priceWithAddOn": "83.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=1933 2026-07-26 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1933 2026-07-26 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1933 2026-07-28 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1933 2026-07-28 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1934 2026-07-26 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1934 2026-07-26 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1934 2026-07-28 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1934 2026-07-28 holes=9: HTTP 200 83B application/json | 0 slots
+
+--- hollydotgolf.teesnap.net  (suspect)
+   homepage HTTP 200 58107B | course ids ['1550', '1329', '1767'] | names ['Hollydot Golf Course', 'Hollydot Golf Course, CO', 'Hollydot Golf Course', 'Expo Special', 'Hollydot Golf Course, CO', 'Hollydot Golf Course']
+   id=1550 2026-07-26 holes=18: HTTP 200 49139B application/json | 72 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "26.00", "priceWithAddOn": "38.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "38.00", "priceWithAddOn": "58.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "bookin
+   id=1550 2026-07-26 holes=9: HTTP 200 49139B application/json | 72 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "26.00", "priceWithAddOn": "38.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "38.00", "priceWithAddOn": "58.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "bookin
+   id=1550 2026-07-28 holes=18: HTTP 200 42812B application/json | 72 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "16.00", "priceWithAddOn": "28.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "16.00", "priceWithAddOn": "36.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "bookin
+   id=1550 2026-07-28 holes=9: HTTP 200 42812B application/json | 72 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "16.00", "priceWithAddOn": "28.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "16.00", "priceWithAddOn": "36.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "bookin
+   id=1329 2026-07-26 holes=18: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1329 2026-07-26 holes=9: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1329 2026-07-28 holes=18: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1329 2026-07-28 holes=9: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1767 2026-07-26 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1767 2026-07-26 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1767 2026-07-28 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1767 2026-07-28 holes=9: HTTP 200 83B application/json | 0 slots
+
+--- petteyspark.teesnap.net  (suspect)
+   homepage HTTP 200 55598B | course ids ['1239', '1388', '1081'] | names ['The Course at Petteys Park', 'The Course at Petteys Park', 'The Course at Petteys Park', 'The Course at Petteys Park', 'The Course at Petteys Park']
+   id=1239 2026-07-26 holes=18: HTTP 200 29954B application/json | 59 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "23.00", "priceWithAddOn": "40.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "35.00", "priceWithAddOn": "60.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=1239 2026-07-26 holes=9: HTTP 200 29954B application/json | 59 slots
+      slot[0]: {"prices": [{"roundType": "NINE_HOLE", "price": "23.00", "priceWithAddOn": "40.00", "taxInclusive": false}, {"roundType": "EIGHTEEN_HOLE", "price": "35.00", "priceWithAddOn": "60.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=1239 2026-07-28 holes=18: HTTP 200 38986B application/json | 64 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "price": "32.00", "priceWithAddOn": "55.00", "taxInclusive": false}, {"roundType": "NINE_HOLE", "price": "20.00", "priceWithAddOn": "35.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=1239 2026-07-28 holes=9: HTTP 200 38986B application/json | 64 slots
+      slot[0]: {"prices": [{"roundType": "EIGHTEEN_HOLE", "price": "32.00", "priceWithAddOn": "55.00", "taxInclusive": false}, {"roundType": "NINE_HOLE", "price": "20.00", "priceWithAddOn": "35.00", "taxInclusive": false}], "teeOffSections": [{"teeOff": "FRONT_NINE", "turnTo
+   id=1388 2026-07-26 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1388 2026-07-26 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1388 2026-07-28 holes=18: HTTP 200 83B application/json | 0 slots
+   id=1388 2026-07-28 holes=9: HTTP 200 83B application/json | 0 slots
+   id=1081 2026-07-26 holes=18: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1081 2026-07-26 holes=9: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1081 2026-07-28 holes=18: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+   id=1081 2026-07-28 holes=9: HTTP 500 1104B text/html; charset=UTF-8 | NOT JSON: <!DOCTYPE html> <html>     <head>         <title>Be right back.</title>          <link href="https://fonts.googleapis.co
+
+========================================================================
+E. TEEITUP — controls we actually publish from vs the two suspects
+========================================================================
+
+--- buffalo-run-golf-course  (CONTROL)
+   /v2/courses: HTTP 404 9B
+   /alias/buffalo-run-golf-course/facilities: HTTP 200 402B
+      id=54f14b6f0c8ad60378b00ffc name='Buffalo Run Golf Course' tz='America/Denver'
+   2026-07-26 date-only  : HTTP 200 21122B | 1 blocks | 21 teetimes
+   2026-07-26 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-28 date-only  : HTTP 200 54151B | 1 blocks | 56 teetimes
+   2026-07-28 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-31 date-only  : HTTP 200 52029B | 1 blocks | 55 teetimes
+   2026-07-31 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+
+--- commonground-golf-course  (CONTROL)
+   /v2/courses: HTTP 404 9B
+   /alias/commonground-golf-course/facilities: HTTP 200 1617B
+      id=54f14d400c8ad60378b0382c name='CommonGround Golf Course' tz='America/Denver'
+   2026-07-26 date-only  : HTTP 200 16963B | 1 blocks | 18 teetimes
+   2026-07-26 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-28 date-only  : HTTP 200 5097B | 1 blocks | 5 teetimes
+   2026-07-28 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-31 date-only  : HTTP 200 10948B | 1 blocks | 11 teetimes
+   2026-07-31 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+
+--- golf-granby-ranch  (suspect)
+   /v2/courses: HTTP 404 9B
+   /alias/golf-granby-ranch/facilities: HTTP 200 384B
+      id=54f14c3f0c8ad60378b02148 name='Granby Ranch Golf Course' tz='America/Denver'
+   2026-07-26 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-26T11:26:00.000Z","sunrise":"2026-07-26T11:57:00.000Z","sunset":"2026-07-27T02:21:00.000Z","dusk":"2026-07-27T02:55:00.000Z"},"teetimes":[],"courseId":"54f14c3f0c8ad60378b02148","totalAvailab
+   2026-07-26 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-28 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-28T11:28:00.000Z","sunrise":"2026-07-28T11:59:00.000Z","sunset":"2026-07-29T02:20:00.000Z","dusk":"2026-07-29T02:53:00.000Z"},"teetimes":[],"courseId":"54f14c3f0c8ad60378b02148","totalAvailab
+   2026-07-28 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-31 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-31T11:31:00.000Z","sunrise":"2026-07-31T12:02:00.000Z","sunset":"2026-08-01T02:17:00.000Z","dusk":"2026-08-01T02:50:00.000Z"},"teetimes":[],"courseId":"54f14c3f0c8ad60378b02148","totalAvailab
+   2026-07-31 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+
+--- rollingstone-ranch  (suspect)
+   /v2/courses: HTTP 404 9B
+   /alias/rollingstone-ranch/facilities: HTTP 200 403B
+      id=54f14ee30c8ad60378b058ef name='Rollingstone Ranch' tz='America/Denver'
+   2026-07-26 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-26T11:28:00.000Z","sunrise":"2026-07-26T12:00:00.000Z","sunset":"2026-07-27T02:26:00.000Z","dusk":"2026-07-27T03:00:00.000Z"},"teetimes":[],"courseId":"54f14ee30c8ad60378b058ef","totalAvailab
+   2026-07-26 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-28 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-28T11:30:00.000Z","sunrise":"2026-07-28T12:01:00.000Z","sunset":"2026-07-29T02:24:00.000Z","dusk":"2026-07-29T02:58:00.000Z"},"teetimes":[],"courseId":"54f14ee30c8ad60378b058ef","totalAvailab
+   2026-07-28 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+   2026-07-31 date-only  : HTTP 200 253B | 1 blocks | 0 teetimes
+      body: [{"dayInfo":{"dawn":"2026-07-31T11:34:00.000Z","sunrise":"2026-07-31T12:04:00.000Z","sunset":"2026-08-01T02:21:00.000Z","dusk":"2026-08-01T02:55:00.000Z"},"teetimes":[],"courseId":"54f14ee30c8ad60378b058ef","totalAvailab
+   2026-07-31 facilityIds: HTTP 500 32B | 1 blocks | 0 teetimes
+
+done
