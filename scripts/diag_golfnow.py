@@ -25,6 +25,14 @@ between them is how an afternoon disappears:
   3. GENUINELY EMPTY. A nine-hole municipal in Limon may simply have nothing
      on GolfNow for the dates we ask about. Nothing to fix; the right response
      is to stop calling it a gap and let the directory card handle it.
+  4. THE API DOES NOT ANSWER IN JSON. Found by the first run of this script,
+     which is why it now exists as its own case. Black Bear, Desert Hawk,
+     Tamarack and Walking Stick load fine, POST a predicate, and get an HTML
+     document back from /api/tee-times/tee-time-search-results while seven
+     other facilities in the same browser session get JSON. What that HTML is
+     decides what happens next, and only reading it settles the question —
+     if it is a bot challenge, the answer is to retag those courses and leave
+     it alone, not to defeat it.
 
 WHAT THIS PRINTS
 ----------------
@@ -68,28 +76,49 @@ async ([bodyStr, dateStr, fid]) => {
   let body;
   try { body = JSON.parse(bodyStr); } catch (e) { return {error: "bad predicate body"}; }
   body.date = dateStr; body.pageSize = 40; body.teeTimeCount = 40; body.pageNumber = 0;
-  let r, j = {};
+  // Read the response as TEXT first and only then try to parse it. The previous
+  // version called r.json() directly, so a non-JSON body threw before anything
+  // about the response was recorded — no status, no URL, no clue what came back.
+  // Four facilities got an HTML document here and the run could not say why.
+  let r, text;
   try {
     r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
       {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
        body: JSON.stringify(body)});
-    j = await r.json();
-  } catch (e) { return {error: String(e)}; }
+    text = await r.text();
+  } catch (e) { return {error: "fetch: " + String(e)}; }
+  const meta = {
+    status: r.status,
+    final_url: r.url,
+    redirected: r.redirected,
+    content_type: r.headers.get("content-type") || "",
+    bytes: text.length,
+  };
+  let j;
+  try { j = JSON.parse(text); }
+  catch (e) {
+    // The body itself is the evidence. A challenge page, a login wall and a
+    // 500 error page are three different problems with three different
+    // answers, and they are indistinguishable without looking.
+    meta.error = "not JSON: " + String(e).slice(0, 90);
+    meta.body_head = text.slice(0, 700);
+    meta.title = (text.match(/<title[^>]*>([\s\S]{0,120}?)<\/title>/i) || [,""])[1].trim();
+    return meta;
+  }
   const tt = (j.ttResults && j.ttResults.teeTimes) || [];
   const byFac = {};
   for (const s of tt) {
     const k = s.facilityId + "|" + (s.facilityName || s.courseName || "?");
     byFac[k] = (byFac[k] || 0) + 1;
   }
-  return {
-    status: r.status,
+  return Object.assign(meta, {
     total: tt.length,
     mine: tt.filter((s) => s.facilityId === fid).length,
     facilities: Object.entries(byFac).sort((a,b) => b[1]-a[1]).slice(0, 12),
     // The predicate carries the lat/long the page chose for this facility. A
     // radius search centred on the wrong point is a fourth way to get zero.
     center: [body.latitude, body.longitude, body.radius].join(","),
-  };
+  });
 }
 """
 
@@ -120,15 +149,28 @@ def probe(page, c: dict, offsets: list[int], captured: dict) -> dict:
     rec["predicate_captured"] = bool(captured.get("body"))
     if not captured.get("body"):
         return rec
+    # The predicate itself, verbatim. Comparing a failing facility's predicate
+    # against a working one's is the cheapest way to spot a shape difference,
+    # and it costs nothing to keep — there is nothing private in it.
+    rec["predicate"] = captured["body"][:1200]
 
     today = dt.date.today()
     for off in offsets:
         d = today + dt.timedelta(days=off)
         date_str = f"{d:%b} {d.day} {d:%Y}"
-        try:
-            r = page.evaluate(PROBE_JS, [captured["body"], date_str, fid])
-        except Exception as e:  # noqa: BLE001
-            r = {"error": f"{type(e).__name__}: {e}"[:120]}
+        # Two attempts. Four Mile Ranch succeeded on two dates and failed on the
+        # third in the same session, so at least some of this is intermittent —
+        # and "fails twice in a row" is a different fact from "failed once".
+        r = {}
+        for attempt in (1, 2):
+            try:
+                r = page.evaluate(PROBE_JS, [captured["body"], date_str, fid])
+            except Exception as e:  # noqa: BLE001
+                r = {"error": f"{type(e).__name__}: {e}"[:120]}
+            r["attempts"] = attempt
+            if not r.get("error"):
+                break
+            page.wait_for_timeout(2500)
         r["date"] = d.isoformat()
         rec["dates"].append(r)
         page.wait_for_timeout(900)
@@ -146,13 +188,30 @@ def verdict(rec: dict) -> str:
         return ("NO PREDICATE — page never POSTed a search. Either it is not a "
                 "search page or it needs longer than 12s.")
     ds = rec.get("dates") or []
-    tot = sum(d.get("total") or 0 for d in ds)
-    mine = sum(d.get("mine") or 0 for d in ds)
+    # BUG THIS FIXES: the previous version went straight to
+    # `sum(d.get("total") or 0 ...)`. A date whose probe threw has no "total" at
+    # all, so it summed to 0 and four facilities that never got a valid response
+    # were reported as "GENUINELY EMPTY — retag as no-online-booking". Absence of
+    # an answer is not an answer of zero. Errors are now their own verdict, and
+    # only dates that actually returned JSON are allowed to vote on emptiness.
+    bad = [d for d in ds if d.get("error")]
+    ok = [d for d in ds if not d.get("error") and d.get("total") is not None]
+    if bad and not ok:
+        d = bad[0]
+        what = d.get("title") or (d.get("content_type") or "").split(";")[0] or "?"
+        return (f"NO VALID RESPONSE — the search API answered {len(bad)}/{len(ds)} "
+                f"dates with something that is not JSON (HTTP {d.get('status')}, "
+                f"{what!r}). See body_head before assuming anything.")
+    tot = sum(d.get("total") or 0 for d in ok)
+    mine = sum(d.get("mine") or 0 for d in ok)
+    flaky = f" ({len(bad)}/{len(ds)} dates errored)" if bad else ""
     if mine:
-        return f"WORKS — {mine} of {tot} rows are ours; production should have these."
+        return (f"WORKS{flaky} — {mine} of {tot} rows are ours; production "
+                "should have these.")
     if not tot:
-        return ("GENUINELY EMPTY — GolfNow returned no tee times at all for any "
-                "date tested. Not a bug: retag as no-online-booking.")
+        return (f"GENUINELY EMPTY{flaky} — GolfNow returned a valid response with "
+                f"no tee times on all {len(ok)} date(s) that answered. Not a bug: "
+                "retag as no-online-booking.")
     others = {}
     for d in ds:
         for k, n in (d.get("facilities") or []):
@@ -214,8 +273,19 @@ def main() -> int:
         for d in rec.get("dates") or []:
             lines.append(f"  {d.get('date')}  status={d.get('status')} "
                          f"total={d.get('total')} mine={d.get('mine')} "
-                         f"center={d.get('center')}"
-                         + (f" error={d['error']}" if d.get("error") else ""))
+                         f"center={d.get('center')} tries={d.get('attempts')}")
+            if d.get("error"):
+                lines.append(f"      error       : {d['error']}")
+                lines.append(f"      content-type: {d.get('content_type')!r}  "
+                             f"bytes={d.get('bytes')}")
+                lines.append(f"      final url   : {d.get('final_url')}  "
+                             f"redirected={d.get('redirected')}")
+                lines.append(f"      html title  : {d.get('title')!r}")
+                # Verbatim and indented. Whatever this is — a challenge, a login
+                # wall, an error page — the answer is in these bytes, and a
+                # summary of them would just be another guess.
+                for ln in (d.get("body_head") or "").splitlines()[:14]:
+                    lines.append(f"      | {ln[:160]}")
             for k, n in (d.get("facilities") or [])[:8]:
                 lines.append(f"      {n:>4}  {k}")
         lines.append("")
