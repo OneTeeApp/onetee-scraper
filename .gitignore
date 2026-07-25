@@ -3,3 +3,10 @@ __pycache__/
 output/
 *.db
 demo/index.html
+
+# Real credentials. The repo is public, so this is a safety net rather than a
+# convention: local.env is the filled-in copy of local/local.env.example and
+# holds a live Cloudflare token. The negation keeps the committed template
+# itself tracked.
+*.env
+!*.env.example
