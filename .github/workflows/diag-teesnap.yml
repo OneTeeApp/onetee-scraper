@@ -1,0 +1,51 @@
+name: Teesnap window.courses ground truth
+
+# 8a5f491's top-level-only discovery fixed five tenants and broke two
+# (heather-gardens 78 -> 0, mount-massive 144 -> 76, per
+# probe-results/verify_fixes.txt section B). This dumps what those tenants
+# actually inline and what every id actually returns, so the fix is based on
+# the payload rather than on my model of it. Report only, no secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_teesnap.py"
+      - ".github/workflows/diag-teesnap.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-teesnap
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Diagnose
+        run: |
+          mkdir -p probe-results
+          python scripts/diag_teesnap.py 2>&1 | tee probe-results/diag_teesnap.txt
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/diag_teesnap.txt
+          git commit -m "teesnap window.courses ground truth [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push teesnap diag results after 5 attempts"; exit 1
