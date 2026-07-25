@@ -1,0 +1,77 @@
+name: Crosscheck the GolfNow 404s
+
+# Follow-up to diag-golfnow. That run proved four Colorado facilities get a 404
+# SPA error page from the tee-time search API while eight others get JSON in the
+# same session, with structurally identical predicates. This asks the one
+# question that separates the two explanations: replay the exact bytes that
+# 404'd, from a facility page that works.
+#
+#   404 again -> the facility has no searchable inventory; retag it.
+#   200 now   -> the facility page is what poisons the session; production can
+#                ask from a different page.
+#
+# Reads probe-results/golfnow-diag.json for the recorded predicates, so
+# diag-golfnow must have run first. Twelve requests, one page load, read only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: "Facility page to ask FROM (must be a working one)"
+        default: "cedaredge-golf-club-golfnow"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/crosscheck_golfnow.py"
+      - ".github/workflows/crosscheck-golfnow.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crosscheck-golfnow
+  cancel-in-progress: true
+
+jobs:
+  crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Replay
+        timeout-minutes: 9
+        run: |
+          python3 scripts/crosscheck_golfnow.py \
+            --host "${{ github.event.inputs.host || 'cedaredge-golf-club-golfnow' }}" \
+            2>&1 | tee crosscheck.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -30 probe-results/golfnow-crosscheck.txt 2>/dev/null \
+            || tail -n 30 crosscheck.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit the findings
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # [skip ci]: a report. Nothing deploys from it, and a normal commit
+          # would fire every push-triggered probe in the repo.
+          git add probe-results/golfnow-crosscheck.txt probe-results/golfnow-crosscheck.json
+          git commit -m "GolfNow 404 crosscheck [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the crosscheck after 5 attempts"; exit 1
