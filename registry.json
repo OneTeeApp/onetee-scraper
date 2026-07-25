@@ -701,9 +701,9 @@
    "ids": {
     "tenant": "emeraldgreens"
    },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "cps.golf tenant."
+   "status": "needs_ids",
+   "confidence": "low",
+   "notes": "cps.golf tenant NOT CONFIRMED. emeraldgreens.cps.golf serves the Club Prophet shell but answers 404 on the anonymous token endpoint, and windsorgardens / windsorgardensdenver / emeraldgreensco / emeraldgreensgolf all fail DNS, against a control (indianpeaks) that mints a token fine (probe-results/open_leads.txt section B). No website_id or course_ids are known either, so browser_cps has never attempted it. Registry status is needs_ids, not ready."
   },
   {
    "slug": "estes-park-golf-course",
@@ -2375,9 +2375,9 @@
    "ids": {
     "tenant": "universityofdenver"
    },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "Dedicated cps.golf tenant."
+   "status": "needs_ids",
+   "confidence": "low",
+   "notes": "cps.golf tenant NOT CONFIRMED. universityofdenver / highlandsranchgolf / dugolf / duhighlandsranch / highlandsranch all fail DNS in a real browser, against a control (indianpeaks) that mints a token fine (probe-results/open_leads.txt section B). highlandsranchgolf.du.edu also blocks datacenter IPs. No website_id or course_ids, so browser_cps has never attempted it. Registry status is needs_ids, not ready."
   },
   {
    "slug": "ute-creek-golf-course",
@@ -4522,6 +4522,22 @@
    "state": "AZ",
    "venue_id": "arizona-traditions-golf-club",
    "source_role": "primary",
+   "platform": "ezlinks",
+   "booking_url": "https://arizonatraditionseagle.ezlinksgolf.com/index.html#!/search",
+   "ids": {
+    "portal": "arizonatraditionseagle"
+   },
+   "status": "experimental",
+   "confidence": "high",
+   "notes": "Native EZLinks portal arizonatraditionseagle, linked from aztraditions.com. Plain HTTP gets a Cloudflare 403, which proves nothing because the fleet reads EZLinks in a browser anyway: through browser_ezlinks' own flow the portal returned 103 rows for 2026-07-26 and 219 for 2026-07-28, against a control (ocotillo) at 174/218 (probe-results/open_leads.txt section A). No credentials were used; the search endpoint answers anonymously. The 'arizonatraditions' spelling returns 0 rows and is wrong. GolfNow 56 kept as a deduped supplement."
+  },
+  {
+   "slug": "arizona-traditions-golf-club-golfnow",
+   "name": "Arizona Traditions Golf Club",
+   "city": "Surprise",
+   "state": "AZ",
+   "venue_id": "arizona-traditions-golf-club",
+   "source_role": "supplement",
    "platform": "golfnow",
    "booking_url": "https://www.golfnow.com/tee-times/facility/56-arizona-traditions-golf-club/search",
    "ids": {
@@ -4530,7 +4546,7 @@
    },
    "status": "experimental",
    "confidence": "high",
-   "notes": "Public channel; passholders use arizonatraditionseagle.ezlinks.com"
+   "notes": "Deduped supplement to the native EZLinks portal arizonatraditionseagle (see the ezlinks row)."
   },
   {
    "slug": "cimarron-golf-course",

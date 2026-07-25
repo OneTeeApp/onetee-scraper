@@ -221,6 +221,19 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # so there is no anonymous tee sheet to read. It was sitting at "ready"
         # with empty ids, i.e. failing on every single scrape.
         status = "unsupported"
+    elif platform == "clubprophet" and not (ids.get("website_id")
+                                            and ids.get("course_ids")):
+        # A tenant alone is not enough to scrape: browser_cps.run() only
+        # fetches rows that have tenant AND website_id AND course_ids, so a
+        # tenant-only row is silently skipped on every scrape while the
+        # registry calls it "ready". Emerald Greens and DU Highlands Ranch sat
+        # there for months and had literally never been attempted. A browser
+        # probe then found neither tenant is even live — emeraldgreens.cps.golf
+        # answers 404 on the token endpoint and every DU candidate fails DNS,
+        # against a control (indianpeaks) that mints a token fine
+        # (probe-results/open_leads.txt section B). "needs_ids" is the honest
+        # status: the platform is right, the identifiers are not known.
+        status = "needs_ids"
     elif platform == "membersports" and not ids.get("club_id"):
         # A shared city portal can leave a course pointing at its neighbour's
         # golfClubId. Better to publish nothing than someone else's tee sheet.
