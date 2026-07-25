@@ -1,19 +1,28 @@
 """Offline checks for TeeItUpAdapter. No network.
 
-Locks in the CORRECTED behaviour after the facilityIds round trip.
+THE FIXTURES ARE THE POINT OF THIS FILE. An earlier version of it passed 20
+checks while the adapter was returning ZERO slots for every pinned course in
+production, because its fake slots carried a top-level integer `facilityId`
+that kenna has never sent. The client-side sibling filter matched that
+invented key, so the bug could not reproduce here. Measured live
+(probe-results/diag_kenna_slots.txt), a slot looks like:
 
-a248c79 stopped sending `facilityIds` at all, on the strength of one diag4
-sample in which every alias answered HTTP 500 to the param. #69 measured that
-claim against live sheets and it was wrong (probe-results/verify_fixes.txt
-section A): the pinned call returns the real sheet on every alias that has
-one, and the bare per-alias call returns an EMPTY teetimes list — 869 slots
-before, 0 after. kenna's gateway just 5xxs and 429s intermittently, which is
-why get_json retries 5xx in the first place.
+    {"courseId": "54f14b510c8ad60378b00df6",   # Mongo id
+     "teetime": "...Z", "backNine": false, "maxPlayers": 4,
+     "rates": [{"greenFeeWalking": 6500, "holes": 18,
+                "golfnow": {"GolfFacilityId": 287, ...}}]}
 
-So the adapter asks with ids first (pinned, else discovered), falls back to
-the bare call only when a call actually FAILS, and keeps filtering
-client-side so a shared alias can never publish a sibling's tee sheet. An
-empty response is an empty day and must not trigger a retry or a raise.
+There is no facilityId key: the probe counted it None on 304/304, 51/51 and
+51/51 slots across three aliases. The pinned integer (287) lives in the
+FACILITIES list next to the Mongo id, and nested in each rate's GolfNow
+block. So the adapter maps pin -> courseId before comparing, and every
+fixture below uses the measured shape. If a future fixture invents a field,
+this whole suite goes back to proving nothing.
+
+The probe also showed kenna honours `facilityIds` server-side (287 narrowed
+304 slots to 55, one courseId). The fake deliberately does NOT: it serves the
+full sheet for every parameter shape, so the client filter is always
+exercised. A separate check covers the already-narrowed response.
 
 Run: python scripts/test_teeitup_adapter.py
 """
@@ -28,21 +37,44 @@ from scraper.adapters.teeitup import TeeItUpAdapter  # noqa: E402
 
 DATE = dt.date(2026, 7, 26)
 
-
-def slot(utc: str, facility: int, course_id: int, cents: int = 6500) -> dict:
-    return {"teetime": utc, "facilityId": facility, "courseId": course_id,
-            "maxPlayers": 4, "minPlayers": 1,
-            "rates": [{"greenFeeWalking": cents, "greenFeeCart": cents + 2000,
-                       "holes": 18, "name": "Standard"}]}
+# Mongo courseIds, copied from the live probe.
+AGUILA_CID = "54f14b510c8ad60378b00df6"     # facility 287
+AGUILA9_CID = "54f14cd40c8ad60378b02e7c"    # facility 4322
+CAVE_CID = "54f14b520c8ad60378b00df8"       # facility 288
 
 
-# One alias, four Phoenix munis. Served for any facilityIds call, so the
-# client-side filter is exercised even when kenna honours the param.
+def slot(utc: str, course_id: str, gn_facility: int | None, cents: int = 6500):
+    """A slot in the shape kenna actually sends: no top-level facilityId."""
+    rate = {"greenFeeWalking": cents, "greenFeeCart": cents + 2000,
+            "holes": 18, "name": "18 Holes", "_id": 183280701}
+    if gn_facility is not None:
+        rate["golfnow"] = {"TTTeeTimeId": 183280701, "GolfCourseId": 163974,
+                           "GolfFacilityId": gn_facility}
+    return {"teetime": utc, "courseId": course_id, "backNine": False,
+            "maxPlayers": 4, "minPlayers": 1, "bookedPlayers": 0,
+            "rates": [rate]}
+
+
+# One alias, several Phoenix munis — the shared-alias case the filter exists
+# for. Served for every parameter shape so the client filter is exercised.
 ALL = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": [
-    slot("2026-07-26T14:30:00.000Z", 287, 287),        # aguila
-    slot("2026-07-26T15:00:00.000Z", 287, 287),
-    slot("2026-07-26T16:10:00.000Z", 4322, 4322),      # aguila-9
-    slot("2026-07-26T17:20:00.000Z", 288, 288, 7500),  # cave creek
+    slot("2026-07-26T14:30:00.000Z", AGUILA_CID, 287),
+    slot("2026-07-26T15:00:00.000Z", AGUILA_CID, 287),
+    slot("2026-07-26T16:10:00.000Z", AGUILA9_CID, 4322),
+    slot("2026-07-26T17:20:00.000Z", CAVE_CID, 288, 7500),
+]}]
+
+# What kenna really returns for facilityIds=287: already narrowed.
+NARROWED = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": [
+    slot("2026-07-26T14:30:00.000Z", AGUILA_CID, 287),
+    slot("2026-07-26T15:00:00.000Z", AGUILA_CID, 287),
+]}]
+
+# The same two Aguila slots with no GolfNow block — the only id left is the
+# Mongo one, so this only survives if the pin was mapped through /facilities.
+NO_GN = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": [
+    slot("2026-07-26T14:30:00.000Z", AGUILA_CID, None),
+    slot("2026-07-26T15:00:00.000Z", AGUILA_CID, None),
 ]}]
 
 EMPTY = [{"dayInfo": {"date": "2026-07-26"}, "teetimes": []}]
@@ -51,21 +83,17 @@ BOOM = RuntimeError("500 Server Error for url: .../v2/tee-times?facilityIds=287"
 BARE_BOOM = RuntimeError("429 Client Error for url: .../v2/tee-times")
 
 FACILITIES = [
-    {"id": 287, "courseId": 287, "name": "Aguila Golf Course",
+    {"id": 287, "courseId": AGUILA_CID, "name": "Aguila Golf Course",
      "timeZone": "America/Phoenix"},
-    {"id": 4322, "courseId": 4322, "name": "Aguila 9",
+    {"id": 4322, "courseId": AGUILA9_CID, "name": "Aguila Golf Course 9",
      "timeZone": "America/Phoenix"},
-    {"id": 288, "courseId": 288, "name": "Cave Creek Golf Course",
+    {"id": 288, "courseId": CAVE_CID, "name": "Cave Creek Golf Course",
      "timeZone": "America/Phoenix"},
 ]
 
 
 class Fake(TeeItUpAdapter):
-    """Replays recorded responses; records every call's params.
-
-    Defaults mirror what kenna actually does: the call with ids answers, the
-    bare call comes back empty.
-    """
+    """Replays recorded responses; records every call's params."""
 
     def __init__(self, with_ids=ALL, bare=EMPTY, facilities=None):
         super().__init__()
@@ -85,7 +113,6 @@ class Fake(TeeItUpAdapter):
             if isinstance(v, Exception):
                 raise v
             return v
-        # facility metadata
         v = self.facilities
         if isinstance(v, Exception):
             raise v
@@ -116,9 +143,19 @@ def teetime_params(a: Fake) -> list[dict]:
 
 
 def main() -> None:
-    print("a pinned facility_id is sent first — that is the call that works")
+    print("THE REGRESSION THIS FILE MISSED: a pinned course must return slots")
     a = Fake()
     out = a.fetch(AGUILA, DATE)
+    check("a pinned facility_id does not empty the sheet", len(out) > 0,
+          f"got {len(out)}")
+    check("the pinned integer is mapped to its Mongo courseId",
+          a._pinned_course_ids("city-of-phoenix-golf-courses", "287")
+          == {AGUILA_CID}, str(a._pinned_course_ids(
+              "city-of-phoenix-golf-courses", "287")))
+    check("no slot carries a top-level facilityId to match on",
+          all("facilityId" not in s for s in ALL[0]["teetimes"]))
+
+    print("\na pinned facility_id is sent first — that is the call that works")
     sent = teetime_params(a)
     check("first tee-times call carries the pinned facilityIds",
           bool(sent) and sent[0].get("facilityIds") == "287", str(sent))
@@ -130,7 +167,8 @@ def main() -> None:
     print("\nsibling courses on a shared alias are still filtered out")
     check("only this facility's slots are kept", len(out) == 2, f"got {len(out)}")
     check("no sibling slot leaked",
-          all(str(t.raw["facilityId"]) == "287" for t in out))
+          all(t.raw["courseId"] == AGUILA_CID for t in out),
+          str({t.raw["courseId"] for t in out}))
     check("one course after filtering -> unlabelled",
           all(t.course_label == "" for t in out),
           str({t.course_label for t in out}))
@@ -147,8 +185,42 @@ def main() -> None:
                          {"alias": "city-of-phoenix-golf-courses",
                           "facility_id": "4322"}), DATE)
     check("aguila-9 gets exactly its own slot",
-          len(out) == 1 and str(out[0].raw["facilityId"]) == "4322",
+          len(out) == 1 and out[0].raw["courseId"] == AGUILA9_CID,
           f"got {len(out)}")
+
+    print("\nkenna's own server-side filtering passes through untouched")
+    a = Fake(with_ids=NARROWED)
+    out = a.fetch(AGUILA, DATE)
+    check("an already-narrowed response is not re-filtered to zero",
+          len(out) == 2, f"got {len(out)}")
+
+    print("\nthe Mongo id alone is enough — no GolfNow block needed")
+    a = Fake(with_ids=NO_GN)
+    out = a.fetch(AGUILA, DATE)
+    check("slots without a golfnow block still match via courseId",
+          len(out) == 2, f"got {len(out)}")
+
+    print("\nthe nested GolfFacilityId carries the pin when /facilities is down")
+    a = Fake(facilities=RuntimeError("429"))
+    out = a.fetch(AGUILA, DATE)
+    check("pin still resolves through rates[].golfnow.GolfFacilityId",
+          len(out) == 2, f"got {len(out)}")
+    check("and still excludes the siblings",
+          all(t.raw["courseId"] == AGUILA_CID for t in out),
+          str({t.raw["courseId"] for t in out}))
+
+    print("\nunresolvable pin: one course is unambiguous, several is not")
+    a = Fake(with_ids=NO_GN, facilities=RuntimeError("429"))
+    out = a.fetch(AGUILA, DATE)
+    check("a single-course response is kept rather than dropped",
+          len(out) == 2, f"got {len(out)}")
+    a = Fake(with_ids=[{"dayInfo": {}, "teetimes": [
+        slot("2026-07-26T14:30:00.000Z", AGUILA_CID, None),
+        slot("2026-07-26T16:10:00.000Z", AGUILA9_CID, None)]}],
+        facilities=RuntimeError("429"))
+    out = a.fetch(AGUILA, DATE)
+    check("a multi-course response is NOT published under one name",
+          out == [], f"got {len(out)}")
 
     print("\nan unpinned alias discovers its ids instead of asking bare")
     a = Fake()
@@ -159,7 +231,8 @@ def main() -> None:
           str(teetime_params(a)))
     check("every slot is returned", len(out) == 4, f"got {len(out)}")
     check("labels come from facility metadata",
-          {t.course_label for t in out} == {"Aguila Golf Course", "Aguila 9",
+          {t.course_label for t in out} == {"Aguila Golf Course",
+                                            "Aguila Golf Course 9",
                                             "Cave Creek Golf Course"},
           str({t.course_label for t in out}))
 

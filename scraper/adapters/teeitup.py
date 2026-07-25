@@ -10,13 +10,28 @@ Optional params: facilityIds=<id>, and the same API serves course/facility
 metadata at /v2/courses (with the alias header), which is how we discover
 facility ids from just the alias.
 
-Response shape (observed): a JSON array with one object per facility/day:
+Response shape (MEASURED, probe-results/diag_kenna_slots.txt) — a JSON array
+with one object per facility/day:
     [{"dayInfo": {...}, "teetimes": [
-        {"teetime": "2026-07-24T13:30:00.000Z", "courseId": ..,
-         "facilityId": .., "maxPlayers": 4, "minPlayers": 1,
+        {"teetime": "2026-07-24T13:30:00.000Z",
+         "courseId": "54f14b510c8ad60378b00df6",   # Mongo id, NOT the integer
+         "maxPlayers": 4, "minPlayers": 1, "backNine": false,
          "rates": [{"greenFeeWalking": 6500, "greenFeeCart": 8500,
-                     "holes": 18, "name": "..."}], ...}]}]
+                    "holes": 18, "name": "...",
+                    "golfnow": {"GolfFacilityId": 287, ...}}], ...}]}]
 Prices are in cents.
+
+TWO IDENTITIES, AND ONLY ONE OF THEM IS IN A SLOT. A facility row carries an
+integer `id` (287) AND a Mongo `courseId` ("54f14b510c8ad60378b00df6"); the
+registry pins the integer, because that is what `facilityIds` takes. A SLOT
+carries only the Mongo `courseId` — there is no top-level `facilityId` key at
+all (the probe counted `facilityId` as None on 304/304, 51/51 and 51/51
+slots). Any client-side filter that compares the pinned integer against a
+slot therefore matches NOTHING and deletes the whole sheet; that is exactly
+what happened between a248c79 and 41794cd, measured as before=4487 after=0
+across ten pinned courses. The integer does survive, but only nested at
+rates[].golfnow.GolfFacilityId. Map pin -> courseId through the facilities
+list before comparing anything.
 """
 from __future__ import annotations
 
@@ -157,6 +172,28 @@ class TeeItUpAdapter(Adapter):
             return self.get_json(f"{API_BASE}/v2/tee-times",
                                  headers=self._headers(alias), params=params)
 
+    def _pinned_course_ids(self, alias: str, facility_id) -> set[str]:
+        """Pinned integer facility id(s) -> the Mongo courseIds slots carry.
+
+        The registry pins `facilityIds` values (287) because that is what the
+        query parameter takes, but a slot names its course with a Mongo id.
+        Empty set means the mapping is unavailable (facilities lookup failed,
+        or the pin is not in this alias's list) — callers must NOT read that
+        as "nothing matches".
+        """
+        pins = {p.strip() for p in str(facility_id).split(",") if p.strip()}
+        out: set[str] = set()
+        if not pins:
+            return out
+        try:
+            for f in self._facilities_cached(alias):
+                if isinstance(f, dict) and str(f.get("id")) in pins:
+                    if f.get("courseId"):
+                        out.add(str(f["courseId"]))
+        except Exception:  # noqa: BLE001 — fall through to the nested-id path
+            pass
+        return out
+
     def _facility_ids(self, alias: str) -> str:
         """Resolve this alias's facility/course ids via /v2/courses."""
         ids = []
@@ -221,18 +258,49 @@ class TeeItUpAdapter(Adapter):
         state_tz = _STATE_TZ.get(course.get("state", ""), "America/Denver")
 
         # A pinned facility_id means this registry row is ONE course inside a
-        # shared alias (four Phoenix munis share city-of-phoenix-golf-courses),
+        # shared alias (seven facilities share city-of-phoenix-golf-courses),
         # so anything belonging to a sibling must be dropped or we would
         # publish another course's tee sheet under this name.
-        want = {p.strip() for p in str(facility_id).split(",")
+        #
+        # Match on the MONGO courseId, never on the pinned integer directly:
+        # slots have no facilityId key (diag_kenna_slots.txt). The integer is
+        # accepted only where it genuinely appears, nested in each rate's
+        # GolfNow distribution block, which keeps this working when the
+        # facilities lookup 429s.
+        pins = {p.strip() for p in str(facility_id).split(",")
                 if p.strip()} if facility_id else set()
-        slots = []
-        for block in blocks:
-            for slot in (block or {}).get("teetimes", []) or []:
-                if want and not ({str(slot.get("facilityId")),
-                                  str(slot.get("courseId"))} & want):
-                    continue
-                slots.append(slot)
+        want_cids = self._pinned_course_ids(alias, facility_id) if pins else set()
+
+        def owned(slot: dict) -> bool:
+            if str(slot.get("courseId")) in want_cids:
+                return True
+            for r in slot.get("rates") or []:
+                gn = r.get("golfnow") if isinstance(r, dict) else None
+                if isinstance(gn, dict) and str(gn.get("GolfFacilityId")) in pins:
+                    return True
+            return False
+
+        all_slots = [s for block in blocks
+                     for s in ((block or {}).get("teetimes", []) or [])]
+        slots = [s for s in all_slots if owned(s)] if pins else list(all_slots)
+
+        # Neither identity resolved, yet kenna sent slots. Dropping the sheet
+        # is not the safe default — that is the failure this whole file is
+        # commented for — but neither is publishing a sibling's times. The
+        # response itself decides: kenna honours `facilityIds` server-side
+        # (287 narrowed 304 slots to 55, one courseId), so a response spanning
+        # exactly ONE course is unambiguous whoever filtered it.
+        if pins and all_slots and not slots:
+            cids = {str(s.get("courseId")) for s in all_slots}
+            if len(cids) == 1:
+                print(f"    {course['slug']}: pinned facility {sorted(pins)} did "
+                      f"not resolve to a courseId, but the response spans one "
+                      f"course ({cids.pop()[:8]}...) — keeping it")
+                slots = list(all_slots)
+            else:
+                print(f"    {course['slug']}: pinned facility {sorted(pins)} did "
+                      f"not resolve, and the response spans {len(cids)} courses "
+                      f"— cannot attribute, reporting zero")
 
         # label slots per sub-course only when this response actually spans
         # multiple courses (multi-course facility like Hyland Hills)

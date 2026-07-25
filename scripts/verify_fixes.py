@@ -136,17 +136,31 @@ def section_a(reg: list[dict]) -> None:
             if c["platform"] == "teeitup" and c["ids"].get("facility_id")]
     print(f"{len(rows)} pinned rows in the registry\n")
     ad = TeeItUpAdapter()
-    tot_before = tot_after = 0
+    tot_before = tot_after = tot_foreign = 0
     for c in sorted(rows, key=lambda r: r["slug"]):
         alias, fid = c["ids"]["alias"], c["ids"]["facility_id"]
         print(f"--- {c['slug']}  alias={alias} facility_id={fid}")
+        # The pin is an integer; a slot names its course with a Mongo id. This
+        # is the mapping the adapter now goes through, printed so the BEFORE
+        # column can be split into ours and the siblings'.
+        try:
+            own = ad._pinned_course_ids(alias, fid)
+        except Exception as exc:  # noqa: BLE001
+            own = set()
+            print(f"    pin -> courseId mapping raised: {type(exc).__name__}: "
+                  f"{str(exc)[:80]}")
+        print(f"    pinned {fid} -> courseId(s) {sorted(own) or 'UNRESOLVED'}")
+
         def old_call(d: dt.date) -> list:
             """a248c79's call: bare per-alias, no facilityIds at all.
 
-            Counted UNFILTERED, so this is the friendliest possible reading of
-            the regression — if it still comes back 0 the param was never
-            optional. The client-side sibling filter a248c79 added can only
-            reduce this number.
+            Counted UNFILTERED, which is the friendliest possible reading of
+            the regression — but on a shared alias it is NOT like-for-like.
+            city-of-phoenix-golf-courses answers the bare call with every
+            muni's sheet at once (diag_kenna_slots.txt: 304 slots across six
+            courseIds), so most of that count belongs to sibling courses and
+            publishing it under one name would be wrong. Section B made
+            exactly this mistake once; the foreign split below is the fix.
             """
             data = ad._teetimes(alias, d, None)
             blocks = data if isinstance(data, list) else [data]
@@ -154,18 +168,36 @@ def section_a(reg: list[dict]) -> None:
                     for s in ((b or {}).get("teetimes", []) or [])]
 
         for date in DATES:
-            before, bnote = count(lambda d=date: old_call(d))
+            raw: list = []
+
+            def grab(d=date):
+                raw.clear()
+                raw.extend(old_call(d))
+                return raw
+
+            before, bnote = count(grab)
+            foreign = (len([s for s in raw if str(s.get("courseId")) not in own])
+                       if own and before else 0)
             after, anote = count(lambda d=date: ad.fetch(c, d))
             tot_before += before or 0
             tot_after += after or 0
+            tot_foreign += foreign
+            sib = (f"   of which {foreign} are siblings on this shared alias"
+                   if foreign else "")
             print(f"    {date}  BEFORE {before if before is not None else 'RAISED'}"
-                  f"{' (' + bnote + ')' if bnote else ''}")
+                  f"{' (' + bnote + ')' if bnote else ''}{sib}")
             print(f"    {date}  AFTER  {after if after is not None else 'RAISED'}"
                   f"{' (' + anote + ')' if anote else ''}")
         sys.stdout.flush()
     print(f"\nA TOTAL over {len(rows)} courses x {len(DATES)} dates: "
           f"before={tot_before}  after={tot_after}  "
           f"delta=+{tot_after - tot_before}")
+    print(f"  of that before= total, {tot_foreign} slots belong to OTHER courses "
+          f"sharing the alias — the bare call cannot tell them apart, which is "
+          f"why the pinned call is not optional.")
+    print(f"  like-for-like on slots this course actually owns: "
+          f"before={tot_before - tot_foreign}  after={tot_after}  "
+          f"delta=+{tot_after - (tot_before - tot_foreign)}")
 
 
 def section_b(reg: list[dict]) -> None:
