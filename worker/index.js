@@ -23,6 +23,8 @@
  * hidden by default (they can't be booked). ?include_past=1 disables the filter.
  */
 
+import DIRECTORY from "./directory.gen.js";
+
 const CORS = {
   "Access-Control-Allow-Origin": "*", // tighten to https://www.oneteeapp.com later
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -120,6 +122,40 @@ export default {
         return json({ ok: true, ...r });
       }
 
+      // Every course we know of, bookable by us or not — the answer to "is
+      // this course missing, or just not bookable online?", which the golfer
+      // cannot tell apart from an empty result.
+      //
+      // Served from the bundle, not D1: it is derived from the state CSVs, so
+      // it changes when a deploy happens and at no other time. A D1 table
+      // would need a migration and a sync job to say exactly the same thing,
+      // and would be the thing that silently drifts.
+      //
+      // Note what is NOT here: whether we currently have tee times. That is a
+      // live fact the tee-time feed already answers; duplicating it here would
+      // just be a badge that goes stale between deploys.
+      if (url.pathname === "/api/directory") {
+        const p = url.searchParams;
+        const st = (p.get("state") || "").toUpperCase();
+        const method = (p.get("method") || "").toLowerCase();
+        const city = (p.get("city") || "").toLowerCase();
+        const q = (p.get("q") || "").toLowerCase();
+        let courses = DIRECTORY.courses;
+        if (st) courses = courses.filter((c) => c.state === st);
+        if (method) courses = courses.filter((c) => c.booking_method === method);
+        if (city) courses = courses.filter((c) => (c.city || "").toLowerCase() === city);
+        if (q) courses = courses.filter((c) => (c.name || "").toLowerCase().includes(q));
+        return new Response(
+          JSON.stringify({ count: courses.length, courses }),
+          { headers: {
+              "Content-Type": "application/json",
+              // Static between deploys, so let the browser and the edge keep
+              // it. Without this every widget load re-downloads 180KB that
+              // did not change.
+              "Cache-Control": "public, max-age=3600, s-maxage=86400",
+              ...CORS } });
+      }
+
       if (url.pathname === "/api/courses") {
         // One row per physical venue. Prefer the primary (native) source's
         // platform + booking link; count distinct upcoming times so a slot
@@ -199,7 +235,9 @@ export default {
         return json({ count: results.length, tee_times: results });
       }
 
-      return json({ error: "not found", routes: ["/api/health", "/api/courses", "/api/tee-times"] }, 404);
+      return json({ error: "not found",
+                    routes: ["/api/health", "/api/courses", "/api/tee-times",
+                             "/api/directory"] }, 404);
     } catch (e) {
       return json({ error: String(e) }, 500);
     }
