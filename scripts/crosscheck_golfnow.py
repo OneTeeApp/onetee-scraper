@@ -85,8 +85,76 @@ async ([bodyStr, dateStr]) => {
 """
 
 
+def interpret(rows: list[dict]) -> str:
+    """Name the explanation the evidence supports — including 'neither'.
+
+    The first version of this only asked whether the four known-bad facilities
+    still 404'd. They did, so it printed "THE FACILITY — retag them", which was
+    wrong and stated with total confidence. It never looked at the controls: in
+    that same run Cedaredge 404'd ON ITS OWN PAGE, thirteen minutes after the
+    identical predicate returned 99 tee times, and The Ridge at Castle Pines
+    404'd too. Both are courses we serve today.
+
+    A conclusion its own controls contradict is not a conclusion. So the
+    controls are checked FIRST here, and a control that flipped vetoes every
+    tidy explanation below it — which is the whole point of having controls.
+    """
+    was_bad = [x for x in rows if x["diag_verdict"] == "NO VALID RESPONSE"]
+    controls = [x for x in rows if x["diag_verdict"] == "WORKS"]
+    flipped = [x for x in controls if x.get("status") != 200]
+    if flipped:
+        names = ", ".join(f"{x['slug']} ({x['facility_id']})" for x in flipped)
+        return (f"NEITHER — INTERMITTENT. {len(flipped)} of {len(controls)} "
+                f"control facilities that returned tee times in the diagnosis "
+                f"404'd here: {names}. A course we are serving right now failed "
+                "the same request that worked minutes earlier, so the 404 is not "
+                "a property of the facility and not a property of the page we "
+                "ask from. It moves. That makes it the bigger problem: the "
+                "courses that DO work are failing silently too, and "
+                "browser_golfnow.py records a 404 as 'no tee times'.")
+    still = [x for x in was_bad if x.get("status") != 200]
+    if was_bad and not still:
+        return ("THE PAGE. Every predicate that 404'd from its own facility "
+                "page returned 200 from this one, and no control moved. The "
+                "request is fine; the session those pages leave behind is not.")
+    if was_bad and len(still) == len(was_bad):
+        return ("THE FACILITY. The same bytes 404 from a session that is "
+                "demonstrably healthy, and every control still returned tee "
+                "times. GolfNow's search has nothing indexed under these ids.")
+    if was_bad:
+        return (f"MIXED — {len(still)} of {len(was_bad)} still 404 while the "
+                "controls held. Look at which ones moved.")
+    return "nothing to compare — no NO VALID RESPONSE records in the diag."
+
+
+def write_report(rows: list[dict], host: dict, landed: str, date_str: str,
+                 p: pathlib.Path) -> int:
+    answer = interpret(rows)
+    lines = [f"golfnow crosscheck — {dt.datetime.now(dt.timezone.utc).isoformat()}",
+             f"asked from : {host['url']}",
+             f"landed on  : {landed}",
+             f"date       : {date_str}",
+             "",
+             f"ANSWER: {answer}",
+             ""]
+    for x in rows:
+        lines.append(f"  {x['slug']:<40} fid={x['facility_id']:<6} "
+                     f"status={x.get('status')} total={x.get('total')} "
+                     f"mine={x.get('mine')} ct={x.get('content_type','')[:24]} "
+                     f"{('html=' + repr(x.get('title'))) if x.get('not_json') else ''}"
+                     f"{(' error=' + x['error']) if x.get('error') else ''}")
+        lines.append(f"      was: {x['diag_verdict']}")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("\n".join(lines))
+    p.with_suffix(".json").write_text(json.dumps(rows, indent=1))
+    print(f"\nANSWER: {answer}\nwrote {p}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--reinterpret", action="store_true",
+                    help="re-derive the report from a previous run's JSON, no browser")
     ap.add_argument("--diag", default="probe-results/golfnow-diag.json",
                     help="output of diag_golfnow.py; supplies the predicates")
     ap.add_argument("--host", default="cedaredge-golf-club-golfnow",
@@ -105,6 +173,17 @@ def main() -> int:
     date_str = f"{d:%b} {d.day} {d:%Y}"
     print(f"asking from {host['url']}\nreplaying {len(have)} predicates for {date_str}\n",
           flush=True)
+
+    p_out = pathlib.Path(a.out)
+    if a.reinterpret:
+        # Re-derive the headline from a run that already happened. The requests
+        # were the expensive part and they are on disk; the interpretation was
+        # the part that was wrong, and re-crawling GolfNow to fix a bug in my
+        # own reasoning would be asking them to pay for it.
+        rows = json.loads(p_out.with_suffix(".json").read_text())
+        landed = host["url"]
+        print("re-interpreting a previous run; no requests made\n", flush=True)
+        return write_report(rows, host, landed, date_str, p_out)
 
     from playwright.sync_api import sync_playwright
     rows = []
@@ -131,44 +210,7 @@ def main() -> int:
             page.wait_for_timeout(1200)
         browser.close()
 
-    failed_before = [x for x in rows if x["diag_verdict"] == "NO VALID RESPONSE"]
-    still_404 = [x for x in failed_before if x.get("status") != 200]
-    if failed_before and not still_404:
-        answer = ("THE PAGE. Every predicate that 404'd from its own facility "
-                  "page returned 200 from this one. The request is fine; the "
-                  "session those four pages leave behind is not. Production can "
-                  "ask from a page that works.")
-    elif failed_before and len(still_404) == len(failed_before):
-        answer = ("THE FACILITY. The same bytes 404 from a session that is "
-                  "demonstrably healthy. GolfNow's search has nothing indexed "
-                  "under these ids — they are listings, not inventory. Retag "
-                  "them; there is nothing here to scrape.")
-    elif failed_before:
-        answer = (f"MIXED — {len(still_404)} of {len(failed_before)} still 404. "
-                  "Neither explanation covers it; look at which ones moved.")
-    else:
-        answer = "nothing to compare — no NO VALID RESPONSE records in the diag."
-
-    lines = [f"golfnow crosscheck — {dt.datetime.now(dt.timezone.utc).isoformat()}",
-             f"asked from : {host['url']}",
-             f"landed on  : {landed}",
-             f"date       : {date_str}",
-             "",
-             f"ANSWER: {answer}",
-             ""]
-    for x in rows:
-        lines.append(f"  {x['slug']:<40} fid={x['facility_id']:<6} "
-                     f"status={x.get('status')} total={x.get('total')} "
-                     f"mine={x.get('mine')} ct={x.get('content_type','')[:24]} "
-                     f"{('html=' + repr(x.get('title'))) if x.get('not_json') else ''}"
-                     f"{(' error=' + x['error']) if x.get('error') else ''}")
-        lines.append(f"      was: {x['diag_verdict']}")
-    p = pathlib.Path(a.out)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("\n".join(lines))
-    p.with_suffix(".json").write_text(json.dumps(rows, indent=1))
-    print(f"\nANSWER: {answer}\nwrote {p}")
-    return 0
+    return write_report(rows, host, landed, date_str, p_out)
 
 
 if __name__ == "__main__":
