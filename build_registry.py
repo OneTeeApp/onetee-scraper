@@ -62,13 +62,15 @@ EXTRA_IDS = {
     # highland-hills stays 3724/4793 and tiara-rado stays 3821/4918 — both
     # confirmed correct by the same scan.
     #
-    # Meadows is the one the scan could not settle: club 3697 owns only the
-    # three sheets named "Foothills", and no club in 3550..4000 answers to
-    # Meadows. Its CSV row was filled in from Foothills' URL (same parks
-    # district, same website), so scraping it would republish Foothills' tee
-    # times under the Meadows name. Blanked deliberately -> status needs_ids,
-    # which keeps it out of the scrape until the wider scan finds its club.
-    "meadows golf club":         {"club_id": "", "secondary_id": ""},
+    # Meadows was blanked here for a while: club 3697 owns only the three
+    # sheets named "Foothills", the CSV row had been copied from Foothills'
+    # URL (same parks district, same website), and scraping it would have
+    # republished Foothills' tee times under the Meadows name. RESOLVED
+    # 2026-07 — foothillsgolf.org also links online-store/3811/4906/225, and a
+    # cfg 0-8 sweep of club 3811 returns items named "Meadows" and "Meadows
+    # Back Nine" with ZERO (courseId, name) overlap against 3697
+    # (probe-results/verify_membersports.txt). The CSV now carries the real
+    # tee-times URL, so no override is needed and the blank entry is gone.
 
     # TeeItUp: the book.teeitup.com vanity subdomain is NOT always the kenna
     # x-be-alias. Captured the real alias each course's booking page sends to

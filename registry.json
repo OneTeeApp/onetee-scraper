@@ -1164,14 +1164,19 @@
    "state": "CO",
    "venue_id": "homestead-golf-course",
    "source_role": "primary",
-   "platform": "quick18",
-   "booking_url": "https://homestead.quick18.com/",
+   "platform": "membersports",
+   "booking_url": "https://app.membersports.com/tee-times/3807/4902/0/7/0",
    "ids": {
-    "subdomain": "homestead"
+    "club_id": "3807",
+    "secondary_id": "4902",
+    "config_ids": [
+     0,
+     7
+    ]
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "City of Lakewood course via quick18."
+   "notes": "Left quick18: homestead.quick18.com answered 200 with a flat 18-19KB page and zero time cells across 7 days (diag4). golflakewood.com links MemberSports club 3807 / course 4902, whose items are named 'Homestead Golf Course' and 'Homestead Golf Course Back Nine' with zero overlap against Fox Hollow (3703) or Foothills (3697) \u2014 probe-results/verify_membersports.txt. Adapter returns 61 and 46 slots on the two sampled dates."
   },
   {
    "slug": "indian-peaks-golf-course",
@@ -1434,18 +1439,14 @@
    "venue_id": "meadows-golf-club",
    "source_role": "primary",
    "platform": "membersports",
-   "booking_url": "https://app.membersports.com/tee-times/3697/4758/0/3/0",
+   "booking_url": "https://app.membersports.com/tee-times/3811/4906/0/0/0",
    "ids": {
-    "club_id": "",
-    "secondary_id": "",
-    "config_ids": [
-     0,
-     3
-    ]
+    "club_id": "3811",
+    "secondary_id": "4906"
    },
-   "status": "needs_ids",
-   "confidence": "low",
-   "notes": "UNRESOLVED: club 3697 owns only the three sheets named Foothills, and no club in 3550-4000 answers to Meadows. This row's URL was copied from Foothills (same parks district), so ids are blanked in build_registry.py -> status needs_ids until the wider scan finds its real club."
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Resolved: its own club is 3811 / course 4906, linked from foothillsgolf.org as online-store/3811/4906/225. Items are named 'Meadows' and 'Meadows Back Nine', zero overlap with Foothills' club 3697 (probe-results/verify_membersports.txt), so this no longer republishes Foothills' sheet. Adapter returns 43 and 44 slots on the two sampled dates."
   },
   {
    "slug": "meeker-golf-course",
