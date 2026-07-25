@@ -243,6 +243,59 @@ _STATE_TZ = {
 _FALLBACK_TZ = "Pacific/Honolulu"
 
 
+def deactivate_unknown_slugs(db, registry_path: str,
+                             dry_run: bool = False) -> dict:
+    """Set active=0 on rows whose course_slug is no longer in the registry.
+
+    sync() deactivates a row only when its course is IN the scrape it is
+    diffing (`k[0] in scraped_courses`). That is deliberate — a course that
+    errored, or that sits in a shard which failed, must keep its rows rather
+    than blink off the site. But it leaves a gap with no other closer: a slug
+    that has LEFT the registry is in no scrape ever again, so nothing revisits
+    its rows and they stay active until each slot individually elapses.
+
+    Measured cost of that gap (probe-results/co_frontend.txt, 2026-07-25):
+    135 active rows across three slugs that registry.json has never heard of —
+    `gold-canyon-golf-resort-dinosaur-mountain-sidewinder`,
+    `grayhawk-golf-club-raptor-talon`,
+    `mountain-view-golf-course-fort-huachuca`. All three are pre-`course_label`
+    per-sub-course slugs; their real courses are in the registry under the base
+    slug. They were also every single row in D1 with no `state`, because state
+    is written from the registry row and these have none — which is how three
+    Arizona ghosts ended up filed under Colorado by the widget's city-inference
+    fallback.
+
+    So this is NOT a state backfill. Giving these rows a state would keep
+    phantom courses on the site with a tidier label. They have to go inactive.
+
+    The registry — not the current scrape — is the authority here, which is
+    what makes this safe under sharding: a course present in registry.json but
+    absent from this shard is untouched. Only slugs the registry does not
+    contain at all are closed out.
+    """
+    import pathlib as _p
+    doc = json.loads(_p.Path(registry_path).read_text())
+    known = {c["slug"] for c in (doc["courses"] if isinstance(doc, dict)
+                                 else doc)}
+    if not known:                      # an unreadable registry must not wipe D1
+        raise RuntimeError(f"{registry_path} yielded no course slugs — "
+                           f"refusing to deactivate anything")
+
+    rows = db.execute("SELECT course_slug, COUNT(*) AS n FROM tee_times "
+                      "WHERE active = 1 GROUP BY course_slug")
+    orphans = {r["course_slug"]: r["n"] for r in rows
+               if r["course_slug"] not in known}
+    if orphans and not dry_run:
+        slugs = sorted(orphans)
+        for i in range(0, len(slugs), SLUG_CHUNK):
+            batch = slugs[i:i + SLUG_CHUNK]
+            ph = ",".join("?" * len(batch))
+            db.execute(f"UPDATE tee_times SET active = 0 "
+                       f"WHERE active = 1 AND course_slug IN ({ph})", batch)
+    return {"deactivated": sum(orphans.values()), "slugs": orphans,
+            "known_courses": len(known), "dry_run": dry_run}
+
+
 def _local_now(tz_name: str) -> str:
     import zoneinfo
     return (dt.datetime.now(zoneinfo.ZoneInfo(tz_name))
@@ -404,6 +457,12 @@ def main() -> int:
         s = migrate(db, a.registry)
         print(f"migrated: state/venue_id/source_role columns ensured, indexes "
               f"created, backfill touched {s['backfilled_courses']} courses")
+        # Backfill can only fix rows whose course is still in the registry.
+        # Rows for a slug that has LEFT it need closing out, not tidying up.
+        o = deactivate_unknown_slugs(db, a.registry)
+        print(f"deactivated {o['deactivated']} rows for "
+              f"{len(o['slugs'])} slug(s) no longer in the registry: "
+              f"{o['slugs'] or '(none)'}")
     elif a.cmd == "push":
         init_schema(db)
         doc = json.loads(pathlib.Path(a.data).read_text())
@@ -418,8 +477,14 @@ def main() -> int:
         print(f"pruned {pr['deactivated']} elapsed rows {pr['by_tz']}")
     elif a.cmd == "prune":
         pr = prune_past(db, dry_run=a.dry_run)
-        print(f"{'would deactivate' if a.dry_run else 'deactivated'} "
-              f"{pr['deactivated']} elapsed rows {pr['by_tz']}")
+        verb = "would deactivate" if a.dry_run else "deactivated"
+        print(f"{verb} {pr['deactivated']} elapsed rows {pr['by_tz']}")
+        # The hourly backstop is also the right cadence for retired slugs:
+        # nothing else ever revisits a course the registry has dropped.
+        o = deactivate_unknown_slugs(db, a.registry, dry_run=a.dry_run)
+        print(f"{verb} {o['deactivated']} rows for {len(o['slugs'])} slug(s) "
+              f"no longer in the registry (of {o['known_courses']} known): "
+              f"{o['slugs'] or '(none)'}")
     elif a.cmd == "stats":
         total = db.execute("SELECT COUNT(*) AS n, SUM(active) AS act FROM tee_times")
         runs = db.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 5")
