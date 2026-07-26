@@ -128,7 +128,27 @@ def main() -> int:
         if lines:
             prev = json.loads(lines[-1])
 
+    # How far apart these two samples ACTUALLY are. The :57 cron is the
+    # intent, not the guarantee — GitHub drops and delays scheduled runs, and
+    # this series has already skipped hours. Both thresholds below are
+    # calibrated for roughly hourly spacing: GONE_ALERT counts venues lost
+    # "in one hour", and a 15% slot drop is alarming over an hour and
+    # unremarkable overnight. Comparing a 26-hour gap against them silently
+    # reports normal daily churn as a sweep failure, so record the real gap
+    # and say so rather than letting the reader assume the cadence held.
+    gap_h = None
+    if prev:
+        try:
+            gap_h = (now - dt.datetime.fromisoformat(prev["generated_at"])
+                     ).total_seconds() / 3600.0
+            sample["hours_since_prev"] = round(gap_h, 2)
+        except (ValueError, KeyError):
+            pass
+
     print(f"sample {sample['generated_at']}  api={a.api}")
+    if gap_h is not None:
+        note = "" if gap_h <= 3 else "   [thresholds assume ~1h spacing]"
+        print(f"  {gap_h:.1f}h since the previous sample{note}")
     if sample.get("health"):
         print(f"  health: total={sample['health']['total']} "
               f"active={sample['health']['active']}")
@@ -147,11 +167,12 @@ def main() -> int:
         d_v = cur["venues_serving"] - p["venues_serving"]
         d_s = cur["slots"] - p["slots"]
         pct = (d_s / p["slots"] * 100) if p["slots"] else 0.0
-        print(line + f"   ({d_v:+d} venues, {d_s:+d} slots, {pct:+.1f}%) "
+        span = f" over {gap_h:.1f}h" if gap_h is not None else ""
+        print(line + f"   ({d_v:+d} venues, {d_s:+d} slots, {pct:+.1f}%){span} "
                      f"vs {prev['generated_at']}")
 
         if pct <= -SLOT_ALERT_PCT:
-            alerts.append(f"{st}: slots fell {pct:.1f}% since the last sample "
+            alerts.append(f"{st}: slots fell {pct:.1f}%{span} "
                           f"({p['slots']} -> {cur['slots']})")
 
         # The seeded pre-sweep baseline carries totals but no per-course map —
@@ -169,7 +190,8 @@ def main() -> int:
             print(f"    returned  {slug:<46} now serving {cur['courses'][slug]}")
 
         if len(gone) >= GONE_ALERT:
-            alerts.append(f"{st}: {len(gone)} venues went silent in one hour "
+            alerts.append(f"{st}: {len(gone)} venues went silent"
+                          f"{span or ' since the last sample'} "
                           f"({', '.join(gone[:8])})")
 
     if alerts:
