@@ -1,0 +1,77 @@
+name: Probe newly-ready courses
+
+# e14376c unheld 32 courses on the strength of a DISCOVERY probe — the
+# platforms could resolve the ids the adapters need. That is a weaker claim
+# than "these courses return tee times", and the gap between the two is where
+# a 422 on an affiliation, a closed schedule or a permanently empty sheet
+# lives. This runs the real fetch path against them and commits the answer.
+#
+# It runs here rather than in the dev sandbox because that sandbox's egress
+# proxy 403s chronogolf.com, foreupsoftware.com and the course sites, and
+# because Actions logs are not readable from there either — a committed
+# artifact is the only way the finding gets out.
+#
+# Read-only: public GETs, no D1 writes, no CSV edits.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days ahead to fetch (comma-separated)"
+        default: "1,4,9"
+  push:
+    branches: [main]
+    paths:
+      # Landing the probe IS the request to run it.
+      - "scripts/probe_newly_ready.py"
+      - ".github/workflows/probe-newly-ready.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-newly-ready
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        # Step-level timeout so a slow platform still reaches the commit below
+        # with whatever it managed to answer. A job-level cap would cancel the
+        # job and throw the partial finding away.
+        timeout-minutes: 25
+        run: |
+          mkdir -p probe-results
+          python3 scripts/probe_newly_ready.py \
+            --days "${{ github.event.inputs.days || '1,4,9' }}" \
+            2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/newly-ready.json || exit 0
+          # [skip ci]: this file feeds a human decision, not the Worker bundle.
+          git commit -m "Probe: newly-ready courses [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push probe results after 5 attempts"; exit 1
