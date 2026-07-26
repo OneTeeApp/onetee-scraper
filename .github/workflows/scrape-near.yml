@@ -1,0 +1,92 @@
+name: Scrape near tier (days 0-2, 5-minute loop)
+
+# The near tier wants a 5-minute cadence, and GitHub's cron scheduler cannot
+# deliver that — this repo has already measured a `*/5` cron firing about
+# every five HOURS (see prune-past.yml's history; that job moved to a
+# Cloudflare cron for exactly this reason). The scrapers are Python + browser
+# code that cannot live in a Worker, so the trick here is different: one
+# long-lived Actions run that LOOPS internally every INTERVAL_SECONDS, for
+# just under the 6-hour job ceiling.
+#
+# Continuity does not need self-redispatch (and so needs no actions:write):
+# the hourly cron below keeps queueing a successor, the concurrency group
+# holds exactly one queued run (GitHub replaces older pending runs in the
+# group), and the successor starts the moment the active run's ~5.5 hours
+# end. If a run dies early — runner eviction, network — the next backstop is
+# at most an hour away, and the mid tier's hourly 3-7-day scan plus this
+# tier's own restart keep the gap survivable.
+#
+# Request-volume note, on the record: this is ~12x the per-platform request
+# rate of the old hourly scan. Every adapter already paces per-host (the
+# shard count is exported so throttles divide), but if a platform starts
+# 429ing, INTERVAL_SECONDS below is the one knob to turn — 600 halves the
+# rate everywhere at once.
+
+on:
+  schedule:
+    - cron: "3 * * * *"        # backstop/successor — see note above
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-near
+  cancel-in-progress: false     # queued successor waits; never kill the loop
+
+env:
+  INTERVAL_SECONDS: 300         # target cadence per pass (the one knob)
+  LOOP_MINUTES: 330             # stop looping after this; job timeout is 350
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Loop shard ${{ matrix.shard }}/4 over days 0-2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          START=$(date +%s)
+          PASS=0
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED_MIN=$(( (NOW - START) / 60 ))
+            if [ "$ELAPSED_MIN" -ge "$LOOP_MINUTES" ]; then
+              echo "loop budget spent after $PASS passes"; break
+            fi
+            PASS=$((PASS + 1))
+            T0=$(date +%s)
+            for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
+              OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
+              echo "::group::pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
+              python -m scraper.aggregate --date "${DATE}" --workers 10 \
+                --shard "${{ matrix.shard }}/4" \
+                --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas \
+                --out "${OUT}" || true
+              python -m scraper.d1 push --data "${OUT}" || true
+              echo "::endgroup::"
+            done
+            T1=$(date +%s)
+            TOOK=$((T1 - T0))
+            SLEEP=$((INTERVAL_SECONDS - TOOK))
+            if [ "$SLEEP" -gt 0 ]; then
+              echo "pass ${PASS} took ${TOOK}s; sleeping ${SLEEP}s"
+              sleep "$SLEEP"
+            else
+              echo "pass ${PASS} took ${TOOK}s (over interval; no sleep)"
+            fi
+          done
