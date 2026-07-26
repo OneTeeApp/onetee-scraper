@@ -1,0 +1,99 @@
+name: Diagnose one course, registry to D1
+
+# For the shape where every stage looks fine alone and the course still serves
+# nothing. `trinidad-golf-course` is the case: registry says ready, the alias
+# resolves, probe-results/teeitup-co.json shows fetch_course() returning 47
+# rows on today+1 — and /api/tee-times?course=trinidad-golf-course answers 0.
+# Not stale, not deactivated: D1 has never held a row for it.
+#
+# No existing probe could resolve that, because none of them looks at two
+# stages in the same run. probe-newly-ready asks whether the fetch works.
+# probe-staleness asks whether D1 disagrees with the platform about rows that
+# already exist. Neither asks where a WORKING fetch's rows go.
+#
+# Runs here rather than in the dev sandbox because it needs both the platforms
+# and D1, and that sandbox's egress proxy 403s both. The committed JSON is how
+# the finding gets out.
+#
+# WRITES when `push` is true (the default for this job): it performs the same
+# sync() the hourly scan performs, no new risk class. For a course the scan is
+# somehow not reaching, that write is also the repair. It is skipped entirely
+# when nothing was fetched — pushing an empty document would deactivate the
+# course's existing rows, which is exactly the accident this repo has already
+# had once.
+
+on:
+  workflow_dispatch:
+    inputs:
+      courses:
+        description: "Comma-separated slugs to trace"
+        default: "trinidad-golf-course,vail-golf-club,golf-granby-ranch"
+      days:
+        description: "Date window; 3 is what the hourly scan uses"
+        default: "3"
+      push:
+        description: "sync fetched rows into D1 (false = read-only)"
+        default: "true"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/diag_course_pipeline.py"
+      - ".github/workflows/diag-course-pipeline.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diag-course-pipeline
+  cancel-in-progress: true
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Trace
+        # Step timeout under the job's, so a slow platform still reaches the
+        # commit below with whatever it managed to answer.
+        timeout-minutes: 15
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          mkdir -p probe-results
+          PUSH=""
+          if [ "${{ github.event.inputs.push || 'true' }}" = "true" ]; then
+            PUSH="--push"
+          fi
+          python3 scripts/diag_course_pipeline.py \
+            --courses "${{ github.event.inputs.courses || 'trinidad-golf-course,vail-golf-club,golf-granby-ranch' }}" \
+            --days "${{ github.event.inputs.days || '3' }}" \
+            $PUSH 2>&1 | tee diag.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 diag.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/course-pipeline.json || exit 0
+          # [skip ci]: this file feeds a human decision, not the Worker bundle.
+          git commit -m "Diag: course pipeline trace [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push results after 5 attempts"; exit 1
