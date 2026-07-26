@@ -133,10 +133,58 @@ EXTRA_IDS = {
     "mariana butte golf course":   {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "course_ids": [3]},
     "red hawk ridge golf course":  {"website_id": "1ca33515-0bb5-4f13-3ebb-08d9d9c521b3", "course_ids": [1, 2]},
     "the olde course at loveland": {"website_id": "e1be30d2-b87c-40ec-44dd-08dbf84ad30b", "course_ids": [2]},
+    # The Arizona Biltmore's two rows share one Chronogolf club (18077), whose
+    # course list is {21028: "Estates", 21027: "Links"} — the same two names our
+    # rows carry, so the pairing is read off the platform rather than guessed.
+    # Without pinning, each row would fetch BOTH courses and every tee time
+    # would be published twice, once under each course's slug.
+    "arizona biltmore golf club - estates course": {"course_ids": [21028]},
+    "arizona biltmore golf club - links course":   {"course_ids": [21027]},
     # Arizona cps.golf tenants (GetAllOptions, July 2026):
     "del lago golf club":  {"website_id": "03dffe68-f3cf-4563-c22c-08ddcacdb8cb", "course_ids": [1]},
     "sewailo golf club":   {"website_id": "a719a286-7fcc-4c03-d59b-08db1f359d2a", "course_ids": [1]},
     "the views golf club": {"website_id": "8c0a1716-ea2b-4c84-adff-08d8df3c1472", "course_ids": [1, 2, 3]},
+}
+
+# Courses the platform itself, when asked, said it could not serve — recorded
+# by slug so they survive the status chain being fixed underneath them.
+#
+# The chronogolf and foreup gates below used to reject every row for an
+# identifier the adapters resolve on their own, so 45 courses sat in needs_ids
+# by accident. Fixing the gates flips them to "ready", which is right for 35 of
+# them and wrong for these: they would be attempted on every scrape, fail every
+# time, and the registry would call them ready while doing it. A course that
+# cannot be fetched must say so, and say WHY, or the next person re-derives the
+# same answer.
+#
+# Evidence: probe-results/needs-ids.json, 2026-07-26. Each entry is
+# (status, reason) — `unsupported` means no identifier would help, `needs_ids`
+# means a human still can.
+PROBED_HOLDS: dict[str, tuple[str, str]] = {
+    # ForeUp booking pages that load but carry no schedule_id at all, so
+    # discover_ids() comes back empty and fetch() has nothing to query.
+    "meeker-golf-course": ("needs_ids", "foreup booking page 22597 exposes no "
+                           "schedule_id"),
+    "snowflake-municipal-golf-course": ("needs_ids", "foreup booking page 1858 "
+                                        "exposes no schedule_id"),
+    # The Wigwam's three courses share one Chronogolf club (2454) whose courses
+    # are named Gold / Blue / Red, while our rows are Gold / Heritage /
+    # Patriot. Gold is unambiguous; which of Heritage and Patriot is Blue and
+    # which is Red is not, and the resort's own site now uses Gold/Blue/Red
+    # without mapping the old names. Left un-pinned, all three rows would fetch
+    # all three courses and publish each course's tee sheet three times under
+    # three names. Guessing the pairing would publish one course's times under
+    # the other's name — the same failure the Highland Hills / Boomerang note
+    # above exists to prevent. So: held until somebody confirms the pairing.
+    "wigwam-golf-club-gold-course": ("needs_ids", "shares chronogolf club 2454 "
+                                     "with two sibling rows; course pinning "
+                                     "unresolved"),
+    "wigwam-golf-club-heritage-course": ("needs_ids", "chronogolf calls the "
+                                         "club's courses Gold/Blue/Red — which "
+                                         "is Heritage is unconfirmed"),
+    "wigwam-golf-club-patriot-course": ("needs_ids", "chronogolf calls the "
+                                        "club's courses Gold/Blue/Red — which "
+                                        "is Patriot is unconfirmed"),
 }
 
 # adapters that can actually fetch today
@@ -220,10 +268,27 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         status = "unsupported"
     elif platform not in IMPLEMENTED:
         status = "experimental"          # golfnow / ezlinks
-    elif platform == "foreup" and not ids.get("schedule_id"):
+    elif slug in PROBED_HOLDS:
+        status = PROBED_HOLDS[slug][0]
+    elif platform == "foreup" and not ids.get("course_id"):
+        # Was `not ids.get("schedule_id")`, which held 15 courses out of the
+        # scrape for an id the scrape finds by itself: ForeUpAdapter.fetch()
+        # calls discover_ids(course_id) and regexes schedule_id out of the
+        # booking page whenever the registry has not pinned one. Probed
+        # 2026-07-26 — 13 of the 15 handed over a schedule_id on the first ask
+        # (probe-results/needs-ids.json). course_id is the id fetch() genuinely
+        # cannot work without, so that is what this now requires.
         status = "needs_ids"
-    elif platform == "chronogolf" and not ids.get("club_uuid"):
-        status = "needs_ids"             # uuid harvested at runtime
+    elif platform == "chronogolf" and not (ids.get("club_id") or ids.get("slug")):
+        # Was `not ids.get("club_uuid")`, which rejected 100% of chronogolf
+        # rows — extract_ids() hardcodes club_uuid=None on every one of them,
+        # and no code anywhere reads club_uuid. ChronogolfAdapter.fetch() takes
+        # `club_id or slug` and resolves the club id, affiliation type and
+        # course ids at runtime via discover(). Thirty courses sat in needs_ids
+        # for months waiting on an identifier that was never going to arrive
+        # and was never needed. Probed 2026-07-26: 22 of the 30 resolved
+        # cleanly; the other 8 are unclaimed listings, handled in the CSVs.
+        status = "needs_ids"
     elif platform == "teeitup" and not ids.get("alias"):
         status = "needs_ids"             # e.g. Troon wrapper, no direct alias
     elif platform == "clubprophet" and not ids.get("tenant"):
