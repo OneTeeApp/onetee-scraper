@@ -1,4 +1,4 @@
-name: Scrape Club Caddie via browser (3 days)
+name: Scrape Club Caddie via browser (0-6 hourly, 0-30 daily)
 
 # Club Caddie's public widget is session-gated (plain HTTP gets a stub). A real
 # Chromium loads the widget, captures the POST it fires to /webapi/TeeTimes
@@ -9,7 +9,11 @@ name: Scrape Club Caddie via browser (3 days)
 on:
   schedule:
     - cron: "27 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: "Scrape the full 0-30 day horizon"
+        default: "no"
   push:
     branches: [main]
     paths:
@@ -27,7 +31,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,7 +50,16 @@ jobs:
           START=$(date -u +%F)
           python -m scraper.browser_clubcaddie --date "${START}" --days 3 \
             --out-dir output || true
-          for OFFSET in 0 1 2; do
+          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
+          # manual deep dispatch stretch to the full 30-day horizon. Browser
+          # scrapes are too slow to loop at the near tier's cadence, so daily
+          # is the far-tier freshness for these platforms.
+          DEEP=no
+          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+          LAST=6
+          [ "$DEEP" = "yes" ] && LAST=30
+          for OFFSET in $(seq 0 $LAST); do
             DATE=$(date -u -d "+${OFFSET} days" +%F)
             python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
           done
