@@ -42,12 +42,19 @@ def covered_timezones(registry_path: str) -> list[str]:
     return sorted(tzs) or [DEFAULT_TZ]
 
 
-def scrape_dates(registry_path: str, days: int = 3) -> list[dt.date]:
-    """Union of [local today .. local today + days-1] over covered timezones."""
+def scrape_dates(registry_path: str, days: int = 3,
+                 start: int = 0) -> list[dt.date]:
+    """Union of [local today+start .. today+start+days-1] over covered tzs.
+
+    `start` is what makes tiered scanning possible: the near tier asks for
+    (start=0, days=3), the mid tier (start=3, days=5), the far tier
+    (start=8, days=23). d1.sync reconciles per date, so tiers scraping
+    disjoint date windows cannot clobber each other's rows.
+    """
     out: set[dt.date] = set()
     for tz in covered_timezones(registry_path):
         today = dt.datetime.now(zoneinfo.ZoneInfo(tz)).date()
-        for d in range(days):
+        for d in range(start, start + days):
             out.add(today + dt.timedelta(days=d))
     return sorted(out)
 
@@ -56,8 +63,10 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--days", type=int, default=3)
+    p.add_argument("--start", type=int, default=0,
+                   help="first day offset from local today (0 = today)")
     a = p.parse_args()
-    for d in scrape_dates(a.registry, a.days):
+    for d in scrape_dates(a.registry, a.days, a.start):
         print(d.isoformat())
     return 0
 
