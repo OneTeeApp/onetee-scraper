@@ -296,6 +296,47 @@ def deactivate_unknown_slugs(db, registry_path: str,
             "known_courses": len(known), "dry_run": dry_run}
 
 
+def deactivate_courses(db, slugs, dry_run: bool = False) -> dict:
+    """Set active=0 on every active row of the named courses.
+
+    The closer for the OTHER gap in sync(). `deactivate_unknown_slugs` handles
+    a slug that left the registry; this handles one that is still in it and
+    still being fetched, but has stopped returning anything. Such a course
+    never enters `scraped_courses`, so sync() never reconciles it, and its last
+    tee sheet stays active=1 — served to golfers as current availability —
+    until each slot elapses on its own.
+
+    This does NOT decide which courses those are, and that separation is the
+    point. It takes an adjudicated list. `scripts/probe_staleness.py` produces
+    one by fetching each candidate live and requiring a clean, error-free,
+    zero-row answer on every date we are serving; an adapter raising is
+    explicitly not evidence a course went dark. Passing a slug here asserts
+    that somebody — a probe or a human — established it.
+
+    Safe to be wrong in one direction: the next successful scrape re-INSERTs
+    the rows (sync() reactivates on `not e["active"]`), so a wrongly-closed
+    course is back within the hour, while a wrongly-kept one lies for days.
+    """
+    slugs = sorted(set(slugs))
+    if not slugs:
+        return {"deactivated": 0, "slugs": {}, "dry_run": dry_run}
+
+    counts: dict[str, int] = {}
+    for i in range(0, len(slugs), SLUG_CHUNK):
+        batch = slugs[i:i + SLUG_CHUNK]
+        ph = ",".join("?" * len(batch))
+        for r in db.execute(
+                f"SELECT course_slug, COUNT(*) AS n FROM tee_times "
+                f"WHERE active = 1 AND course_slug IN ({ph}) "
+                f"GROUP BY course_slug", batch):
+            counts[r["course_slug"]] = r["n"]
+        if not dry_run:
+            db.execute(f"UPDATE tee_times SET active = 0 "
+                       f"WHERE active = 1 AND course_slug IN ({ph})", batch)
+    return {"deactivated": sum(counts.values()), "slugs": counts,
+            "dry_run": dry_run}
+
+
 def _local_now(tz_name: str) -> str:
     import zoneinfo
     return (dt.datetime.now(zoneinfo.ZoneInfo(tz_name))

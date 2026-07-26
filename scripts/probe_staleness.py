@@ -65,7 +65,7 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.aggregate import fetch_course, load_registry  # noqa: E402
-from scraper.d1 import D1Rest, SqliteLocal  # noqa: E402
+from scraper.d1 import D1Rest, SqliteLocal, deactivate_courses  # noqa: E402
 
 # Every platform family has an hourly writer of its own (scrape :17,
 # clubcaddie :27, cps/supersaas :37, ezlinks :47, golfnow :52), and scrape-fast
@@ -101,6 +101,14 @@ def main() -> int:
     ap.add_argument("--state", help="limit to one state (e.g. CO)")
     ap.add_argument("--no-adjudicate", action="store_true",
                     help="measure the distribution only; do not fetch")
+    ap.add_argument("--deactivate", action="store_true",
+                    help="close out the rows of courses judged `orphaned`. "
+                         "Only that verdict — never `error`, which is unknown")
+    ap.add_argument("--also", default="",
+                    help="comma-separated slugs a HUMAN has adjudicated as "
+                         "orphaned, closed out alongside the probe's own. For "
+                         "courses whose adapter raises, so the probe will "
+                         "never assert it (Meeker: no schedule_id exists)")
     a = ap.parse_args()
 
     db = SqliteLocal(a.local) if a.local else D1Rest()
@@ -224,6 +232,21 @@ def main() -> int:
     for slug in [r["slug"] for r in results if r["verdict"] == "orphaned"]:
         print(f"  {slug}")
 
+    # --- close-out -------------------------------------------------------- #
+    # Only `orphaned` — a clean, error-free, zero-row fetch on every date we
+    # are serving. `error` is unknown and stays untouched; deriving "gone" from
+    # "the adapter raised" is how a 403 on one platform wipes a whole state.
+    orphan_slugs = [r["slug"] for r in results if r["verdict"] == "orphaned"]
+    manual = [s.strip() for s in a.also.split(",") if s.strip()]
+    sweep = None
+    if a.deactivate and (orphan_slugs or manual):
+        sweep = deactivate_courses(db, orphan_slugs + manual)
+        print(f"\ndeactivated {sweep['deactivated']} rows across "
+              f"{len(sweep['slugs'])} course(s): {sweep['slugs']}")
+    elif orphan_slugs or manual:
+        print(f"\n(--deactivate not set; would close out "
+              f"{len(set(orphan_slugs + manual))} course(s))")
+
     out = {"generated_at": now.isoformat(timespec="seconds"),
            "max_age_hours": a.max_age_hours,
            "state": a.state,
@@ -234,6 +257,8 @@ def main() -> int:
                                 for k in dist},
            "tally": dict(tally),
            "orphaned_rows": orphan_rows,
+           "manually_adjudicated": manual,
+           "deactivated": sweep,
            "results": results}
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out, "w") as fh:

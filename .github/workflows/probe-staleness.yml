@@ -1,31 +1,39 @@
-name: Probe stale/orphaned inventory
+name: Sweep stale/orphaned inventory
 
-# sync() only reconciles courses that reported in that run. A course that goes
-# dark never enters scraped_courses, so its last-known slots stay active=1 and
-# keep being served as current availability until each one elapses. This
-# measures how much of the live inventory is in that state.
+# sync() reconciles only the courses that reported in that run — `k[0] in
+# scraped_courses`. A course that goes dark never enters that set, so its last
+# tee sheet stays active=1 and keeps being served as current availability until
+# each slot elapses. This measures that, and closes out what it can prove.
 #
-# It needs BOTH D1 (to see what we are serving) and the platforms (to ask
-# whether it is still real), which is why it runs here: the dev sandbox's
-# egress proxy 403s the platforms AND the Worker API, and Actions logs are not
-# readable from there — the committed JSON is how the finding gets out.
+# It runs here rather than in the dev sandbox because it needs BOTH D1 (to see
+# what we are serving) and the platforms (to ask whether it is still real), and
+# that sandbox's egress proxy 403s the platforms AND the Worker API. Actions
+# logs are not readable from there either — the committed JSON is how the
+# finding gets out.
 #
-# Read-only: SELECTs only, public GETs only. The D1 token is the same one the
-# scrape uses; nothing in this job writes to the database.
+# WRITES, unlike the other probes: it sets active=0 on courses judged
+# `orphaned`, meaning a clean, error-free, zero-row fetch on every date we are
+# serving. Never on `error` — an adapter raising is not evidence a course went
+# dark, and inferring one from the other is how a platform-wide 403 wipes a
+# state. Safe in one direction by construction: the next successful scrape
+# re-INSERTs the rows, so a wrong close-out heals within the hour.
 
 on:
+  schedule:
+    # :07 — clear of scrape :17, prune :23, clubcaddie :27, cps/supersaas :37,
+    # ezlinks :47 and golfnow :52.
+    - cron: "7 * * * *"
   workflow_dispatch:
     inputs:
       max_age_hours:
         description: "Age of newest last_seen_at that makes a course a candidate"
         default: "6"
-      state:
-        description: "Limit to one state (blank = all)"
-        default: ""
+      deactivate:
+        description: "Close out confirmed orphans (false = report only)"
+        default: "true"
   push:
     branches: [main]
     paths:
-      # Landing the probe IS the request to run it.
       - "scripts/probe_staleness.py"
       - ".github/workflows/probe-staleness.yml"
 
@@ -36,8 +44,17 @@ concurrency:
   group: probe-staleness
   cancel-in-progress: true
 
+env:
+  # Human-adjudicated orphans: courses whose adapter RAISES, so the probe will
+  # never assert `orphaned` for them on its own, but whose failure is
+  # understood and recorded. Meeker exposes no schedule_id from booking page
+  # 22597 — it is one of the five PROBED_HOLDS in build_registry.py — so its
+  # rows can never be refreshed and were being served two days stale.
+  # Removing a slug from this list is all it takes to stop closing it out.
+  MANUAL_ORPHANS: "meeker-golf-course"
+
 jobs:
-  probe:
+  sweep:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -47,7 +64,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
 
-      - name: Probe
+      - name: Probe and sweep
         # Step-level timeout so a slow platform still reaches the commit below
         # with whatever it managed to answer.
         timeout-minutes: 25
@@ -57,9 +74,14 @@ jobs:
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
           mkdir -p probe-results
+          DEACTIVATE=""
+          if [ "${{ github.event.inputs.deactivate || 'true' }}" = "true" ]; then
+            DEACTIVATE="--deactivate"
+          fi
           python3 scripts/probe_staleness.py \
             --max-age-hours "${{ github.event.inputs.max_age_hours || '6' }}" \
-            ${{ github.event.inputs.state && format('--state {0}', github.event.inputs.state) || '' }} \
+            --also "$MANUAL_ORPHANS" \
+            $DEACTIVATE \
             2>&1 | tee probe.log
 
       - name: Summary
@@ -76,9 +98,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add probe-results/staleness.json || exit 0
           # [skip ci]: this file feeds a human decision, not the Worker bundle.
-          git commit -m "Probe: stale/orphaned inventory [skip ci]" || exit 0
+          git commit -m "Sweep: stale/orphaned inventory [skip ci]" || exit 0
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push && exit 0
             sleep $((i * 5))
           done
-          echo "could not push probe results after 5 attempts"; exit 1
+          echo "could not push results after 5 attempts"; exit 1
