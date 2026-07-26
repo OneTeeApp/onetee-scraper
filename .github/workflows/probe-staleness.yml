@@ -1,0 +1,84 @@
+name: Probe stale/orphaned inventory
+
+# sync() only reconciles courses that reported in that run. A course that goes
+# dark never enters scraped_courses, so its last-known slots stay active=1 and
+# keep being served as current availability until each one elapses. This
+# measures how much of the live inventory is in that state.
+#
+# It needs BOTH D1 (to see what we are serving) and the platforms (to ask
+# whether it is still real), which is why it runs here: the dev sandbox's
+# egress proxy 403s the platforms AND the Worker API, and Actions logs are not
+# readable from there — the committed JSON is how the finding gets out.
+#
+# Read-only: SELECTs only, public GETs only. The D1 token is the same one the
+# scrape uses; nothing in this job writes to the database.
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Age of newest last_seen_at that makes a course a candidate"
+        default: "6"
+      state:
+        description: "Limit to one state (blank = all)"
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      # Landing the probe IS the request to run it.
+      - "scripts/probe_staleness.py"
+      - ".github/workflows/probe-staleness.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-staleness
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        # Step-level timeout so a slow platform still reaches the commit below
+        # with whatever it managed to answer.
+        timeout-minutes: 25
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          mkdir -p probe-results
+          python3 scripts/probe_staleness.py \
+            --max-age-hours "${{ github.event.inputs.max_age_hours || '6' }}" \
+            ${{ github.event.inputs.state && format('--state {0}', github.event.inputs.state) || '' }} \
+            2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 100 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/staleness.json || exit 0
+          # [skip ci]: this file feeds a human decision, not the Worker bundle.
+          git commit -m "Probe: stale/orphaned inventory [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push probe results after 5 attempts"; exit 1
