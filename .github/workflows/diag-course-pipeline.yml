@@ -21,6 +21,15 @@ name: Diagnose one course, registry to D1
 # when nothing was fetched — pushing an empty document would deactivate the
 # course's existing rows, which is exactly the accident this repo has already
 # had once.
+#
+# It also verifies a RE-PLATFORM in one shot, which is the second thing it is
+# used for. `golf-granby-ranch` moved teeitup -> chronogolf; its TeeItUp alias
+# still resolves and still returns an empty sheet forever, so nothing about
+# the old platform would ever have reported the move. Pointing the registry at
+# the new platform and running this answers "does the new adapter actually
+# serve this course" and, if it does, lands the rows in the same run. A wrong
+# guess is safe: the adapter raises, the verdict is `fetch_error`, and sync is
+# skipped rather than writing an empty document.
 
 on:
   workflow_dispatch:

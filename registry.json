@@ -862,14 +862,16 @@
    "state": "CO",
    "venue_id": "golf-granby-ranch",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://golf-granby-ranch.book.teeitup.golf/",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/granby-ranch-golf-course",
    "ids": {
-    "alias": "golf-granby-ranch"
+    "slug": "granby-ranch-golf-course",
+    "club_uuid": null,
+    "former_teeitup_alias": "golf-granby-ranch"
    },
    "status": "ready",
    "confidence": "medium",
-   "notes": "MIGRATED to TeeItUp (golfgranbyranch.com/book-a-tee-time embeds it). Alias resolves: facility id 2637 / courseId 54f14c3f0c8ad60378b02148, America/Denver. Sheet is EMPTY on every date probed (today..+2, +1/+3/+7), bare and pinned, while controls served on the same runs. A real empty, not an adapter fault - likely a Troon flow that does not publish anonymously. Human call, not a code fix."
+   "notes": "RE-PLATFORMED teeitup -> chronogolf. The TeeItUp alias is real and still resolves (facility 2637 / courseId 54f14c3f0c8ad60378b02148, America/Denver) but its sheet is empty on every date probed - today..+2 and +1/+3/+7, bare and pinned, while controls served on the same runs. That is a course that MOVED, not a broken adapter: granby now books through chronogolf.com/club/granby-ranch-golf-course. Watch for the unclaimed-listing case - a Chronogolf directory row for a club that sells elsewhere has club online_booking_enabled=False and the adapter raises rather than reporting a false empty."
   },
   {
    "slug": "grand-elk-golf-club",
