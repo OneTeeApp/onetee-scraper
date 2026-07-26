@@ -113,6 +113,15 @@ def run(date: dt.date, registry_path: str, out_path: str,
         "courses_ok": sum(r.ok for r in results),
         "tee_times": [t.to_dict(include_raw)
                       for r in results for t in r.tee_times],
+        # Courses that answered CLEANLY with zero rows for this date. sync()
+        # needs the distinction: for these, deactivating their leftover rows
+        # for this date is CORRECT (the day sold out, or the booking window
+        # closed). An errored course must never be treated this way - its
+        # absence is ignorance, not evidence. With a 3-day horizon a fully
+        # sold-out date self-healed within hours via prune_past; at day 20 the
+        # phantom slots would have lied for weeks.
+        "courses_empty": sorted(r.course_slug for r in results
+                                if r.ok and not r.tee_times),
         "errors": [{"course": r.course_slug, "platform": r.platform,
                     "error": r.error} for r in results if not r.ok],
     }
