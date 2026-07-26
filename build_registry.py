@@ -75,11 +75,15 @@ EXTRA_IDS = {
     # TeeItUp: the book.teeitup.com vanity subdomain is NOT always the kenna
     # x-be-alias. Captured the real alias each course's booking page sends to
     # phx-api-be-east-1b.kenna.io/alias/<alias>/facilities and override it here.
-    # (Rollingstone had no booking URL in the CSV, so this also supplies it.)
     "omni interlocken resort golf club": {"alias": "interlocken-golf-club-ohr"},
     "pole creek golf club":              {"alias": "pole-creek-golf-club"},
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
-    "rollingstone ranch golf club":      {"alias": "rollingstone-ranch"},
+    # Rollingstone's entry ({"alias": "rollingstone-ranch"}) is gone on
+    # purpose: the alias was confirmed real and confirmed EMPTY on every date
+    # (registry note, 2026-07-26) — Troon does not publish that sheet
+    # anonymously. The course actually sells through Golf With Access, and the
+    # CSV now says so. Re-adding the alias here would put a dead teeitup ids
+    # blob on an other:golfwithaccess row.
     # Golden Hills: the host is golden-hills-golf-club-az.book.teeitup.com but
     # kenna has never heard of that alias — 404 "Booking Engine Settings not
     # found" on every route, while every sibling Arizona alias answers
