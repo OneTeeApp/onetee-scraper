@@ -50,7 +50,7 @@ Colorado Springs Country Club,Colorado Springs,80907,Private,https://www.cscount
 Columbine Country Club,Littleton,80123,Private,https://www.columbinecc.com,,,private,,Private club — no public tee times
 CommonGround Golf Course,Aurora,80010,Public,https://www.commongroundgc.com,teeitup,https://commonground-golf-course.book.teeitup.com/,yes,high,TeeItUp alias.
 Conquistador Golf Course,Cortez,81321,Public,https://www.fourcornersgolf.com,clubcaddie,https://apimanager-cc28.clubcaddie.com/webapi/view/gbfdabab,yes,high,ClubCaddie link on fourcornersgolf.com.
-Copper Creek Golf Club,Frisco,80443,Resort,https://www.coppercolorado.com,other:goibsvision,https://www.goibsvision.com/WebRes/Club/ccgc/Browse,yes,medium,IBS WebRes engine.
+Copper Creek Golf Club,Frisco,80443,Resort,https://www.coppercolorado.com,foreup,https://foreupsoftware.com/index.php/booking/22329/10420#/teetimes,yes,high,ForeUp booking 22329/10420 (owner-verified 2026-07-26); replaces the IBS WebRes page that never had an adapter.
 Cornerstone Club,Montrose,81403,Private,https://www.cornerstoneclub.com,,,private,,Private club — no public tee times
 Cottonwood Links Golf Club,Fowler,81039,Public,https://www.cottonwoodlinks.com,other:square,https://app.squareup.com/appointments/book/gx20u6dqwo3xjm/LX8E0VBSXSYKF/start,yes,high,Square Appointments.
 Country Club at Castle Pines,Castle Rock,80108,Private,https://www.ccatcastlepines.com,,,private,,Private club — no public tee times
@@ -89,7 +89,7 @@ Glenwood Springs Golf Club,Glenwood Springs,81601,Public,https://www.glenwoodspr
 Golf at River Valley Ranch,Carbondale,81623,Public,https://www.rvrgolf.com,foreup,https://foreupsoftware.com/index.php/booking/18848#/teetimes,yes,high,ForeUp 18848.
 Golf Club At Bear Dance,Larkspur,80118,Public,https://www.beardancegolf.com,ezlinks,https://beardancepub.ezlinksgolf.com/index.html#/search,yes,high,Public EZLinks portal (member portals separate).
 Golf Club at Fox Acres,Red Feather Lakes,80545,Private,https://www.golfclubatfoxacres.com,,,private,,Private club — no public tee times
-Golf Granby Ranch,Granby,80446,Public,https://www.golfgranbyranch.com,teeitup,https://golf-granby-ranch.book.teeitup.golf/,yes,medium,MIGRATED to TeeItUp (golfgranbyranch.com/book-a-tee-time embeds it).
+Golf Granby Ranch,Granby,80446,Public,https://www.golfgranbyranch.com,chronogolf,https://www.chronogolf.com/club/granby-ranch-golf-course,yes,high,RE-PLATFORMED teeitup -> chronogolf (2026-07-26). The TeeItUp alias golf-granby-ranch is real and resolves (facility 2637) but its sheet is empty on every date probed while controls served; the course MOVED - it now books through Chronogolf. If the Chronogolf club ever shows online_booking_enabled=False treat it as an unclaimed listing; the adapter raises rather than reporting a false empty.
 Grand Elk Golf Club,Granby,80446,Public,https://www.grandelk.com,ezlinks,https://grandelk.ezlinksgolf.com/index.html#/search,yes,high,EZLinks portal.
 Grand Lake Golf Course,Grand Lake,80447,Public,https://www.grandlakerecreation.com,,https://www.grandlakerecreation.com/golf-course/book-a-tee-time/,unknown,low,Book page exists but embedded engine unidentified.
 Grandote Peaks Golf Club,La Veta,81055,Public,https://www.grandotepeaks.com,golfnow,https://www.golfnow.com/tee-times/facility/18465-grandote-peaks-golf-club/search,yes,low,Primary engine unverified (rate-limited); GolfNow listing exists.
@@ -145,7 +145,7 @@ Overland Park Golf Course,Denver,80223,Public,https://www.cityofdenvergolf.com,m
 Pagosa Springs Golf Club,Pagosa Springs,81147,Public,https://www.golfpagosa.com,teesnap,https://golfpagosa.teesnap.net/,yes,high,Teesnap subdomain.
 Park Hill Golf Club,Denver,80207,Public,https://www.denvergov.org,,,no,high,Permanently closed; becoming a park.
 Patty Jewett Golf Course,Colorado Springs,80907,Public,https://www.pattyjewettgolfshop.com,foreup,https://foreupsoftware.com/index.php/booking/index/19459,yes,high,ForeUp 19459 (city-run).
-Pelican Lakes Golf & Country Club,Windsor,80550,Semi-Private,https://pelicanlakeswindsor.com,golfnow,https://www.golfnow.com/tee-times/facility/4719-pelican-lakes-golf-club-pelican-lakes-course/search,yes,low,Own page bot-blocked; GolfNow listings for both courses.
+Pelican Lakes Golf & Country Club,Windsor,80550,Semi-Private,https://pelicanlakeswindsor.com,,,no,high,GolfNow facility 4719 resolves but answers a valid empty sheet on every date probed (probe-results/golfnow-diag.txt); GolfNow holds the listing and sells nothing. Own page bot-blocked; book by phone.
 Perry Park Country Club,Larkspur,80118,Private,https://www.perryparkcc.com,,,private,,Private club — no public tee times
 Pine Creek Golf Club,Colorado Springs,80920,Public,https://www.pinecreekgc.com,ezlinks,https://pinecreekpp.ezlinksgolf.com/index.html#/search,yes,high,pinecreekpp EZLinks portal.
 Pinehurst Country Club,Denver,80235,Private,https://www.pinehurstcountryclub.com,,,private,,Private club — no public tee times
@@ -174,7 +174,7 @@ Riverdale Golf Course,Brighton,80601,Public,https://www.riverdalegolf.com,teeitu
 Riverview Golf Course,Sterling,80751,Semi-Private,https://www.riverview.golf,,,unknown,low,Site blocked; no active portal verified.
 Roaring Fork Club,Basalt,81621,Private,https://www.roaringforkclub.com,,,private,,Private club — no public tee times
 Rocky Ford Country Club,Rocky Ford,81067,Public,https://www.facebook.com,,,unknown,low,Site unreachable; unverified.
-Rollingstone Ranch Golf Club,Steamboat Springs,80487,Public,https://www.rollingstoneranchgolf.com,teeitup,,yes,low,Troon-managed TeeItUp flow; alias unconfirmed (site 403).
+Rollingstone Ranch Golf Club,Steamboat Springs,80487,Public,https://www.rollingstoneranchgolf.com,other:golfwithaccess,https://golfwithaccess.com/course/rollingstone-ranch-golf-club/reserve-tee-time,yes,high,Sells via Golf With Access (owner-verified 2026-07-26). TeeItUp alias rollingstone-ranch is real but publishes an empty sheet anonymously; that channel is retired - do not re-add.
 Saddle Rock Golf Course,Aurora,80016,Public,https://www.golfaurora.com,ezlinks,https://cityofaurora.ezlinksgolf.com,yes,medium,Aurora shared EZLinks portal.
 Saddleback Golf Club,Longmont,80504,Public,https://www.saddlebackgolf.com,foreup,https://foreupsoftware.com/index.php/booking/22514/11048#teetimes,yes,high,ForeUp booking 22514/11048.
 Saint Andrews At Westcliffe,Westcliffe,81252,Closed,,,,no,high,CLOSED since 2017; listed for sale in 2019. Directories still carry a phone number for it. Should be dropped from the directory rather than shown as callable.
@@ -224,7 +224,7 @@ Thorncreek Golf Club,Thornton,80241,Public,https://www.thorncreekgc.com,quick18,
 Tiara Rado Golf Course,Grand Junction,81507,Public,https://www.golfgrandjunction.net,membersports,https://app.membersports.com/tee-times/3821/4918/0/4/0,yes,high,Grand Junction shared portal.
 Todd Creek Golf Club,Brighton,80602,Public,https://www.toddcreekgolfclub.com,foreup,https://foreupsoftware.com/index.php/booking/22161/10005,yes,high,ForeUp 22161/10005.
 TPC Colorado,Berthoud,80513,Private,https://www.tpc.com,,,private,,Private club — no public tee times
-Trinidad Golf Course,Trinidad,81082,Public,https://www.trinidadgolfcourse.com,teeitup,https://trinidad-municipal-golf-course.book-v2.teeitup.golf/,yes,high,TeeItUp book-v2.
+Trinidad Golf Course,Trinidad,81082,Public,https://www.trinidadgolfcourse.com,teeitup,https://trinidad-municipal-golf-course.book-v2.teeitup.golf/,yes,high,TeeItUp book-v2; same kenna backend as book. Facility id 13600 confirmed but deliberately NOT pinned (teeitup.py pinned-id hazard; the bare per-alias call returns the identical sheet). Booking window opens about 2 days out - zero rows on today/today+1 is normal here; not a fault.
 Twin Peaks Golf Course,Longmont,80503,Public,https://www.golflongmont.com,teeitup,https://twin-peaks-golf-course.book.teeitup.com/,yes,high,"Longmont city course, TeeItUp."
 University of Denver Golf Club at Highlands Ranch,Littleton,80129,Semi-Private,https://highlandsranchgolf.du.edu,clubprophet,https://universityofdenver.cps.golf/,yes,low,"cps.golf tenant NOT CONFIRMED. universityofdenver / highlandsranchgolf / dugolf / duhighlandsranch / highlandsranch all fail DNS in a real browser, against a control (indianpeaks) that mints a token fine (probe-results/open_leads.txt section B). highlandsranchgolf.du.edu also blocks datacenter IPs. No website_id or course_ids, so browser_cps has never attempted it. Registry status is needs_ids, not ready."
 Ute Creek Golf Course,Longmont,80504,Public,https://www.golflongmont.com,teeitup,https://ute-creek-golf-course.book.teeitup.com/,yes,high,Longmont TeeItUp.
