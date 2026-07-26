@@ -1,4 +1,4 @@
-name: Scrape EZLinks via browser (3 days)
+name: Scrape EZLinks via browser (0-6 hourly, 0-30 daily)
 
 # EZLinks portals sit behind Cloudflare that blocks the plain HTTP client's TLS
 # fingerprint from datacenter IPs. A real headless Chromium clears the *managed*
@@ -11,7 +11,11 @@ name: Scrape EZLinks via browser (3 days)
 on:
   schedule:
     - cron: "47 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: "Scrape the full 0-30 day horizon"
+        default: "no"
   push:
     branches: [main]
     paths:
@@ -30,7 +34,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,13 +45,22 @@ jobs:
           pip install requests playwright
           python -m playwright install --with-deps chromium
 
-      - name: Scrape + push each date to D1 (today + next 2 days)
+      - name: Scrape + push each date to D1 (tiered horizon)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          for OFFSET in 0 1 2; do
+          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
+          # manual deep dispatch stretch to the full 30-day horizon. Browser
+          # scrapes are too slow to loop at the near tier's cadence, so daily
+          # is the far-tier freshness for these platforms.
+          DEEP=no
+          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+          LAST=6
+          [ "$DEEP" = "yes" ] && LAST=30
+          for OFFSET in $(seq 0 $LAST); do
             DATE=$(date -u -d "+${OFFSET} days" +%F)
             echo "::group::ezlinks browser ${DATE}"
             python -m scraper.browser_ezlinks --date "${DATE}" \
