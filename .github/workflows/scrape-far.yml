@@ -1,0 +1,137 @@
+name: Scrape far tier (days 8-30, every 2 hours)
+
+# The far tier is what makes "book up to 30 days out" true. It is also where
+# most of the wasted requests would live: many courses never publish a sheet
+# 30 days ahead (Trinidad opens ~2 days out; Teesnap tenants carry advance=14),
+# so most passes SKIP the dates a course has proven it does not publish, using
+# probe-results/booking-windows.json.
+#
+# Once a day (the 10:xx UTC run, ~4am Denver) the sweep goes FULL — every
+# course, every far date, windows ignored — and then re-derives the windows
+# file from its own output and commits it. That is the self-correcting part:
+# a course that widens its booking window is caught within a day, and the
+# derivation costs zero extra requests because it reads the sweep's own
+# output documents. Between full sweeps the file only trims work; scripts/
+# eligible_courses.py treats unknown courses, unchecked offsets, and a stale
+# file as "scrape it" — ignorance never reads as absence.
+
+on:
+  schedule:
+    - cron: "43 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Ignore booking windows (full sweep + re-derive)"
+        default: "no"
+
+permissions:
+  contents: write               # the full sweep commits booking-windows.json
+
+concurrency:
+  group: scrape-far
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Decide full vs windowed
+        id: mode
+        run: |
+          FULL=no
+          [ "$(date -u +%H)" = "10" ] && FULL=yes
+          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
+          [ -f probe-results/booking-windows.json ] || FULL=yes
+          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+          echo "far sweep mode: full=${FULL}"
+
+      - name: Scrape + push shard ${{ matrix.shard }}/4 (days 8-30)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23); do
+            ARGS=""
+            if [ "${{ steps.mode.outputs.full }}" != "yes" ]; then
+              ELIG=$(python scripts/eligible_courses.py --date "${DATE}")
+              if [ "$ELIG" = "NONE" ]; then
+                echo "skip ${DATE}: no course's booking window reaches it"
+                continue
+              fi
+              [ "$ELIG" != "ALL" ] && ARGS="--courses ${ELIG}"
+            fi
+            OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
+            echo "::group::far ${DATE} shard ${{ matrix.shard }}"
+            python -m scraper.aggregate --date "${DATE}" --workers 10 \
+              --shard "${{ matrix.shard }}/4" \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas \
+              ${ARGS} --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
+            echo "::endgroup::"
+          done
+
+      - name: Upload raw results (windows derivation + debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: far-tee-times-${{ github.run_id }}-s${{ matrix.shard }}
+          path: output/tee_times_*.json
+          retention-days: 7
+
+  derive-windows:
+    # Only after a FULL sweep, and only once (not per shard): pull all four
+    # shards' outputs back down and measure each course's real booking window
+    # from what the sweep itself saw.
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Was this a full sweep?
+        id: mode
+        run: |
+          FULL=no
+          [ "$(date -u +%H)" = "10" ] && FULL=yes
+          [ "$(date -u +%H)" = "11" ] && FULL=yes   # long sweep crossing the hour
+          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
+          [ -f probe-results/booking-windows.json ] || FULL=yes
+          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+      - name: Download sweep outputs
+        if: steps.mode.outputs.full == 'yes'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: far-tee-times-${{ github.run_id }}-*
+          path: output
+          merge-multiple: true
+      - name: Derive windows + commit
+        if: steps.mode.outputs.full == 'yes'
+        run: |
+          python scripts/derive_windows.py \
+            --outputs 'output/tee_times_*.json' \
+            --registry registry.json \
+            --out probe-results/booking-windows.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add probe-results/booking-windows.json
+          git diff --cached --quiet && { echo "windows unchanged"; exit 0; }
+          git commit -m "Booking windows from full far sweep [skip ci]"
+          for i in 1 2 3; do
+            git push && exit 0
+            git pull --rebase && continue
+          done
+          exit 1
