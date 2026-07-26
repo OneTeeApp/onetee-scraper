@@ -1,0 +1,79 @@
+name: Monitor inventory health
+
+# The witness for probe-staleness.yml. That job now WRITES — it sets active=0
+# on courses it has proved are dark — so there has to be an independent record
+# of what the frontend was serving before and after, on a fixed cadence.
+#
+# It reads the public Worker API, not D1, so it holds no Cloudflare secrets and
+# cannot write anything. It also means it records what a golfer actually sees:
+# per-state local-time cutoff applied, venue sources deduped. See the module
+# docstring in scripts/monitor_inventory.py for why that matters.
+
+on:
+  schedule:
+    # :57 — after every hourly writer (scrape :17, prune :23, clubcaddie :27,
+    # cps/supersaas :37, ezlinks :47, golfnow :52) and before the sweep at :07.
+    # This measures the DURABLE effect of the sweep: a course closed out
+    # wrongly is re-INSERTed by the :17 scrape and is back by :57; one closed
+    # out correctly stays gone. Sampling right after the sweep could not tell
+    # those two apart.
+    - cron: "57 * * * *"
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "States to sample; the first is the watched one"
+        default: "CO,AZ"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/monitor_inventory.py"
+      - ".github/workflows/monitor-inventory.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monitor-inventory
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Sample
+        timeout-minutes: 10
+        run: |
+          mkdir -p probe-results
+          python3 scripts/monitor_inventory.py \
+            --states "${{ github.event.inputs.states || 'CO,AZ' }}" \
+            2>&1 | tee monitor.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 60 monitor.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        # Only on success: a failed sample must not append a line, because an
+        # empty or partial sample would read as the whole state going dark and
+        # would poison the next hour's comparison too.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/inventory-history.jsonl || exit 0
+          # [skip ci]: an appended sample is a reading, not a code change.
+          git commit -m "Monitor: inventory sample [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push sample after 5 attempts"; exit 1
