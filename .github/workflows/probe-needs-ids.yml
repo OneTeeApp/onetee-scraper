@@ -1,0 +1,83 @@
+name: Probe needs_ids courses
+
+# Forty-eight courses are held out of the scrape as `needs_ids`, and 45 of them
+# are chronogolf or foreup — two platforms whose adapters resolve the very
+# identifier the gate fails them for, at runtime, on their own. This asks the
+# platforms which of those courses can actually be scraped today, so the gate
+# can be fixed against evidence instead of against a reading of the code.
+#
+# It runs here rather than in the dev sandbox because that sandbox's egress
+# proxy 403s chronogolf.com, foreupsoftware.com and *.cps.golf outright. And it
+# commits its result file because a workflow's logs are not readable from
+# there either — a committed artifact is the only way the finding gets out.
+#
+# Read-only over the network: two public GETs per chronogolf course, one per
+# foreup course, one second apart. No booking, no login, no writes upstream.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to probe (comma-separated)"
+        default: "chronogolf,foreup"
+      delay:
+        description: "Seconds between courses"
+        default: "1.0"
+  push:
+    branches: [main]
+    paths:
+      # Landing the probe IS the request to run it. Otherwise the first run
+      # waits on a manual dispatch nobody remembers to fire.
+      - "scripts/probe_needs_ids.py"
+      - ".github/workflows/probe-needs-ids.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-needs-ids
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Probe
+        # Step-level timeout so a slow platform still reaches the commit below
+        # with whatever it managed to answer. A job-level cap would cancel the
+        # job and throw the partial finding away.
+        timeout-minutes: 15
+        run: |
+          python3 scripts/probe_needs_ids.py \
+            --platforms "${{ github.event.inputs.platforms || 'chronogolf,foreup' }}" \
+            --delay "${{ github.event.inputs.delay || '1.0' }}" \
+            2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 60 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/needs-ids.json || exit 0
+          # [skip ci]: this file feeds a human decision about the status gate,
+          # not the Worker bundle. Nothing downstream needs rebuilding.
+          git commit -m "Probe: needs_ids courses [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push probe results after 5 attempts"; exit 1
