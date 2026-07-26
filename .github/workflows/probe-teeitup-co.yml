@@ -1,0 +1,70 @@
+name: Probe TeeItUp CO silent aliases
+
+# Colorado has 25 TeeItUp rows; 22 serve with no facility_id pinned and 3 are
+# silent — the same 3 in the coverage gap. A platform-wide fault would not
+# spare 22 of 25, so this asks each of the three, and two working controls,
+# what kenna actually says: does the alias resolve, does the sheet need the
+# `facilityIds` pin that the other 22 do not, and does the book-v2 host even
+# talk to the same backend.
+#
+# Runs here rather than in the dev sandbox because that sandbox's egress proxy
+# 403s the platforms outright, and Actions logs are not readable from there —
+# the committed JSON is how the finding gets out.
+#
+# Report only: public GETs, no Cloudflare secrets, no D1 writes, no registry
+# or CSV edits.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/probe_teeitup_co.py"
+      - ".github/workflows/probe-teeitup-co.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-teeitup-co
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        # Step timeout below the job's, so a slow kenna still reaches the
+        # commit below with whatever it managed to answer.
+        timeout-minutes: 15
+        run: |
+          mkdir -p probe-results
+          python3 scripts/probe_teeitup_co.py 2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 120 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/teeitup-co.json || exit 0
+          # [skip ci]: this file feeds a human decision, not the Worker bundle.
+          git commit -m "Probe: TeeItUp CO silent aliases [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push results after 5 attempts"; exit 1
