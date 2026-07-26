@@ -1,6 +1,10 @@
-name: Scrape tee times (full, 3 days)
+name: Scrape mid tier (days 3-7, hourly)
 
-# Full 3-day scan, hourly at :17. Sharded: the course list is split into N
+# Mid tier of the 30-day horizon: the near tier (scrape-near.yml) loops over
+# days 0-2 every ~5 minutes, this scan covers days 3-7 hourly at :17, and
+# scrape-far.yml covers 8-30 every two hours. On a push that changes the
+# registry or the scraper it widens to days 0-7 so a course fix shows up
+# everywhere near-term without waiting for each tier's own cadence. Sharded: the course list is split into N
 # deterministic slices (--shard i/N) that run as parallel matrix jobs, so total
 # wall-clock stays flat as the registry grows toward ~15k courses. Each shard
 # only reads/writes its own courses in D1 (the sync is course-scoped), so shards
@@ -29,7 +33,7 @@ permissions:
 # group is also the right semantics: one full-scan RUN at a time (its 4 shard
 # jobs still run in parallel inside the run).
 concurrency:
-  group: scrape-full
+  group: scrape-mid
   cancel-in-progress: false
 
 jobs:
@@ -48,17 +52,21 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Scrape + push shard ${{ matrix.shard }}/4 (today + next 2 days)
+      - name: Scrape + push shard ${{ matrix.shard }}/4 (mid tier)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          # Dates come from scraper/dates.py (union of local today+2 across the
+          # Dates come from scraper/dates.py (union of local dates across the
           # timezones the registry covers), not `date -u`: after 18:00 MDT the
           # UTC date is already tomorrow, so a UTC-based window silently dropped
           # the real local today and left its evening slots stale in D1.
-          for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
+          # Scheduled runs cover days 3-7 (the near loop owns 0-2); a push that
+          # changed the registry/scraper refreshes days 0-7 immediately.
+          START=3; DAYS=5
+          if [ "${{ github.event_name }}" = "push" ]; then START=0; DAYS=8; fi
+          for DATE in $(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS}); do
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
