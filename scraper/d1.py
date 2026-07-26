@@ -10,9 +10,15 @@ are cheap: 5M/day) and only writes what changed:
   * INSERT rows for new tee times
   * UPDATE rows whose price/spots changed
   * mark rows active=0 when a slot disappeared (i.e. it got booked)
-A typical hourly re-scrape touches a small fraction of slots, so 24 runs/day
-fits the free tier with room to spare. A full first run writes every row
-(~5k for all of Colorado) — still fine.
+A typical re-scrape touches a small fraction of slots, so WRITES stay modest
+at any cadence. READS are the number to watch since the 30-day tiered scan
+landed: the near tier re-reads ~3 dates of rows every ~5 minutes, which works
+out to roughly 8-10M row reads/day across all tiers — about 2x D1's free
+5M/day. The initial 30-day far fill also writes ~150-200k rows in one sweep,
+double the free 100k/day write cap. The tiered horizon therefore assumes the
+$5/mo Workers Paid plan (25B reads + 50M writes/mo included); on the free
+tier, raise scrape-near.yml's INTERVAL_SECONDS and stage the first far fill
+across two days.
 
 Env vars (set as GitHub Actions secrets):
     CLOUDFLARE_ACCOUNT_ID   CLOUDFLARE_API_TOKEN   CLOUDFLARE_D1_DB_ID
@@ -408,6 +414,14 @@ def sync(db, doc: dict) -> dict:
     # courses that errored this run must NOT have their rows deactivated
     errored = {e["course"] for e in doc.get("errors", [])}
     scraped_courses = {k[0] for k in scraped}
+    # A course that answered cleanly with ZERO rows for this date is evidence,
+    # not ignorance: the day sold out or its booking window closed, and its
+    # leftover rows for this date must be closed out like any other vanished
+    # slot. aggregate.py has recorded these in courses_empty since the 30-day
+    # horizon landed; older docs lack the key and keep the old (conservative)
+    # behaviour. Belt-and-braces: never let an errored course in via this set.
+    empty_ok = {c for c in doc.get("courses_empty", []) if c not in errored}
+    scraped_courses |= empty_ok
 
     # Read existing rows ONLY for the courses in this document (a shard's slice),
     # not the whole date. Deactivation only ever touches scraped_courses, so this
