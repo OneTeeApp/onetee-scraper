@@ -41,6 +41,10 @@ READING IT
                                   reaching this course (window, shard,
                                   exclude list, or the scan is failing)
   fetched > 0, after == 0         sync() dropped them. A real bug.
+  already_current                 rows present, sync wrote nothing. NOT a
+                                  failure — sync() only writes a row that
+                                  moved, so a second run minutes later is
+                                  correctly a no-op.
   fetched == 0                    the platform has no sheet for these dates.
                                   Compare the dates: the scan's window is
                                   local today + 2, and a course whose sheet
@@ -199,6 +203,16 @@ def main() -> int:
         an = (af or {}).get("n", 0)
         fetched = rec.get("fetched_total", 0)
 
+        # A no-op sync is the normal steady state, not a failure. sync() only
+        # writes a row whose open_spots/price moved or that was inactive, so
+        # re-running this minutes later legitimately reports
+        # inserted=updated=0 with the rows sitting right there. Reading that
+        # as "did not land" is the same absent-vs-known confusion the rest of
+        # this file is built to avoid — so the count written is what decides,
+        # and `an == 0` is the only thing that can mean nothing landed.
+        wrote = sum(s.get("rows_inserted", 0) + s.get("rows_updated", 0)
+                    for s in (rec.get("sync") or {}).values())
+
         if rec.get("error"):
             verdict = "not_in_registry"
         elif all(v.get("result") == "error" for v in rec.get("fetch", {}).values()):
@@ -208,10 +222,12 @@ def main() -> int:
         elif not a.push:
             verdict = ("pipeline_untested_no_push" if an == 0
                        else "already_in_d1")
-        elif an > bn:
+        elif an == 0:
+            verdict = "fetched_but_did_not_land"
+        elif an > bn or wrote:
             verdict = "landed"
         else:
-            verdict = "fetched_but_did_not_land"
+            verdict = "already_current"
 
         rec["verdict"] = verdict
         print(f"  {s:<34} before={bn:<5} fetched={fetched:<5} after={an:<5} "
