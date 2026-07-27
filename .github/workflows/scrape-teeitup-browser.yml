@@ -1,0 +1,72 @@
+name: Scrape TeeItUp far via browser (days 8-30, every 2 hours)
+
+# WHY. kenna (TeeItUp's backend) soft-throttles the plain scraper's data-center
+# traffic on far dates: coldwater-golf-club read 0 rows in D1 at +14 while its own
+# booking site served 90 for the same day. A REAL headless Chromium firing kenna
+# from inside a live *.book.teeitup.com page clears the throttle — PROVEN by
+# probe-teeitup-browser on an Actions runner: coldwater returned 90 (+14) and
+# 89 (+21), zero errors. No residential proxy needed (though browser_teeitup
+# honours HTTPS_PROXY if kenna ever tightens).
+#
+# OWNERSHIP. This job owns the FAR window (days 8-30) for teeitup. scrape-far.yml
+# EXCLUDES teeitup, so the two never write the same course_slug+date and clobber
+# each other in D1. The near/mid tiers keep scraping teeitup with the plain
+# adapter — kenna serves near dates fine, and a browser at that cadence would be
+# wasteful. Unlike the windowed plain far tier this sweeps every far date every
+# run; the platform-liveness guard in aggregate.py + D1's per-date reconciliation
+# mean a throttled-empty read never wipes a good prior capture.
+
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_teeitup.py"
+      - "scraper/adapters/teeitup.py"
+      - ".github/workflows/scrape-teeitup-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-teeitup-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape far teeitup + push each date to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          # Shuffle the far date order (same reasoning as scrape-far.yml): if
+          # kenna does still throttle mid-sweep at full fleet scale, a random
+          # order moves the starved band each run so the union fills over a few
+          # sweeps rather than the same dates starving every time.
+          for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23 | shuf); do
+            OUT="output/tu_${DATE}_s${{ matrix.shard }}.json"
+            echo "::group::teeitup browser ${DATE} shard ${{ matrix.shard }}"
+            python -m scraper.browser_teeitup --date "${DATE}" \
+              --shard "${{ matrix.shard }}/4" --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
+            echo "::endgroup::"
+          done
