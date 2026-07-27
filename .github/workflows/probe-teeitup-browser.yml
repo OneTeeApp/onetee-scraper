@@ -1,0 +1,95 @@
+name: Probe TeeItUp browser far fetch (throttle test)
+
+# Decides one thing: does a REAL headless Chromium on a GitHub (data-center)
+# runner clear kenna's soft-throttle for the far band, or is a residential IP
+# still required? Runs scraper.browser_teeitup against courses PROVEN to serve
+# far dates residentially (coldwater-golf-club returned 90 slots for +14 from a
+# residential browser on 2026-07-27) at two far offsets, and commits the counts.
+#
+# Reading the result: probe-results/teeitup-browser.json.  served>0 with real
+# slot counts on coldwater at +14/+21 => browser-on-Actions clears the throttle,
+# wire up scrape-teeitup-browser.yml for real. Zero => pure-IP throttle, the
+# next lever is HTTPS_PROXY (residential) on the Chromium launch.
+#
+# No D1 push here — this only measures reachability, it must not clobber the
+# plain far tier's teeitup rows.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_teeitup.py"
+      - "scraper/adapters/teeitup.py"
+      - ".github/workflows/probe-teeitup-browser.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-teeitup-browser
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Probe far dates via browser
+        run: |
+          mkdir -p probe-results
+          COURSES=coldwater-golf-club,antler-creek-golf-course,buffalo-run-golf-course,commonground-golf-course
+          D14=$(date -u -d "+14 days" +%F)
+          D21=$(date -u -d "+21 days" +%F)
+          python -m scraper.browser_teeitup --date "$D14" --courses "$COURSES" \
+            --out "probe-results/tu_${D14}.json" 2>&1 | tee probe14.log
+          python -m scraper.browser_teeitup --date "$D21" --courses "$COURSES" \
+            --out "probe-results/tu_${D21}.json" 2>&1 | tee probe21.log
+
+      - name: Summarise
+        if: always()
+        run: |
+          python - <<'PY' | tee probe-results/teeitup-browser.json
+          import glob, json, datetime
+          out = {"generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                 "dates": {}}
+          for f in sorted(glob.glob("probe-results/tu_*.json")):
+              d = json.load(open(f))
+              per = {}
+              for t in d.get("tee_times", []):
+                  per[t["course_slug"]] = per.get(t["course_slug"], 0) + 1
+              out["dates"][d["date"]] = {
+                  "courses_queried": d.get("courses_queried"),
+                  "courses_ok": d.get("courses_ok"),
+                  "slots_by_course": per,
+                  "errors": d.get("errors", []),
+              }
+          print(json.dumps(out, indent=2))
+          PY
+          {
+            echo '```json'
+            cat probe-results/teeitup-browser.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add probe-results/teeitup-browser.json probe-results/tu_*.json || exit 0
+          git commit -m "Probe: TeeItUp browser far fetch [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push after 5 attempts"; exit 1
