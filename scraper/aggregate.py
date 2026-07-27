@@ -31,6 +31,7 @@ from .adapters.teesnap import TeesnapAdapter
 from .adapters.clubcaddie import ClubCaddieAdapter
 from .adapters.foretees import ForeTeesAdapter
 from .adapters.ezlinks import EZLinksAdapter
+from .adapters.golfwithaccess import GolfWithAccessAdapter
 from .adapters.experimental import (
     MemberSportsAdapter, GolfNowAdapter, OtherAdapter,
 )
@@ -49,6 +50,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "teesnap": TeesnapAdapter,
     "quick18": Quick18Adapter,
     "foretees": ForeTeesAdapter,
+    "golfwithaccess": GolfWithAccessAdapter,
 }
 
 
