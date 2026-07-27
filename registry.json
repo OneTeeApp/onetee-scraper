@@ -2437,6 +2437,22 @@
    "notes": ""
   },
   {
+   "slug": "the-foothills-golf-club",
+   "name": "The Foothills Golf Club",
+   "city": "Ahwatukee",
+   "state": "AZ",
+   "venue_id": "the-foothills-golf-club",
+   "source_role": "primary",
+   "platform": "ezlinks",
+   "booking_url": "https://foothills.ezlinksgolf.com/index.html#!/search",
+   "ids": {
+    "portal": "foothills"
+   },
+   "status": "experimental",
+   "confidence": "high",
+   "notes": "Unclaimed Chronogolf listing was wrong; books on EZLinks | Chronogolf club page is an UNCLAIMED directory listing: the club's own online_booking_enabled is false, so the marketplace API returns nothing and the page shows course facts with no tee sheet (probed 2026-07-26, probe-results/needs-ids.json; spot-checked in a browser for The Boulders). Booking URL cleared so the directory sends golfers to the course's own site instead of a dead placeholder. Where this course actually sells tee times is still unknown - open work."
+  },
+  {
    "slug": "the-lakes-at-ahwatukee",
    "name": "The Lakes at Ahwatukee",
    "city": "Ahwatukee",
@@ -2589,13 +2605,13 @@
    "venue_id": "bear-creek-golf-complex",
    "source_role": "primary",
    "platform": "ezlinks",
-   "booking_url": "https://bearcreekgcaz.ezlinksgolf.com/",
+   "booking_url": "https://bearcreekgcaz.ezlinksgolf.com/index.html#!/search",
    "ids": {
     "portal": "bearcreekgcaz"
    },
    "status": "experimental",
    "confidence": "high",
-   "notes": "Bear course; Cub course: bearcreekgcazcub.ezlinksgolf.com"
+   "notes": "ONE venue, TWO EZLinks sites: bearcreekgcaz (Bear, registered) + bearcreekgcazcub (Club) to add as a sub-course | Bear course; Cub course: bearcreekgcazcub.ezlinksgolf.com"
   },
   {
    "slug": "lone-tree-golf-club",
@@ -2652,14 +2668,15 @@
    "state": "AZ",
    "venue_id": "springfield-golf-resort",
    "source_role": "primary",
-   "platform": "quick18",
-   "booking_url": "https://springfieldgolf.quick18.com/teetimes/searchmatrix",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/springfield-golf-resort",
    "ids": {
-    "subdomain": "springfieldgolf"
+    "slug": "springfield-golf-resort",
+    "club_uuid": null
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "Correct subdomain is springfieldgolf (not springfieldgolfresort)"
+   "notes": "Was tagged quick18; books on Chronogolf | Correct subdomain is springfieldgolf (not springfieldgolfresort)"
   },
   {
    "slug": "sunbird-golf-club",
@@ -2767,15 +2784,15 @@
    "state": "AZ",
    "venue_id": "golf-club-at-eagle-mountain",
    "source_role": "primary",
-   "platform": "other:embedded",
-   "booking_url": "https://www.eaglemtn.com/request-tt/",
+   "platform": "golfwithaccess",
+   "booking_url": "https://golfwithaccess.com/course/eagle-mountain-golf-club/reserve-tee-time",
    "ids": {
     "course_id": "698b68b9-908e-416e-8368-a043e2a90072",
     "tenant": "eagle-mountain-golf-club"
    },
-   "status": "unsupported",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Widget embedded; engine unidentifiable (bot-blocked); GolfNow facility 3200 alt"
+   "notes": "Embedded widget resolved to Golf With Access; confirmed serving 2026-07-27 | Widget embedded; engine unidentifiable (bot-blocked); GolfNow facility 3200 alt"
   },
   {
    "slug": "sunridge-canyon-golf-club",
@@ -2947,14 +2964,14 @@
    "state": "AZ",
    "venue_id": "mountain-brook-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://mountain-brook-golf-club.book.teeitup.com/",
+   "platform": "quick18",
+   "booking_url": "https://mountainbrook.quick18.com/",
    "ids": {
-    "alias": "mountain-brook-golf-club"
+    "subdomain": "mountainbrook"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp"
   },
   {
    "slug": "golf-club-of-estrella",
@@ -3045,14 +3062,15 @@
    "state": "AZ",
    "venue_id": "falcon-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://falcon-golf-club.book.teeitup.com/",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/20978/6362#/teetimes",
    "ids": {
-    "alias": "falcon-golf-club"
+    "course_id": "20978",
+    "schedule_id": "6362"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp. ONE facility, FIVE ForeUp courses: 20978/6362 (registered), plus 20979/6430, 20980/6365, 20981/6366, 20982/6368 to add as sub-courses"
   },
   {
    "slug": "wigwam-golf-club-gold-course",
@@ -3161,14 +3179,15 @@
    "state": "AZ",
    "venue_id": "augusta-ranch-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://augusta-ranch-golf-club.book.teeitup.com/",
+   "platform": "quick18",
+   "booking_url": "https://augustaranch.play18.com/teetimes/searchmatrix",
    "ids": {
-    "alias": "augusta-ranch-golf-club"
+    "subdomain": "augustaranch",
+    "domain": "play18.com"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp"
   },
   {
    "slug": "dobson-ranch-golf-course",
@@ -3193,10 +3212,10 @@
    "state": "AZ",
    "venue_id": "fountain-of-the-sun-country-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://fountain-of-the-sun-country-club.book.teeitup.com/",
+   "platform": "clubprophet",
+   "booking_url": "https://fountainofthesuncc.cps.golf/",
    "ids": {
-    "alias": "fountain-of-the-sun-country-club",
+    "tenant": "fountainofthesuncc",
     "website_id": "00000000-0000-0000-0000-000000000000",
     "course_ids": [
      1
@@ -3204,7 +3223,7 @@
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp; books on Club Prophet"
   },
   {
    "slug": "golden-hills-golf-club",
@@ -3608,6 +3627,22 @@
    "notes": ""
   },
   {
+   "slug": "lookout-mountain-golf-club",
+   "name": "Lookout Mountain Golf Club (Hilton Tapatio Cliffs)",
+   "city": "Phoenix",
+   "state": "AZ",
+   "venue_id": "lookout-mountain-golf-club",
+   "source_role": "primary",
+   "platform": "ezlinks",
+   "booking_url": "https://pointehilton.ezlinksgolf.com/index.html#!/search",
+   "ids": {
+    "portal": "pointehilton"
+   },
+   "status": "experimental",
+   "confidence": "high",
+   "notes": "Unclaimed Chronogolf listing was wrong; books on EZLinks | Chronogolf club page is an UNCLAIMED directory listing: the club's own online_booking_enabled is false, so the marketplace API returns nothing and the page shows course facts with no tee sheet (probed 2026-07-26, probe-results/needs-ids.json; spot-checked in a browser for The Boulders). Booking URL cleared so the directory sends golfers to the course's own site instead of a dead placeholder. Where this course actually sells tee times is still unknown - open work."
+  },
+  {
    "slug": "palo-verde-golf-course",
    "name": "Palo Verde Golf Course",
    "city": "Phoenix",
@@ -3689,22 +3724,6 @@
    "notes": ""
   },
   {
-   "slug": "villa-de-paz-golf-club",
-   "name": "Villa de Paz Golf Club",
-   "city": "Phoenix",
-   "state": "AZ",
-   "venue_id": "villa-de-paz-golf-club",
-   "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://villa-de-paz.book.teeitup.com/",
-   "ids": {
-    "alias": "villa-de-paz"
-   },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "Direct TeeItUp tenant linked from course site"
-  },
-  {
    "slug": "wildfire-golf-club-faldo-course",
    "name": "Wildfire Golf Club - Faldo Course (JW Marriott Desert Ridge)",
    "city": "Phoenix",
@@ -3780,14 +3799,14 @@
    "state": "AZ",
    "venue_id": "san-tan-highlands-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://san-tan-highlands.book.teeitup.com/",
+   "platform": "quick18",
+   "booking_url": "https://santanhighlands.quick18.com/",
    "ids": {
-    "alias": "san-tan-highlands"
+    "subdomain": "santanhighlands"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp (alias 404s at kenna)"
   },
   {
    "slug": "camelback-golf-club",
@@ -3921,6 +3940,22 @@
    "notes": "Was recorded on foreup booking id 21561 \u2014 which is LEGEND TRAIL's id, not Orange Tree's. Two Scottsdale courses carried the identical URL and only one of them could be right. legendtrailgc.com links to /booking/21561; orangetreegolfcourse.com links to orangetree.quick18.com (checked 2026-07-26). Platform corrected to quick18."
   },
   {
+   "slug": "scottsdale-country-club",
+   "name": "Scottsdale Country Club (formerly Starfire Golf Club)",
+   "city": "Scottsdale",
+   "state": "AZ",
+   "venue_id": "scottsdale-country-club",
+   "source_role": "primary",
+   "platform": "quick18",
+   "booking_url": "https://scottsdalecc.quick18.com/teetimes/searchmatrix",
+   "ids": {
+    "subdomain": "scottsdalecc"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Unclaimed Chronogolf listing was wrong. ONE venue, TWO Quick18 sites: scottsdalecc (registered) + sixshooter to add as a sub-course | Chronogolf page still under former name Starfire Chronogolf club page is an UNCLAIMED directory listing: the club's own online_booking_enabled is false, so the marketplace API returns nothing and the page shows course facts with no tee sheet (probed 2026-07-26, probe-results/needs-ids.json; spot-checked in a browser for The Boulders). Booking URL cleared so the directory sends golfers to the course's own site instead of a dead placeholder. Where this course actually sells tee times is still unknown - open work."
+  },
+  {
    "slug": "scottsdale-silverado-golf-club",
    "name": "Scottsdale Silverado Golf Club",
    "city": "Scottsdale",
@@ -3999,6 +4034,23 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Lists Monument & Pinnacle | remapped from unclaimed Chronogolf listing"
+  },
+  {
+   "slug": "westin-kierland-golf-club",
+   "name": "Westin Kierland Golf Club",
+   "city": "Scottsdale",
+   "state": "AZ",
+   "venue_id": "westin-kierland-golf-club",
+   "source_role": "primary",
+   "platform": "golfwithaccess",
+   "booking_url": "https://golfwithaccess.com/course/the-westin-kierland-golf-club/reserve-tee-time",
+   "ids": {
+    "course_id": "ab5ad653-b217-4119-bcb7-80dd0aecffaa",
+    "tenant": "the-westin-kierland-golf-club"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Unclaimed Chronogolf listing was wrong; pinned uuid is Kierland-1 of three nines | Chronogolf club page is an UNCLAIMED directory listing: the club's own online_booking_enabled is false, so the marketplace API returns nothing and the page shows course facts with no tee sheet (probed 2026-07-26, probe-results/needs-ids.json; spot-checked in a browser for The Boulders). Booking URL cleared so the directory sends golfers to the course's own site instead of a dead placeholder. Where this course actually sells tee times is still unknown - open work."
   },
   {
    "slug": "quail-run-golf-course",
@@ -4084,23 +4136,6 @@
    "status": "experimental",
    "confidence": "high",
    "notes": "RCSC members use internal draw; GolfNow is public channel"
-  },
-  {
-   "slug": "sun-city-north-golf-course",
-   "name": "Sun City North Golf Course (RCSC)",
-   "city": "Sun City",
-   "state": "AZ",
-   "venue_id": "sun-city-north-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/12150-sun-city-north-golf-course/search",
-   "ids": {
-    "golfnow_facility_id": "12150",
-    "golfnow_slug": "sun-city-north-golf-course"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "RCSC member draw internal; non-members book via GolfNow"
   },
   {
    "slug": "sun-city-south-golf-course",
@@ -4356,20 +4391,6 @@
    "notes": "Shared SCW tee sheet"
   },
   {
-   "slug": "sun-lakes-country-club",
-   "name": "Sun Lakes Country Club",
-   "city": "Sun Lakes",
-   "state": "AZ",
-   "venue_id": "sun-lakes-country-club",
-   "source_role": "primary",
-   "platform": "other:chelsea",
-   "booking_url": "https://sunlakes.chelseareservations.com/",
-   "ids": {},
-   "status": "unsupported",
-   "confidence": "high",
-   "notes": "Official \"Book a Tee Time\" target; Chronogolf page non-bookable"
-  },
-  {
    "slug": "arizona-traditions-golf-club",
    "name": "Arizona Traditions Golf Club",
    "city": "Surprise",
@@ -4489,15 +4510,15 @@
    "state": "AZ",
    "venue_id": "great-eagle-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://great-eagle-golf-club.book.teeitup.com/?course=3178",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/22812/12044#teetimes",
    "ids": {
-    "alias": "great-eagle-golf-club",
-    "facility_id": "3178"
+    "course_id": "22812",
+    "schedule_id": "12044"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "Also greateagle.quick18.com"
+   "notes": "Moved off TeeItUp | Also greateagle.quick18.com"
   },
   {
    "slug": "sterling-grove-golf-country-club",
@@ -4565,35 +4586,21 @@
    "notes": "Cloudflare 525 at check time; Google index shows URL live \u2014 likely temporary outage, recheck"
   },
   {
-   "slug": "falcon-dunes-golf-course",
-   "name": "Falcon Dunes Golf Course",
-   "city": "Waddell",
-   "state": "AZ",
-   "venue_id": "falcon-dunes-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/12232-falcon-dunes-golf-club/search",
-   "ids": {
-    "golfnow_facility_id": "12232",
-    "golfnow_slug": "falcon-dunes-golf-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Also on Prophet Services (secure.west.prophetservices.com/FalconDunesV3) \u2014 worth manual check"
-  },
-  {
    "slug": "los-caballeros-golf-club",
    "name": "Los Caballeros Golf Club",
    "city": "Wickenburg",
    "state": "AZ",
    "venue_id": "los-caballeros-golf-club",
    "source_role": "primary",
-   "platform": "other:clubhouseonline",
-   "booking_url": "https://loscaballerosgc.clubhouseonline-e3.club/PublicTeeTimes/TeeSheet.aspx",
-   "ids": {},
-   "status": "unsupported",
+   "platform": "golfnow",
+   "booking_url": "https://www.golfnow.com/tee-times/facility/9335-los-caballeros-golf-club/search",
+   "ids": {
+    "golfnow_facility_id": "9335",
+    "golfnow_slug": "los-caballeros-golf-club"
+   },
+   "status": "experimental",
    "confidence": "high",
-   "notes": "Tee sheet renders via JS"
+   "notes": "ClubHouse Online portal is members-only; public inventory sells through GolfNow | Tee sheet renders via JS"
   },
   {
    "slug": "wickenburg-golf-club",
@@ -4613,55 +4620,21 @@
    "notes": ""
   },
   {
-   "slug": "wickenburg-ranch-golf-social-club",
-   "name": "Wickenburg Ranch Golf & Social Club (Big Wick)",
-   "city": "Wickenburg",
-   "state": "AZ",
-   "venue_id": "wickenburg-ranch-golf-social-club",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/12927-wickenburg-ranch-golf-social-club/search",
-   "ids": {
-    "golfnow_facility_id": "12927",
-    "golfnow_slug": "wickenburg-ranch-golf-social-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Troon page is members-only; GolfNow is public channel"
-  },
-  {
    "slug": "san-pedro-golf-course",
    "name": "San Pedro Golf Course",
    "city": "Benson",
    "state": "AZ",
    "venue_id": "san-pedro-golf-course",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://troon.com/course/san-pedro-golf-course/reserve-tee-time",
+   "platform": "golfwithaccess",
+   "booking_url": "https://golfwithaccess.com/course/san-pedro-golf-course/reserve-tee-time",
    "ids": {
     "course_id": "d10ed1e5-1bf2-4e52-b312-3c8ee622b64c",
     "tenant": "san-pedro-golf-course"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Troon wrapper renders live TeeItUp tee sheet; no direct alias exists"
-  },
-  {
-   "slug": "santa-rita-golf-club",
-   "name": "Santa Rita Golf Club",
-   "city": "Corona de Tucson",
-   "state": "AZ",
-   "venue_id": "santa-rita-golf-club",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/1994-santa-rita-golf-club/search",
-   "ids": {
-    "golfnow_facility_id": "1994",
-    "golfnow_slug": "santa-rita-golf-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Course site unreachable (timeouts); GolfNow verified"
+   "notes": "Moved off TeeItUp; Golf With Access confirmed serving 2026-07-27 | Troon wrapper renders live TeeItUp tee sheet; no direct alias exists"
   },
   {
    "slug": "douglas-municipal-golf-course",
@@ -4687,14 +4660,15 @@
    "state": "AZ",
    "venue_id": "canoa-ranch-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://canoa-ranch-golf-club.book.teeitup.golf/",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/canoa-ranch-golf-club",
    "ids": {
-    "alias": "canoa-ranch-golf-club"
+    "slug": "canoa-ranch-golf-club",
+    "club_uuid": null
    },
    "status": "ready",
    "confidence": "high",
-   "notes": ""
+   "notes": "Moved off TeeItUp"
   },
   {
    "slug": "haven-golf-course",
@@ -4761,22 +4735,6 @@
    "notes": ""
   },
   {
-   "slug": "the-golf-club-at-dove-mountain",
-   "name": "The Golf Club at Dove Mountain (fka Ritz-Carlton GC Dove Mountain)",
-   "city": "Marana",
-   "state": "AZ",
-   "venue_id": "the-golf-club-at-dove-mountain",
-   "source_role": "primary",
-   "platform": "ezlinks",
-   "booking_url": "https://dovemountain.ezlinksgolf.com/index.html#/search",
-   "ids": {
-    "portal": "dovemountain"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Linked from clubsofdovemountain.com/golf"
-  },
-  {
    "slug": "the-highlands-at-dove-mountain",
    "name": "The Highlands at Dove Mountain (Heritage Highlands)",
    "city": "Marana",
@@ -4800,15 +4758,15 @@
    "state": "AZ",
    "venue_id": "palo-duro-creek-golf-course",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/1310-palo-duro-creek-golf-course/search",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/19029/790#teetimes",
    "ids": {
-    "golfnow_facility_id": "1310",
-    "golfnow_slug": "palo-duro-creek-golf-course"
+    "course_id": "19029",
+    "schedule_id": "790"
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Also GolfNow facility 1310 | remapped from unclaimed Chronogolf listing"
+   "notes": "GolfNow listing replaced by the native ForeUp sheet | Also GolfNow facility 1310 | remapped from unclaimed Chronogolf listing"
   },
   {
    "slug": "el-conquistador-golf-club",
@@ -4843,28 +4801,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Pusch Ridge 9 bookable as course filter on El Con page"
-  },
-  {
-   "slug": "the-views-golf-club",
-   "name": "The Views Golf Club",
-   "city": "Oro Valley",
-   "state": "AZ",
-   "venue_id": "the-views-golf-club",
-   "source_role": "primary",
-   "platform": "clubprophet",
-   "booking_url": "https://viewsgolfaz.cps.golf/onlineresweb/",
-   "ids": {
-    "tenant": "viewsgolfaz",
-    "website_id": "8c0a1716-ea2b-4c84-adff-08d8df3c1472",
-    "course_ids": [
-     1,
-     2,
-     3
-    ]
-   },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "Deeper /onlineresweb/ app path is the actual reservation app"
   },
   {
    "slug": "the-preserve-golf-club-at-saddlebrooke",
@@ -4955,16 +4891,15 @@
    "state": "AZ",
    "venue_id": "arizona-national-golf-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://arizona-national.book.teeitup.golf/",
+   "platform": "golfwithaccess",
+   "booking_url": "https://golfwithaccess.com/course/arizona-national-golf-club/reserve-tee-time",
    "ids": {
-    "alias": "arizona-national",
     "course_id": "61cc7d8d-3c22-44f6-ad4d-1799a515249a",
     "tenant": "arizona-national-golf-club"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "Direct TeeItUp alias (Troon wrapper works as fallback)"
+   "notes": "Moved off TeeItUp; Golf With Access confirmed serving 2026-07-27 | Direct TeeItUp alias (Troon wrapper works as fallback)"
   },
   {
    "slug": "dell-urich-golf-course",
@@ -5082,23 +5017,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": ""
-  },
-  {
-   "slug": "quail-canyon-golf-course",
-   "name": "Quail Canyon Golf Course",
-   "city": "Tucson",
-   "state": "AZ",
-   "venue_id": "quail-canyon-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/13261-quail-canyon-golf-course/search",
-   "ids": {
-    "golfnow_facility_id": "13261",
-    "golfnow_slug": "quail-canyon-golf-course"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "GolfNow inventory unverified"
   },
   {
    "slug": "randolph-north-golf-course",
@@ -5224,23 +5142,6 @@
    "notes": "Blocks bots via robots.txt"
   },
   {
-   "slug": "twin-lakes-golf-course",
-   "name": "Twin Lakes Golf Course",
-   "city": "Willcox",
-   "state": "AZ",
-   "venue_id": "twin-lakes-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/3569-twin-lakes-golf-country-club/search",
-   "ids": {
-    "golfnow_facility_id": "3569",
-    "golfnow_slug": "twin-lakes-golf-country-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "GolfNow inventory unverified"
-  },
-  {
    "slug": "agave-highlands-golf-course",
    "name": "Agave Highlands Golf Course (formerly Verde Santa Fe)",
    "city": "Cornville/Cottonwood",
@@ -5324,21 +5225,21 @@
    "notes": ""
   },
   {
-   "slug": "pinewood-country-club",
-   "name": "Pinewood Country Club",
-   "city": "Munds Park",
+   "slug": "lake-powell-national-golf-course",
+   "name": "Lake Powell National Golf Course",
+   "city": "Page",
    "state": "AZ",
-   "venue_id": "pinewood-country-club",
+   "venue_id": "lake-powell-national-golf-course",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/3307-pinewood-country-club-az/search",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/20878/5966#teetimes",
    "ids": {
-    "golfnow_facility_id": "3307",
-    "golfnow_slug": "pinewood-country-club-az"
+    "course_id": "20878",
+    "schedule_id": "5966"
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Member-owned club; GolfNow is only public channel"
+   "notes": "Unclaimed Chronogolf listing was wrong; books on ForeUp | Chronogolf club page is an UNCLAIMED directory listing: the club's own online_booking_enabled is false, so the marketplace API returns nothing and the page shows course facts with no tee sheet (probed 2026-07-26, probe-results/needs-ids.json; spot-checked in a browser for The Boulders). Booking URL cleared so the directory sends golfers to the course's own site instead of a dead placeholder. Where this course actually sells tee times is still unknown - open work."
   },
   {
    "slug": "payson-golf-course",
@@ -5364,14 +5265,14 @@
    "state": "AZ",
    "venue_id": "pinetop-lakes-golf-country-club",
    "source_role": "primary",
-   "platform": "quick18",
-   "booking_url": "https://pinetoplakes.quick18.com/",
+   "platform": "teeitup",
+   "booking_url": "https://pinetop-lakes-public.book.teeitup.com/",
    "ids": {
-    "subdomain": "pinetoplakes"
+    "alias": "pinetop-lakes-public"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "remapped from unclaimed Chronogolf listing"
+   "notes": "Was tagged quick18; books on TeeItUp | remapped from unclaimed Chronogolf listing"
   },
   {
    "slug": "antelope-hills-golf-course",
@@ -5380,16 +5281,15 @@
    "state": "AZ",
    "venue_id": "antelope-hills-golf-course",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://antelope-hills-golf-course.book.teeitup.com/",
+   "platform": "golfwithaccess",
+   "booking_url": "https://golfwithaccess.com/course/antelope-hills-golf-course/reserve-tee-time",
    "ids": {
-    "alias": "antelope-hills-golf-course",
     "course_id": "e2aeb67d-6e7f-41c5-90ef-df6dca5f5c72",
     "tenant": "antelope-hills-golf-course"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "Direct TeeItUp alias (Troon wrapper is official link)"
+   "notes": "Moved off TeeItUp; pinned uuid is the North Course - South is a second uuid to add later | Direct TeeItUp alias (Troon wrapper is official link)"
   },
   {
    "slug": "stoneridge-golf-course",
@@ -5463,12 +5363,14 @@
    "state": "AZ",
    "venue_id": "birdie-ranch-at-silver-creek",
    "source_role": "primary",
-   "platform": "other:embedded",
-   "booking_url": "https://www.birdieranch.com/book-a-tee-time",
-   "ids": {},
-   "status": "unsupported",
+   "platform": "quick18",
+   "booking_url": "https://birdieranch.quick18.com/teetimes/searchmatrix",
+   "ids": {
+    "subdomain": "birdieranch"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "Engine behind widget not identifiable (Sucuri anti-bot); no teesnap subdomain exists"
+   "notes": "Embedded widget resolved to Quick18 | Engine behind widget not identifiable (Sucuri anti-bot); no teesnap subdomain exists"
   },
   {
    "slug": "bison-golf-club",
@@ -5477,29 +5379,14 @@
    "state": "AZ",
    "venue_id": "bison-golf-club",
    "source_role": "primary",
-   "platform": "other:embedded",
-   "booking_url": "https://www.bisongolf.net/book-a-tee-time",
-   "ids": {},
-   "status": "unsupported",
-   "confidence": "high",
-   "notes": "Engine behind widget not identifiable (Sucuri anti-bot)"
-  },
-  {
-   "slug": "snowflake-municipal-golf-course",
-   "name": "Snowflake Municipal Golf Course",
-   "city": "Snowflake",
-   "state": "AZ",
-   "venue_id": "snowflake-municipal-golf-course",
-   "source_role": "primary",
-   "platform": "foreup",
-   "booking_url": "https://foreupsoftware.com/index.php/booking/index/1858",
+   "platform": "quick18",
+   "booking_url": "https://bison.quick18.com/teetimes/searchmatrix",
    "ids": {
-    "course_id": "1858",
-    "schedule_id": null
+    "subdomain": "bison"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "remapped from unclaimed Chronogolf listing"
+   "notes": "Embedded widget resolved to Quick18 | Engine behind widget not identifiable (Sucuri anti-bot)"
   },
   {
    "slug": "elephant-rocks-golf-course",
@@ -5636,6 +5523,22 @@
    "notes": "remapped from unclaimed Chronogolf listing"
   },
   {
+   "slug": "havasu-island-golf-course",
+   "name": "Havasu Island Golf Course",
+   "city": "Lake Havasu City",
+   "state": "AZ",
+   "venue_id": "havasu-island-golf-course",
+   "source_role": "primary",
+   "platform": "teesnap",
+   "booking_url": "https://lakehavasu.teesnap.net/",
+   "ids": {
+    "subdomain": "lakehavasu"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Had no booking platform recorded; books on Teesnap | unclaimed Chronogolf; no public online booking (phone-only/member)"
+  },
+  {
    "slug": "lake-havasu-golf-club",
    "name": "Lake Havasu Golf Club (formerly London Bridge GC, 36 holes)",
    "city": "Lake Havasu City",
@@ -5697,23 +5600,6 @@
    "status": "unsupported",
    "confidence": "high",
    "notes": ""
-  },
-  {
-   "slug": "cocopah-rio-colorado-golf-course",
-   "name": "Cocopah Rio Colorado Golf Course",
-   "city": "Somerton",
-   "state": "AZ",
-   "venue_id": "cocopah-rio-colorado-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/9609-cocopah-rio-colorado-golf-course/search",
-   "ids": {
-    "golfnow_facility_id": "9609",
-    "golfnow_slug": "cocopah-rio-colorado-golf-course"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "No course website"
   },
   {
    "slug": "the-links-at-coyote-wash",
@@ -5873,14 +5759,15 @@
    "state": "AZ",
    "venue_id": "francisco-grande-hotel-golf-resort",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://francisco-grande-hotel-and-golf-resort.book.teeitup.com/",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/22405/10940#teetimes",
    "ids": {
-    "alias": "francisco-grande-hotel-and-golf-resort"
+    "course_id": "22405",
+    "schedule_id": "10940"
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "remapped from unclaimed Chronogolf listing"
+   "notes": "Moved off TeeItUp (its kenna alias resolves but the sheet is empty) | remapped from unclaimed Chronogolf listing"
   },
   {
    "slug": "mission-royale-golf-club",
