@@ -253,6 +253,20 @@ class TeeItUpAdapter(Adapter):
         if data is None:
             raise errors[0]
 
+        return self._parse(course, data)
+
+    def _parse(self, course: dict[str, Any], data: Any) -> list[TeeTime]:
+        """Turn a raw kenna /v2/tee-times response into TeeTimes.
+
+        Split out of fetch() so the residential-browser far fetcher
+        (scraper/browser_teeitup.py) can reuse the exact ownership + timezone +
+        sub-course-label logic on blocks it fetched itself. That fetcher primes
+        `_FACILITIES[alias]` before calling this, so `_facility_meta` and
+        `_pinned_course_ids` resolve from cache and no network happens here.
+        """
+        alias = course["ids"].get("alias")
+        facility_id = course["ids"].get("facility_id")
+
         blocks = data if isinstance(data, list) else [data]
         meta = self._facility_meta(alias)
         state_tz = _STATE_TZ.get(course.get("state", ""), "America/Denver")
