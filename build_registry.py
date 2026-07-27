@@ -111,6 +111,19 @@ EXTRA_IDS = {
     # vanity host and the API alias are two different namespaces.
     "golden hills golf club":            {"alias": "golden-hills-golf-club"},
 
+    # Three more AZ TeeItUp courses whose pinned alias 404s at kenna while the
+    # course is very much selling — the same class of bug as Golden Hills above.
+    # Found 2026-07-27 by a browser probe fired from a booking origin, with BOTH
+    # controls serving (coldwater 226, rancho manana 249), so the empties in that
+    # run are real verdicts rather than the 429 poisoning that invalidated the two
+    # earlier probe attempts. Each corrected alias resolves to exactly one facility
+    # and returns live inventory: Ahwatukee CC -> 1294 (491 slots / 6 dates),
+    # Sierra Vista -> 9585 (382), Ventana Canyon -> 464 (247, thinning past ~2wk).
+    # All three sat at "ready" reading zero, indistinguishable from a dark sheet.
+    "ahwatukee country club":                     {"alias": "ahwatukee-country-club"},
+    "sierra vista golf center at pueblo del sol": {"alias": "pueblo-del-sol-country-club"},
+    "ventana canyon golf & racquet club":         {"alias": "ventana-canyon"},
+
     # Broadlands: the public booking front door is Noteefy (that's what the
     # Booking URL must point users to), but the tee sheet is scraped from the
     # Chronogolf marketplace API that mirrors it — so pin the chronogolf slug
