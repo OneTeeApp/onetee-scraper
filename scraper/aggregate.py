@@ -116,14 +116,28 @@ def run(date: dt.date, registry_path: str, out_path: str,
         "tee_times": [t.to_dict(include_raw)
                       for r in results for t in r.tee_times],
         # Courses that answered CLEANLY with zero rows for this date. sync()
-        # needs the distinction: for these, deactivating their leftover rows
-        # for this date is CORRECT (the day sold out, or the booking window
-        # closed). An errored course must never be treated this way - its
-        # absence is ignorance, not evidence. With a 3-day horizon a fully
-        # sold-out date self-healed within hours via prune_past; at day 20 the
-        # phantom slots would have lied for weeks.
-        "courses_empty": sorted(r.course_slug for r in results
-                                if r.ok and not r.tee_times),
+        # deactivates these for this date (the day sold out, or the booking
+        # window closed). Two guards on what counts as a trustworthy empty:
+        #
+        #   1. An errored course is never here - its absence is ignorance, not
+        #      evidence (handled in sync via the errored set too).
+        #   2. PLATFORM-LIVENESS: a course's empty only counts if at least one
+        #      OTHER course on the same platform served rows this run. This is
+        #      the fix for the far-horizon collapse (2026-07-27): kenna
+        #      soft-throttles our data-center IP and returns empty-200 (not
+        #      429) for a stretch of far dates, so a whole platform can go
+        #      "clean empty" at once. Trusting that deactivated real inventory
+        #      a prior sweep had captured - teeitup vanished from ~day 12-22.
+        #      73 courses do not sell out in the same second; a serving sibling
+        #      proves the platform is actually answering, so this course's
+        #      empty is a real sell-out rather than a throttle. If the whole
+        #      platform is empty this run, NONE are deactivated and the last
+        #      good capture survives until a run that truly reads the sheet.
+        "courses_empty": sorted(
+            r.course_slug for r in results
+            if r.ok and not r.tee_times
+            and r.platform in {x.platform for x in results
+                               if x.ok and x.tee_times}),
         "errors": [{"course": r.course_slug, "platform": r.platform,
                     "error": r.error} for r in results if not r.ok],
     }
