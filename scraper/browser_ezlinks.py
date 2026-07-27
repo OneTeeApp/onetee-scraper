@@ -99,8 +99,11 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 log.info("  portal %-18s ERROR %s", portal, last)
                 continue
             slots = EZLinksAdapter.raw_to_slots(rows)
+            # A portal that fronts exactly one of our courses needs no name
+            # matching — every slot on it is that course's by construction.
+            sole = len(pcourses) == 1
             for c in pcourses:
-                tts = EZLinksAdapter.course_teetimes(c, slots)
+                tts = EZLinksAdapter.course_teetimes(c, slots, sole_course=sole)
                 tee_times.extend(tts)
                 ok_slugs.add(c["slug"])
                 log.info("  %-34s %d times", c["slug"], len(tts))
