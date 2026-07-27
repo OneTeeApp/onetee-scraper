@@ -103,6 +103,28 @@ EXTRA_IDS = {
     # here since it's no longer extractable from the (Noteefy) booking URL.
     "broadlands golf course": {"slug": "broadlands-golf-course"},
 
+    # Golf With Access (Troon): the bookable course uuid is NOT in the booking
+    # URL — it lives in each tenant page's SSR courses:[{id,name}] array, so it
+    # is pinned here, captured live July 2026 (browser network capture). Every
+    # id below was verified to return that course's own sheet, and the adapter
+    # re-asserts course.id on each slot. The facility-named id is always a dead
+    # aggregate (returns 0), so shared tenants pin the per-course id: the five
+    # Tucson munis share the tucson-city-golf tenant, El Conquistador + Pusch
+    # Ridge share el-conquistador-golf-club, and El Con/Starr Pass book through
+    # a sub-course id ("Conquistador Course" / "Gambler/Pioneer") rather than
+    # the headline id.
+    "rollingstone ranch golf club": {"course_id": "4ed9004a-c17f-4e52-aa86-d6c0bf46e869", "tenant": "rollingstone-ranch-golf-club"},
+    "poston butte golf club":       {"course_id": "1107b804-2789-450d-bd61-8611fa9f742c", "tenant": "poston-butte-golf-club"},
+    "las colinas golf club":        {"course_id": "2c9b2f0d-72b7-49a3-a428-ee7efef5ebbf", "tenant": "las-colinas-golf-club"},
+    "el conquistador golf club":    {"course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965", "tenant": "el-conquistador-golf-club"},
+    "pusch ridge golf course":      {"course_id": "361624de-ac95-4208-bdf7-4af6e84f27e1", "tenant": "el-conquistador-golf-club"},
+    "dell urich golf course":       {"course_id": "e37da0d2-865e-4ea0-9cc8-3331440ad82f", "tenant": "tucson-city-golf"},
+    "el rio golf course":           {"course_id": "7bb875b1-777d-43bb-8802-6c15c540dfa7", "tenant": "tucson-city-golf"},
+    "fred enke golf course":        {"course_id": "c70e6b85-4076-4cb8-9cb3-419c97586162", "tenant": "tucson-city-golf"},
+    "randolph north golf course":   {"course_id": "78c4ad12-e482-43d5-a39e-1d6115c8b09b", "tenant": "tucson-city-golf"},
+    "silverbell golf course":       {"course_id": "e3525d5b-9dea-4c91-a704-0d243c694ac6", "tenant": "tucson-city-golf"},
+    "the club at starr pass":       {"course_id": "eb039b63-0c58-4033-b8e2-cca31ca850d3", "tenant": "the-club-at-starr-pass"},
+
     # Club Prophet (cps.golf): the adapter discovers courseIds + websiteId at
     # runtime via OnlineCourses from just the tenant subdomain. Indian Peaks is
     # pinned (captured live) as a guaranteed anchor in case discovery ever fails
@@ -193,7 +215,8 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
-               "membersports", "quick18", "teesnap", "foretees"}
+               "membersports", "quick18", "teesnap", "foretees",
+               "golfwithaccess"}
 
 
 def slugify(name: str) -> str:
