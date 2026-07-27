@@ -28,6 +28,7 @@ PATTERNS = {
     "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
     "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
     "supersaas": re.compile(r"supersaas\.com/schedule/([^/]+)/([^/?#]+)"),
+    "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([a-z0-9-]+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -64,6 +65,14 @@ EXTRA_IDS = {
     "stardust golf course":      {"tenant": "suncitywest", "label": "Stardust"},
     "trail ridge golf course":   {"tenant": "suncitywest", "label": "Trail Ridge"},
     "ken mcdonald golf course":  {"tenant": "playkenmcdonald", "label": "Ken McDonald"},
+
+    # rGuest: Wildfire's two courses are two registry venues sharing ONE
+    # property (tenant 2418), so each claims its own sheet by course_id.
+    # Verified live 2026-07-27: Faldo 519, Palmer 520. We-Ko-Pa (2093/wekopa)
+    # and Camelback (2281/camelback-golf-club) are single venues covering both
+    # of their courses, so they pin nothing and get labelled sub-courses.
+    "wildfire golf club - faldo course":  {"course_id": 519},
+    "wildfire golf club - palmer course": {"course_id": 520},
 
     # Three CO courses were tagged with a NEIGHBOUR's golfClubId because the
     # city portal's booking URL is shared between two courses. The club-id scan
@@ -243,7 +252,7 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
-               "golfwithaccess", "totale"}
+               "golfwithaccess", "totale", "rguest"}
 
 
 def slugify(name: str) -> str:
@@ -300,6 +309,13 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"club_key": g[0], "cid": g[1]}
     if platform == "supersaas":
         return {"account": g[0], "schedule": g[1]}
+    if platform == "rguest":
+        # book.rguest.com/onecart/golf/courses/<tenant>/<property>. A property
+        # with several courses (We-Ko-Pa, Camelback) needs nothing more — the
+        # adapter fetches and labels every course on it. Wildfire is the other
+        # shape: two registry venues on ONE property, so those pin an extra
+        # course_id in EXTRA_IDS to claim a single sheet each.
+        return {"tenant": g[0], "property": g[1]}
     return {}
 
 
@@ -364,6 +380,11 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # against a control (indianpeaks) that mints a token fine
         # (probe-results/open_leads.txt section B). "needs_ids" is the honest
         # status: the platform is right, the identifiers are not known.
+        status = "needs_ids"
+    elif platform == "rguest" and not (ids.get("tenant") and ids.get("property")):
+        # The adapter cannot address a sheet without both. Both come free from
+        # the booking URL, so this only fires on a row whose URL is not a
+        # book.rguest.com course link.
         status = "needs_ids"
     elif platform == "membersports" and not ids.get("club_id"):
         # A shared city portal can leave a course pointing at its neighbour's
