@@ -1,0 +1,65 @@
+name: Probe TeeItUp AZ silent aliases
+
+# Arizona's coverage gap is dominated by 18 TeeItUp rows the registry calls
+# ready that serve nothing. The CO version of this probe split three silents
+# into three different repairs (wrong alias / moved platform / real empty);
+# this asks the same four questions across all eighteen at once, with two
+# serving controls — including cave-creek on the SAME shared city-of-phoenix
+# tenant as silent aguila-9, so shared-tenant pin mechanics have a known-good
+# example in the report.
+#
+# Runs here rather than in the dev sandbox because that sandbox's egress
+# proxy 403s the platforms outright. Report only: public GETs, no Cloudflare
+# secrets, no D1 writes, no registry or CSV edits.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/probe_teeitup_az.py"
+      - ".github/workflows/probe-teeitup-az.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-teeitup-az
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        timeout-minutes: 40
+        run: |
+          mkdir -p probe-results
+          python3 scripts/probe_teeitup_az.py 2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 150 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/teeitup-az.json || exit 0
+          git commit -m "Probe: TeeItUp AZ silent aliases [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push results after 5 attempts"; exit 1
