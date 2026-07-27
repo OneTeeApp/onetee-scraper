@@ -74,6 +74,33 @@ EXTRA_IDS = {
     "wildfire golf club - faldo course":  {"course_id": 519},
     "wildfire golf club - palmer course": {"course_id": 520},
 
+    # Two AZ TeeItUp courses whose kenna alias is nothing like their booking
+    # host — found 2026-07-27 by reading each booking page's OWN /alias/ call
+    # instead of guessing spellings (three guesses each had 404'd). Junior
+    # National still answers to its former name. Both verified serving.
+    "omni tucson national":      {"alias": "tucson-national-omni"},
+    "junior national golf club": {"alias": "tres-rios-gc-at-estrella-mountain-park"},
+
+    # Golf With Access course uuids for five courses that turned out to book
+    # here rather than where the directory said. Captured 2026-07-27 from each
+    # page's own /api/v1/tee-times courseIds param (the SSR courses:[] array
+    # the older entries came from is gone - the site is client-rendered now),
+    # and every one verified serving before being pinned. Antelope Hills and
+    # Kierland each expose only ONE of their multiple nines this way; the
+    # others are a later addition, not a blocker.
+    "san pedro golf course":       {"course_id": "d10ed1e5-1bf2-4e52-b312-3c8ee622b64c", "tenant": "san-pedro-golf-course"},
+    "antelope hills golf course":  {"course_id": "e2aeb67d-6e7f-41c5-90ef-df6dca5f5c72", "tenant": "antelope-hills-golf-course"},
+    "arizona national golf club":  {"course_id": "61cc7d8d-3c22-44f6-ad4d-1799a515249a", "tenant": "arizona-national-golf-club"},
+    "golf club at eagle mountain": {"course_id": "698b68b9-908e-416e-8368-a043e2a90072", "tenant": "eagle-mountain-golf-club"},
+    "westin kierland golf club":   {"course_id": "ab5ad653-b217-4119-bcb7-80dd0aecffaa", "tenant": "the-westin-kierland-golf-club"},
+
+    # Fountain of the Sun moved off TeeItUp to Club Prophet. Its tenant uses the
+    # ZERO websiteId (captured from the app's own sessionStorage) rather than a
+    # real GUID like the Colorado tenants, and exposes a single course id. The
+    # full anonymous token -> register -> TeeTimes flow was replayed against it
+    # before pinning: 8 tee times at +2, HTTP 200.
+    "fountain of the sun country club": {"website_id": "00000000-0000-0000-0000-000000000000", "course_ids": [1]},
+
     # Three CO courses were tagged with a NEIGHBOUR's golfClubId because the
     # city portal's booking URL is shared between two courses. The club-id scan
     # (probe-results/msscan.txt) asked each club what it actually owns and
