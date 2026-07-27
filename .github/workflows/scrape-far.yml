@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: write               # the full sweep commits booking-windows.json
+  actions: write                # the chain job dispatches the next run
 
 concurrency:
   group: scrape-far
@@ -46,6 +47,12 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install requests beautifulsoup4
+
+      - name: Stagger shards
+        # The initial full sweep 429-shredded kenna past ~day 9 with all four
+        # shards hitting it in lockstep. 90s offsets desynchronise the date
+        # loops without meaningfully slowing the sweep.
+        run: sleep $(( ${{ matrix.shard }} * 90 ))
 
       - name: Decide full vs windowed
         id: mode
@@ -135,3 +142,28 @@ jobs:
             git pull --rebase && continue
           done
           exit 1
+
+  chain:
+    # The cron scheduler went 9+ hours without firing anything in this repo,
+    # so the 2-hour cadence cannot depend on it (same lesson as scrape-near).
+    # This job waits out the remainder of the 2-hour window from run start,
+    # then dispatches the successor. if: always() so a failed sweep still
+    # chains; the concurrency group holds at most one pending run either way.
+    needs: [scrape, derive-windows]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Wait out the cadence, then dispatch the next run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          START=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq .run_started_at)
+          ELAPSED=$(( $(date +%s) - $(date -d "$START" +%s) ))
+          SLEEP=$(( 7200 - ELAPSED ))
+          if [ "$SLEEP" -gt 0 ]; then
+            echo "sweep took ${ELAPSED}s; sleeping ${SLEEP}s to hold the 2h cadence"
+            sleep "$SLEEP"
+          fi
+          gh workflow run scrape-far.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
