@@ -1,0 +1,54 @@
+name: Rebuild registry from CSVs
+
+# registry.json is a BUILD ARTIFACT of build_registry.py over the two state
+# CSVs — it must never be hand-edited. This regenerates and commits it whenever
+# the CSVs or the builder change, so the scrape tiers (which read registry.json
+# directly) always see the current course set. Runs on the default GITHUB_TOKEN;
+# the scrapers checkout latest main each run, so they pick up the new file even
+# though a bot commit does not itself trigger their workflows.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "*_golf_courses_booking.csv"
+      - "build_registry.py"
+      - ".github/workflows/rebuild-registry.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-registry
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rebuild registry.json
+        run: python3 build_registry.py | tee registry.log
+      - name: Summary
+        if: always()
+        run: |
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
+          cat registry.log >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          git diff --cached --quiet && { echo "registry unchanged"; exit 0; }
+          git commit -m "Rebuild registry.json from the state CSVs [skip ci]"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push registry after 5 attempts"; exit 1
