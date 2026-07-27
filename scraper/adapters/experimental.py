@@ -185,6 +185,23 @@ class GolfNowAdapter(Adapter):
             "Course visible at: " + course.get("booking_url", ""))
 
 
+class TotaleAdapter(Adapter):
+    """Total-e-Integrated (*.totaleintegrated.com) — DNN/WebForms tee sheet whose
+    date lives in the encrypted __VIEWSTATE, so a plain HTTP client cannot drive
+    it. Owned entirely by the browser fetcher (scraper/browser_totale.py); the
+    plain tiers exclude `totale`. This stub exists so the platform is a
+    first-class registry citizen and reuses base_tee_time, and to fail loudly if
+    the plain path is ever pointed at it by mistake."""
+
+    platform = "totale"
+
+    def fetch(self, course: dict[str, Any], date: dt.date) -> list[TeeTime]:
+        raise RuntimeError(
+            "totale is browser-only (viewstate-driven date); run "
+            "scraper.browser_totale. Course at: "
+            + course.get("booking_url", ""))
+
+
 class OtherAdapter(Adapter):
     """Niche platforms (ForeTees, IBS Vision, SuperSaaS, Square) — 1-2 courses
     each; not yet implemented. Raises with the booking URL for visibility."""
