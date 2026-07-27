@@ -33,7 +33,7 @@ from .adapters.foretees import ForeTeesAdapter
 from .adapters.ezlinks import EZLinksAdapter
 from .adapters.golfwithaccess import GolfWithAccessAdapter
 from .adapters.experimental import (
-    MemberSportsAdapter, GolfNowAdapter, OtherAdapter,
+    MemberSportsAdapter, GolfNowAdapter, OtherAdapter, TotaleAdapter,
 )
 
 log = logging.getLogger("teetime")
@@ -51,6 +51,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "quick18": Quick18Adapter,
     "foretees": ForeTeesAdapter,
     "golfwithaccess": GolfWithAccessAdapter,
+    "totale": TotaleAdapter,          # browser-only; see scraper/browser_totale.py
 }
 
 
