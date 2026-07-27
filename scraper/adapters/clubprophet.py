@@ -146,6 +146,29 @@ class ClubProphetAdapter(Adapter):
         return out
 
     @staticmethod
+    def _open_spots(slot: dict) -> int | None:
+        """Remaining seats = the largest party the slot will still accept.
+
+        `availableParticipantNo` is an ARRAY of the party sizes still bookable —
+        [1,2,3,4] on an empty slot, [1,2] when two of the four seats are taken —
+        so its max is the open-seat count (live-verified at indianpeaks: empty
+        slots return 4, partially-booked ones return 2 and 3). An earlier version
+        read it as a scalar (`isinstance(spots, (int, float))`), which is False
+        for a list, so EVERY Club Prophet row published open_spots=None and got
+        dropped by the widget's group-size filter. Falls back to maxPlayer when
+        the array is absent, then to None.
+        """
+        a = slot.get("availableParticipantNo")
+        if isinstance(a, list):
+            nums = [int(x) for x in a if isinstance(x, (int, float))]
+            if nums:
+                return max(nums)
+        if isinstance(a, (int, float)):
+            return int(a)
+        mp = slot.get("maxPlayer")
+        return int(mp) if isinstance(mp, (int, float)) else None
+
+    @staticmethod
     def _holes(slot: dict) -> list[int]:
         if slot.get("is9HoleOnly"):
             return [9]
@@ -215,13 +238,12 @@ class ClubProphetAdapter(Adapter):
             if not t:
                 continue
             prices = self._prices(s)
-            spots = s.get("availableParticipantNo")
             out.append(self.base_tee_time(
                 course,
                 teetime=str(t),
                 course_label=(s.get("courseName") or "") if multi else "",
                 holes=self._holes(s),
-                open_spots=int(spots) if isinstance(spots, (int, float)) else None,
+                open_spots=self._open_spots(s),
                 price_min=min(prices) if prices else None,
                 price_max=max(prices) if prices else None,
                 raw={"course_name": s.get("courseName", course["name"]),
