@@ -70,7 +70,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23); do
+          # Shuffle the far date order every run. kenna soft-throttles our
+          # data-center IP partway through a sweep, starving whichever dates
+          # fall in the back half of the loop; a fixed 8..30 order starved the
+          # SAME middle dates every run (teeitup vanished from ~day 12-22).
+          # Random order moves the starved band each run, and the
+          # platform-liveness guard in aggregate.py means throttled-empty reads
+          # never deactivate prior captures - so the union fills the horizon
+          # over a few sweeps instead of any single run having to get all 23.
+          for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23 | shuf); do
             ARGS=""
             if [ "${{ steps.mode.outputs.full }}" != "yes" ]; then
               ELIG=$(python scripts/eligible_courses.py --date "${DATE}")
