@@ -1,0 +1,55 @@
+name: Scrape Total-e-Integrated via browser (hourly)
+
+# Total-e-Integrated (Sun City West seven + Ken McDonald) is a DNN/WebForms tee
+# sheet whose selected date lives in the encrypted __VIEWSTATE, so a plain HTTP
+# client cannot drive the date (measured: an overridden hdnCalSelected is ignored
+# on replay). A real headless Chromium drives the day-strip postbacks natively.
+# The booking window is short (~5 days), so there is no far tier — one run
+# harvests the whole published window per tenant. This job OWNS the `totale`
+# platform; the plain tiers exclude it, so neither clobbers the other in D1.
+
+on:
+  schedule:
+    - cron: "47 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_totale.py"
+      - "scraper/adapters/experimental.py"
+      - ".github/workflows/scrape-totale-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-totale-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape whole window + push each date to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          python -m scraper.browser_totale --registry registry.json --out-dir output || true
+          for f in output/totale_*.json; do
+            [ -e "$f" ] || continue
+            echo "::group::push ${f}"
+            python -m scraper.d1 push --data "${f}" || true
+            echo "::endgroup::"
+          done
