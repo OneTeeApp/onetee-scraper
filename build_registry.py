@@ -51,6 +51,20 @@ EXTRA_IDS = {
                                   "config_ids": [0, 1, 2]},
     # city-park stays 3660/4711 (correct as extracted)
 
+    # Total-e-Integrated: one DNN tee sheet per tenant lists every course
+    # interleaved, each row labelled with its course. `tenant` is the
+    # *.totaleintegrated.com subdomain; `label` is the exact course name the
+    # sheet prints, which browser_totale matches rows on. The Sun City West
+    # seven share one tenant; Ken McDonald is its own.
+    "deer valley golf course":   {"tenant": "suncitywest", "label": "Deer Valley"},
+    "desert trails golf course": {"tenant": "suncitywest", "label": "Desert Trails"},
+    "echo mesa golf course":     {"tenant": "suncitywest", "label": "Echo Mesa"},
+    "grandview golf course":     {"tenant": "suncitywest", "label": "Grandview"},
+    "pebblebrook golf course":   {"tenant": "suncitywest", "label": "Pebblebrook"},
+    "stardust golf course":      {"tenant": "suncitywest", "label": "Stardust"},
+    "trail ridge golf course":   {"tenant": "suncitywest", "label": "Trail Ridge"},
+    "ken mcdonald golf course":  {"tenant": "playkenmcdonald", "label": "Ken McDonald"},
+
     # Three CO courses were tagged with a NEIGHBOUR's golfClubId because the
     # city portal's booking URL is shared between two courses. The club-id scan
     # (probe-results/msscan.txt) asked each club what it actually owns and
@@ -216,7 +230,7 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
-               "golfwithaccess"}
+               "golfwithaccess", "totale"}
 
 
 def slugify(name: str) -> str:
