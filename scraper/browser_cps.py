@@ -73,11 +73,13 @@ def _teetimes(course: dict, slots: list[dict]) -> list:
         if not t:
             continue
         prices = ClubProphetAdapter._prices(s)
-        spots = s.get("availableParticipantNo")
+        # open_spots via the shared helper: availableParticipantNo is an ARRAY of
+        # bookable party sizes, so max() = remaining seats (see adapters/
+        # clubprophet.py). The old inline scalar check dropped every row to None.
         out.append(ClubProphetAdapter.base_tee_time(
             course, teetime=str(t), holes=ClubProphetAdapter._holes(s),
             course_label=(s.get("courseName") or "") if multi else "",
-            open_spots=int(spots) if isinstance(spots, (int, float)) else None,
+            open_spots=ClubProphetAdapter._open_spots(s),
             price_min=min(prices) if prices else None,
             price_max=max(prices) if prices else None,
             raw={"course_name": s.get("courseName", course["name"])}))
