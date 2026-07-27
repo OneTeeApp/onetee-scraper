@@ -8,13 +8,16 @@ name: Scrape near tier (days 0-2, 5-minute loop)
 # long-lived Actions run that LOOPS internally every INTERVAL_SECONDS, for
 # just under the 6-hour job ceiling.
 #
-# Continuity does not need self-redispatch (and so needs no actions:write):
-# the hourly cron below keeps queueing a successor, the concurrency group
-# holds exactly one queued run (GitHub replaces older pending runs in the
-# group), and the successor starts the moment the active run's ~5.5 hours
-# end. If a run dies early — runner eviction, network — the next backstop is
-# at most an hour away, and the mid tier's hourly 3-7-day scan plus this
-# tier's own restart keep the gap survivable.
+# Continuity comes from SELF-CHAINING, not from the cron: on 2026-07-26 the
+# scheduler went ~7 hours without firing a single cron in this repo — none of
+# the existing hourly jobs either — so a cron-queued successor cannot be the
+# primary mechanism. At the end of each run, shard 0 dispatches the next run
+# via workflow_dispatch with the built-in GITHUB_TOKEN (workflow_dispatch and
+# repository_dispatch are the documented exceptions to GITHUB_TOKEN's
+# no-recursive-runs rule). The hourly cron stays as a crash backstop: if a
+# run dies without reaching the chain step, the next cron firing — whenever
+# the scheduler deigns to — restarts the loop, and the concurrency group
+# keeps at most one successor pending either way.
 #
 # Request-volume note, on the record: this is ~12x the per-platform request
 # rate of the old hourly scan. Every adapter already paces per-host (the
@@ -29,6 +32,7 @@ on:
 
 permissions:
   contents: read
+  actions: write             # shard 0 chains the next run (see header note)
 
 concurrency:
   group: scrape-near
@@ -90,3 +94,11 @@ jobs:
               echo "pass ${PASS} took ${TOOK}s (over interval; no sleep)"
             fi
           done
+
+      - name: Chain the next loop run (shard 0 only)
+        if: always() && matrix.shard == 0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run scrape-near.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
