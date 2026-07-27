@@ -85,17 +85,43 @@ class EZLinksAdapter(Adapter):
         return slots
 
     @classmethod
-    def course_teetimes(cls, course: dict[str, Any], slots: list[dict]) -> list[TeeTime]:
+    def course_teetimes(cls, course: dict[str, Any], slots: list[dict],
+                        sole_course: bool = False) -> list[TeeTime]:
         """Filter a portal's slots to one registry course, folding same-time
-        18/9-hole variants together. Shared by the plain and browser fetchers."""
+        18/9-hole variants together. Shared by the plain and browser fetchers.
+
+        THREE WAYS TO DECIDE WHICH SLOTS ARE OURS, most specific first. Name
+        matching alone was silently discarding whole portals: measured
+        2026-07-27, Mount Graham lost 619 rows over "Mount" vs the sheet's
+        "Mt.", Palm Valley lost 788 because its sheet says "PV - South/West",
+        Talking Stick lost 137 to "The O'odham Course", and Whirlwind lost its
+        sheet to "- Devil's Claw" vs our "at Wild Horse Pass". A portal that
+        answers 200 with rows we then throw away looks identical to a dead
+        course, which is why these sat silent for weeks.
+
+        1. `ids.course_ids` — the portal's own numeric ids (r07), pinned in the
+           registry. Required on a SHARED portal: `arcisgolfazpp` fronts 19
+           courses across a dozen different venues, several of which we already
+           scrape through their own portals, so name matching there risks
+           publishing another club's sheet under our name.
+        2. `sole_course` — this portal maps to exactly one registry course, so
+           every slot on it is ours by construction. This is the common case
+           and needs no per-course configuration.
+        3. Name matching — unchanged, for multi-course portals with no ids
+           pinned."""
         want = _norm(course["name"])
+        pinned = {int(x) for x in ((course.get("ids") or {}).get("course_ids") or [])}
         by_time: dict[str, dict] = {}
         for s in slots:
             nm = s["name"]
             base_nm = _norm(nm)
-            # match this registry course to the slot's course name
-            if not (want and (want in base_nm or base_nm in want)):
-                continue
+            if pinned:
+                if s.get("course_id") is None or int(s["course_id"]) not in pinned:
+                    continue
+            elif not sole_course:
+                # match this registry course to the slot's course name
+                if not (want and (want in base_nm or base_nm in want)):
+                    continue
             is9 = bool(re.search(r"back\s*9|9\s*hole", nm.lower()))
             e = by_time.setdefault(s["time"], {"prices": [], "holes": set(),
                                                "spots": 0})
