@@ -3,10 +3,10 @@ PER-STATE COVERAGE
 ==========================================================================
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
-CO          181   127    70%            1            2            0            4            0           47           60
-AZ          217   132    61%           24            2           17           28            0           14            1
+CO          181   128    71%            1            2            0            3            0           47           60
+AZ          217   142    65%           25            2           16           18            0           14            1
 -----------------------------------------------------------------------------------------------------------------------
-ALL         398   259    65%           25            4           17           32            0           61           61
+ALL         398   270    68%           26            4           16           21            0           61           61
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -17,16 +17,14 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   bucket       platform               courses   states
   silent       teeitup                     18   AZ:18
   silent       quick18                      3   AZ:3
+  silent       golfwithaccess               3   AZ:3
   silent       teesnap                      1   CO:1
-  silent       chronogolf                   1   AZ:1
   silent       clubprophet                  1   AZ:1
-  silent       foreup                       1   AZ:1
   needs_ids    clubprophet                  2   CO:2
   needs_ids    teeitup                      1   AZ:1
   needs_ids    foreup                       1   AZ:1
-  experimental golfnow                     10   AZ:10
+  experimental golfnow                      9   AZ:9
   experimental ezlinks                      7   AZ:7
-  unsupported  other:golfwithaccess        11   AZ:10 CO:1
   unsupported  other:totale                 8   AZ:8
   unsupported  other:rguest                 4   AZ:4
   unsupported  other:embedded               3   AZ:3
@@ -40,7 +38,7 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   no_booking   other:unclaimed-chron        8   AZ:7 CO:1
 
 ==========================================================================
-CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 private), 127 live (70%)
+CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 private), 128 live (71%)
 ==========================================================================
 
   SILENT  (1) — believed scrapable, returning nothing
@@ -50,10 +48,9 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Emerald Greens Golf Club                     clubprophet    Denver
      University of Denver Golf Club at Highlands  clubprophet    Littleton
 
-  UNSUPPORTED  (4) — no adapter possible today
+  UNSUPPORTED  (3) — no adapter possible today
      Cottonwood Links Golf Club                   other:square   Fowler
      Lake Arbor Golf Club                         clubprophet    Arvada
-     Rollingstone Ranch Golf Club                 other:golfwithaccess Steamboat Springs
      Telluride Ski & Golf Club                    other:goibsvision Telluride
 
   NO_BOOKING  (47) — playable, but no online booking in the source data
@@ -106,14 +103,13 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 private), 132 live (61%)
+AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 private), 142 live (65%)
 ==========================================================================
 
-  SILENT  (24) — believed scrapable, returning nothing
+  SILENT  (25) — believed scrapable, returning nothing
      Aguila 9 Golf Course                         teeitup        Laveen
      Ahwatukee Country Club                       teeitup        Ahwatukee
      Antelope Hills Golf Course (North & South)   teeitup        Prescott
-     Arizona Biltmore Golf Club - Estates Course  chronogolf     Phoenix
      Arizona National Golf Club                   teeitup        Tucson
      Augusta Ranch Golf Club                      teeitup        Mesa
      Canoa Ranch Golf Club                        teeitup        Green Valley
@@ -123,10 +119,12 @@ AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 privat
      Francisco Grande Hotel & Golf Resort         teeitup        Casa Grande
      Great Eagle Golf Club (Happy Trails Resort)  teeitup        Surprise
      Junior National Golf Club (fka Tres Rios / E teeitup        Goodyear
-     Mesa del Sol Golf Club                       foreup         Yuma
+     Las Colinas Golf Club                        golfwithaccess Queen Creek
      Mountain Brook Golf Club                     teeitup        Gold Canyon
      Omni Tucson National (Catalina/Sonoran)      teeitup        Tucson
      Pinetop Lakes Golf & Country Club            quick18        Pinetop-Lakeside
+     Poston Butte Golf Club                       golfwithaccess Florence
+     Pusch Ridge Golf Course                      golfwithaccess Oro Valley
      San Tan Highlands Golf Club (fka Golf Club a teeitup        San Tan Valley
      Sierra Vista Golf Center at Pueblo del Sol ( teeitup        Sierra Vista
      Springfield Golf Resort                      quick18        Chandler
@@ -139,7 +137,7 @@ AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 privat
      San Pedro Golf Course                        teeitup        Benson
      Snowflake Municipal Golf Course              foreup         Snowflake
 
-  EXPERIMENTAL  (17) — adapter exists but is not production
+  EXPERIMENTAL  (16) — adapter exists but is not production
      Bear Creek Golf Complex                      ezlinks        Chandler
      Cocopah Rio Colorado Golf Course             golfnow        Somerton
      Falcon Dunes Golf Course                     golfnow        Waddell
@@ -150,39 +148,28 @@ AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 privat
      Quail Canyon Golf Course                     golfnow        Tucson
      Santa Rita Golf Club                         golfnow        Corona de Tucson
      Sun City North Golf Course (RCSC)            golfnow        Sun City
-     TPC Scottsdale (Stadium & Champions)         ezlinks        Scottsdale
      Talking Stick Golf Club (O'odham & Piipaash) ezlinks        Scottsdale
+     The Golf Club at Dove Mountain (fka Ritz-Car ezlinks        Marana
      The Legend at Arrowhead                      ezlinks        Glendale
      Twin Lakes Golf Course                       golfnow        Willcox
-     Westbrook Village Golf Club (Vistas & Lakes) golfnow        Peoria
      Whirlwind Golf Club at Wild Horse Pass       ezlinks        Chandler
      Wickenburg Ranch Golf & Social Club (Big Wic golfnow        Wickenburg
 
-  UNSUPPORTED  (28) — no adapter possible today
+  UNSUPPORTED  (18) — no adapter possible today
      Birdie Ranch at Silver Creek (fka Silver Cre other:embedded Show Low
      Bison Golf Club                              other:embedded Show Low
      Camelback Golf Club (Ambiente & Padre)       other:rguest   Scottsdale
      Deer Valley Golf Course (Sun City West)      other:totale   Sun City West
-     Dell Urich Golf Course                       other:golfwithaccess Tucson
      Desert Trails Golf Course (Sun City West)    other:totale   Sun City West
      Echo Mesa Golf Course (Sun City West)        other:totale   Sun City West
-     El Conquistador Golf Club (Conquistador/Caña other:golfwithaccess Oro Valley
-     El Rio Golf Course                           other:golfwithaccess Tucson
      Emerald Canyon Golf Course                   other:teequest Parker
-     Fred Enke Golf Course                        other:golfwithaccess Tucson
      Golf Club at Eagle Mountain                  other:embedded Fountain Hills
      Grandview Golf Course (Sun City West)        other:totale   Sun City West
      Ken McDonald Golf Course                     other:totale   Tempe
-     Las Colinas Golf Club                        other:golfwithaccess Queen Creek
      Los Caballeros Golf Club                     other:clubhouseonline Wickenburg
      Pebblebrook Golf Course (Sun City West)      other:totale   Sun City West
-     Poston Butte Golf Club                       other:golfwithaccess Florence
-     Pusch Ridge Golf Course                      other:golfwithaccess Oro Valley
-     Randolph North Golf Course                   other:golfwithaccess Tucson
-     Silverbell Golf Course                       other:golfwithaccess Tucson
      Stardust Golf Course (Sun City West)         other:totale   Sun City West
      Sun Lakes Country Club                       other:chelsea  Sun Lakes
-     The Club at Starr Pass                       other:golfwithaccess Tucson
      Trail Ridge Golf Course (Sun City West)      other:totale   Sun City West
      We-Ko-Pa Golf Club (Cholla & Saguaro)        other:rguest   Fort McDowell
      Wildfire Golf Club - Faldo Course (JW Marrio other:rguest   Phoenix
