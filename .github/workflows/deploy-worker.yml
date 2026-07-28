@@ -56,6 +56,20 @@ jobs:
           # deploy; capture all output (incl. the published workers.dev URL)
           npx --yes wrangler@3 deploy 2>&1 | tee -a ../deploy.log
 
+      # The sed above writes the real D1 database id into a TRACKED file, so
+      # until it is put back the checkout is dirty with a secret in it. Two
+      # things went wrong because it was not:
+      #   * every `git pull --rebase` below refused outright ("cannot pull with
+      #     rebase: You have unstaged changes"), so all five retries failed
+      #     identically and this job has been red on every run since 2026-07-25
+      #     while wrangler itself succeeded every time;
+      #   * a tracked file holding the id sat in the working tree of a PUBLIC
+      #     repo, one careless `git add -A` away from being published.
+      # always() so it still runs when the deploy step fails.
+      - name: Restore wrangler.toml (drops the injected D1 id)
+        if: always()
+        run: git checkout -- worker/wrangler.toml
+
       - name: Verify live venue fix + record result
         if: always()
         # This file gets COMMITTED, and the repo is public. `wrangler whoami`
@@ -96,11 +110,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add probe-results/deploy.txt
           git commit -m "worker deploy result [skip ci]" || exit 0
-          # Retry the push. The probe workflow writes to probe-results/ too, so
-          # a single push loses the race whenever the two overlap — which is
-          # what happened on the cron-trigger deploy: wrangler had already
-          # succeeded, but the job went red on a non-fast-forward push and the
-          # log never landed, which read from the outside as a failed deploy.
+          # Retry the push: the probe workflows write to probe-results/ too, so
+          # a single push can genuinely lose a race when they overlap.
+          # NOTE: a red job here has historically NOT meant that race. From
+          # 2026-07-25 to 2026-07-28 every failure was the dirty wrangler.toml
+          # above blocking the rebase, and the retry loop could never clear it.
+          # Read the log before believing the race explanation again.
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push && exit 0
             sleep $((i * 5))
