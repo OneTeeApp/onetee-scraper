@@ -51,7 +51,8 @@ API_BASE = "https://phx-api-be-east-1b.kenna.io"
 # Denver — probe-verified). They MUST be converted to course-local time or the
 # site shows times ~6-7h in the future (which also read as bookable-past slots).
 # Facility metadata carries the IANA timeZone; fall back by state.
-_STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix"}
+_STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix",
+             "VA": "America/New_York"}
 
 # All TeeItUp courses hit one shared kenna host, so the WHOLE fleet — across
 # every parallel shard — must stay under its burst 429 limit. Within a process
