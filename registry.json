@@ -4498,12 +4498,14 @@
    "state": "AZ",
    "venue_id": "ken-mcdonald-golf-course",
    "source_role": "primary",
-   "platform": "totale",
-   "booking_url": "https://playkenmcdonald.totaleintegrated.com/",
-   "ids": {},
+   "platform": "courseco",
+   "booking_url": "https://kenmcdonald.totaleintegrated.net/web/tee-times",
+   "ids": {
+    "tenant": "kenmcdonald"
+   },
    "status": "ready",
-   "confidence": "low",
-   "notes": "Cloudflare 525 at check time; Google index shows URL live \u2014 likely temporary outage, recheck"
+   "confidence": "high",
+   "notes": "Platform migration, not an outage (resolved 2026-07-28). The old tenant playkenmcdonald.totaleintegrated.com still answers Cloudflare 525 \u2014 origin SSL dead, not a blip \u2014 while the course's own site now links to kenmcdonald.totaleintegrated.net, which served a full sheet (49 slots, $29.60-$40.70, 30-day window) when probed today. Total-e's replacement platform: a shared anonymous JSON gateway (courseco-gateway.totaleintegrated.net) that identifies the club by the Origin header, so the tenant subdomain is the whole id. New courseco adapter. Expect other totale tenants to follow this migration; the old host going dark reads exactly like a dark course from the inside."
   },
   {
    "slug": "los-caballeros-golf-club",
