@@ -6119,14 +6119,15 @@
    "state": "VA",
    "venue_id": "amelia-golf-country-club",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://amelia-golf-country-club.book.teeitup.com/",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/amelia-golf-country-club",
    "ids": {
-    "alias": "amelia-golf-country-club"
+    "slug": "amelia-golf-country-club",
+    "club_uuid": null
    },
    "status": "ready",
-   "confidence": "medium",
-   "notes": "Semi-private course - public welcome, members get benefits. Official site has a 'Book a Tee Time' button whose destination is JS-hidden; a TeeItUp tenant subdomain exactly matching the club loads a booking shell but branding could not be confirmed in the fetch. | Region: Richmond Metro | Phone: (804) 561-2640"
+   "confidence": "high",
+   "notes": "Semi-private course - public welcome, members get benefits. Official site has a 'Book a Tee Time' button whose destination is JS-hidden; a TeeItUp tenant subdomain exactly matching the club loads a booking shell but branding could not be confirmed in the fetch. | Region: Richmond Metro | Phone: (804) 561-2640 | RECOVERED 2026-07-28: was in the registry on a channel that scraped clean-empty. Loaded the course's own site in a browser and found it sells elsewhere. Verified serving before retagging: 29 slots on +2 and 31 on +5, chronogolf club 19707 'Amelia Golf & Country Club', bookable, course 'Amelia'. Previously teeitup, whose alias resolved to one facility and returned 0 on four consecutive dates against 22 serving siblings - that empty was real, the course had moved to Chronogolf. This is the third time a 'proven dark' verdict has been overturned by asking where the course sells rather than whether our channel answers."
   },
   {
    "slug": "poplar-grove-golf-club",
@@ -6441,7 +6442,7 @@
    },
    "status": "experimental",
    "confidence": "high",
-   "notes": "Fred Couples signature public course. Own website (westfieldsgolf.com/bookteetimes) was unreachable to fetch (connection blocked), so its native engine could not be confirmed; GolfNow tee sheet for the course confirmed loading. | Region: Northern Virginia | Phone: (703) 631-3300"
+   "notes": "Fred Couples signature public course. Own website (westfieldsgolf.com/bookteetimes) was unreachable to fetch (connection blocked), so its native engine could not be confirmed; GolfNow tee sheet for the course confirmed loading. | Region: Northern Virginia | Phone: (703) 631-3300 | 2026-07-28: probed for an alternate channel - its own site's Book A Tee Time link points back at the same page, no iframe, no engine in the network log. GolfNow really is the only channel and it is empty."
   },
   {
    "slug": "old-trail-golf-club",
@@ -6748,15 +6749,15 @@
    "state": "VA",
    "venue_id": "copper-cove-golf-club",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/7441-copper-cove-golf-club/search",
+   "platform": "chronogolf",
+   "booking_url": "https://www.chronogolf.com/club/copper-cove-golf-club",
    "ids": {
-    "golfnow_facility_id": "7441",
-    "golfnow_slug": "copper-cove-golf-club"
+    "slug": "copper-cove-golf-club",
+    "club_uuid": null
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Smith Mountain Lake's main public course (Russell Breeden 18, renamed from Westlake G&CC after 2021 sale). Course website has its own 'Book a Tee Time' page but the site blocks automated fetching; the GolfNow facility booking page was fetched and confirmed to be for Copper Cove in Hardy, VA. | Region: Southside Virginia | Phone: (540) 721-4214"
+   "notes": "Smith Mountain Lake's main public course (Russell Breeden 18, renamed from Westlake G&CC after 2021 sale). Course website has its own 'Book a Tee Time' page but the site blocks automated fetching; the GolfNow facility booking page was fetched and confirmed to be for Copper Cove in Hardy, VA. | Region: Southside Virginia | Phone: (540) 721-4214 | RECOVERED 2026-07-28: was in the registry on a channel that scraped clean-empty. Loaded the course's own site in a browser and found it sells elsewhere. Verified serving before retagging: 59 slots on +2 and 68 on +5, chronogolf club 19745 'Copper Cove Golf Club', bookable, course 'Copper Cove'. Its own site embeds the Lightspeed/Chronogolf widget. Previously golfnow."
   },
   {
    "slug": "heritage-oaks-golf-course",
@@ -7272,7 +7273,7 @@
    },
    "status": "ready",
    "confidence": "medium",
-   "notes": "Rees Jones championship course in the Viniterra community; marketed as a membership club but public tee times are listed on aggregators. TeeItUp tenant subdomain exactly matching the club loads a booking shell, but course branding could not be confirmed in the JS-only fetch. | Region: Richmond Metro | Phone: (804) 932-3888"
+   "notes": "Rees Jones championship course in the Viniterra community; marketed as a membership club but public tee times are listed on aggregators. TeeItUp tenant subdomain exactly matching the club loads a booking shell, but course branding could not be confirmed in the JS-only fetch. | Region: Richmond Metro | Phone: (804) 932-3888 | 2026-07-28: probed for an alternate channel - viniterra.com is the residential community site, not the club's booking surface. TeeItUp alias returns 0 on four dates. Still unresolved; the club's own golf page is the next place to look."
   },
   {
    "slug": "shenvalee-golf-resort",
@@ -7915,15 +7916,15 @@
    "state": "VA",
    "venue_id": "heron-ridge-golf-club",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/10712-heron-ridge/search",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/22180/10137#teetimes",
    "ids": {
-    "golfnow_facility_id": "10712",
-    "golfnow_slug": "heron-ridge"
+    "course_id": "22180",
+    "schedule_id": "10137"
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Own site (heronridge.com, GolfNow-built template) blocks bots (403); GolfNow facility page fetched and confirmed correct course. | Region: Hampton Roads | Phone: (757) 426-3800"
+   "notes": "Own site (heronridge.com, GolfNow-built template) blocks bots (403); GolfNow facility page fetched and confirmed correct course. | Region: Hampton Roads | Phone: (757) 426-3800 | RECOVERED 2026-07-28: was in the registry on a channel that scraped clean-empty. Loaded the course's own site in a browser and found it sells elsewhere. Verified serving before retagging: 26 slots on +2 and 56 on +6, course_name 'Heron Ridge Golf Club'. Previously golfnow facility 10712, whose OWN GolfNow page also renders no times or prices - so the GolfNow empty was real, and the course was simply selling on its own ForeUp all along. Both ids in the URL so no pin needed."
   },
   {
    "slug": "honey-bee-golf-club",
@@ -8172,7 +8173,7 @@
    },
    "status": "experimental",
    "confidence": "high",
-   "notes": "36 holes (Rock and Boulder courses). GolfNow facility page fetched and confirmed for Rock Harbor, Winchester VA. Course's own website is bot-blocked (403) and its Chronogolf listing shows no online booking, so GolfNow is the working online path. | Region: Shenandoah Valley | Phone: (540) 722-7111"
+   "notes": "36 holes (Rock and Boulder courses). GolfNow facility page fetched and confirmed for Rock Harbor, Winchester VA. Course's own website is bot-blocked (403) and its Chronogolf listing shows no online booking, so GolfNow is the working online path. | Region: Shenandoah Valley | Phone: (540) 722-7111 | 2026-07-28: probed for an alternate channel - GolfNow-built WordPress site (golfnowbusiness.com) with no separate engine and no booking link on the homepage. GolfNow empty stands."
   },
   {
    "slug": "lake-ridge-golf-course",
