@@ -188,9 +188,18 @@ def migrate(db, registry_path: str | None = None) -> dict:
     source_role columns and indexes) and backfill them on legacy rows from the
     registry. Backfill is keyed per course_slug so re-tagged sources (a course
     split into native primary + GolfNow supplement) get the right venue grouping
-    even on rows written before those columns existed. Safe to run repeatedly."""
+    even on rows written before those columns existed. Safe to run repeatedly.
+
+    ALSO REPAIRS A RENAMED COURSE. sync() writes course_name only on INSERT —
+    an existing row's UPDATE covers open_spots, prices and active, nothing else
+    — so renaming a course leaves every row already in D1 showing the old name
+    until it happens to churn off the horizon. That can take the full 30 days,
+    during which the directory card and the tee-time card disagree about what
+    the course is called. This backfill closes that window; it is a no-op when
+    the names already agree."""
     init_schema(db)
     backfilled = 0
+    renamed = 0
     if registry_path:
         import pathlib as _p
         reg = json.loads(_p.Path(registry_path).read_text())["courses"]
@@ -203,7 +212,24 @@ def migrate(db, registry_path: str | None = None) -> dict:
                 [c.get("state", ""), c.get("venue_id") or slug,
                  c.get("source_role", "primary"), slug])
             backfilled += 1
-    return {"backfilled_courses": backfilled}
+            shown = (c.get("display_name") or "").strip() or c["name"]
+            r = db.execute(
+                "UPDATE tee_times SET course_name=? "
+                "WHERE course_slug=? AND course_name<>?",
+                [shown, slug, shown])
+            if _changes(r):
+                renamed += 1
+    return {"backfilled_courses": backfilled, "courses_renamed": renamed}
+
+
+def _changes(result) -> int:
+    """Rows touched by the last statement, across the shapes D1's HTTP API and
+    the local sqlite shim return. Best-effort: a 0 here only under-reports the
+    `courses_renamed` tally, it never changes what was written."""
+    if isinstance(result, dict):
+        meta = result.get("meta") or {}
+        return int(meta.get("changes") or result.get("changes") or 0)
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 # --------------------------------------------------------------------------- #
