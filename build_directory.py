@@ -42,7 +42,17 @@ OUT = "directory.json"
 WORKER_DIR = "worker"
 
 # Type values that mean a golfer cannot buy a tee time at any price.
-PRIVATE_TYPES = {"private", "military"}
+PRIVATE_TYPES = {"private"}
+
+# A course inside the wire is its own case, and lumping it in with private
+# clubs got both facts wrong. Several of these DO sell daily-fee rounds to
+# civilians — Sewells Point and the Cardinal at Fort Gregg-Adams both do — so
+# "members only" is false. What actually stops a golfer is the gate: a DoD ID
+# or an approved visitor pass. Fort Belvoir is the clearest case: its WebTrac
+# tee sheet is genuinely online, and genuinely useless without an MWR patron
+# account, which requires DoD affiliation. So military is checked BEFORE
+# online — base access gates every booking method behind it.
+MILITARY_TYPES = {"military"}
 
 # A course that has shut down is not a booking method, it is an absence, and
 # every label this file can emit would be a lie about it — "Call to book" most
@@ -72,6 +82,8 @@ def method_for(rows: list[dict]) -> str:
     """How does a golfer book this venue? Best case across its rows wins."""
     booking = {(r.get("Online Booking") or "").strip().lower() for r in rows}
     types = {(r.get("Type") or "").strip().lower() for r in rows}
+    if types and types <= MILITARY_TYPES:
+        return "military"
     if "yes" in booking:
         return "online"
     # Private is checked AFTER online: a private club that still publishes a
@@ -89,12 +101,16 @@ LABEL = {
     "online": "Book online",
     "phone": "Call to book",
     "private": "Private club — members only",
+    "military": "Military course — base access required",
     "unknown": "Booking method unconfirmed",
 }
 BLURB = {
     "online": "This course takes online bookings on its own system.",
     "phone": "No online tee sheet — call the pro shop to reserve.",
     "private": "Members and guests only. No public tee times.",
+    "military": "On a military installation. Some of these sell civilian "
+                "daily-fee rounds, but you need base access first — a DoD ID "
+                "or an approved visitor pass. Call the pro shop.",
     "unknown": "We could not confirm how this course takes bookings. "
                "Check its website.",
 }
