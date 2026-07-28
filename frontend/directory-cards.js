@@ -70,11 +70,16 @@
   // get a time from us is best served by a course that will still sell them
   // one today, and worst served by a private club, which is information
   // rather than an option.
-  var ORDER = ["online", "phone", "unknown", "private"];
+  // `military` sits above `unknown` on purpose: a golfer who can get on the
+  // base has a course to play, which is more of an option than "we don't
+  // know". Anything not in this list falls through to `unknown`, so a new
+  // booking_method must be added here or it silently reads as unconfirmed.
+  var ORDER = ["online", "phone", "military", "unknown", "private"];
 
   var HEADING = {
     online: "Books on its own site",
     phone: "Call the pro shop",
+    military: "On a military base",
     unknown: "Booking method unconfirmed",
     private: "Private clubs",
   };
@@ -84,6 +89,7 @@
   var TAG = {
     online: "Book on course site",
     phone: "Call to book",
+    military: "Base access required",
     unknown: "Check course site",
     private: "Members only",
   };
@@ -94,6 +100,7 @@
   var ACTION = {
     online: "Book",
     phone: "Course site",
+    military: "Course site",
     unknown: "Course site",
     private: "Course site",
   };
