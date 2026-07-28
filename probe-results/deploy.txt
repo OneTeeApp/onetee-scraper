@@ -1,7 +1,7 @@
 === deploy log (full: whoami + deploy) ===
 === wrangler whoami (token scopes) ===
-npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
 npm warn deprecated rollup-plugin-inject@3.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
+npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
 
  ⛅️ wrangler 3.114.17 (update available 4.115.0)
 ------------------------------------------------
@@ -36,12 +36,12 @@ Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more
   After installation, run Wrangler with `npx wrangler`.
 
 
-Total Upload: 318.43 KiB / gzip: 37.73 KiB
+Total Upload: 317.82 KiB / gzip: 37.66 KiB
 Your worker has access to the following bindings:
 - D1 Databases:
   - DB: onetee-teetimes (<redacted-id>)
-Uploaded onetee-api (1.62 sec)
-Deployed onetee-api triggers (0.29 sec)
+Uploaded onetee-api (1.51 sec)
+Deployed onetee-api triggers (0.38 sec)
   https://onetee-api.damp-snow-8025.workers.dev
   schedule: */5 * * * *
 Current Version ID: <redacted-id>
@@ -49,11 +49,11 @@ Current Version ID: <redacted-id>
 deployed URL: https://onetee-api.damp-snow-8025.workers.dev
 
 === GET https://onetee-api.damp-snow-8025.workers.dev/api/health ===
-{"ok":true,"total":354107,"active":270789}
+{"ok":true,"total":360491,"active":273149}
 === GET https://onetee-api.damp-snow-8025.workers.dev/api/courses?state=CO  (arrowhead / bella ridge should each appear ONCE, native platform) ===
-  arrowhead-golf-club | ezlinks | 309 slots | CO
-  bella-ridge-golf-course | ezlinks | 1028 slots | CO
-  cedaredge-golf-club | foreup | 637 slots | CO
+  arrowhead-golf-club | ezlinks | 308 slots | CO
+  bella-ridge-golf-course | ezlinks | 1020 slots | CO
+  cedaredge-golf-club | foreup | 626 slots | CO
 
 duplicate-check: count of course_slugs containing '-golfnow' (should be 0):
   0
