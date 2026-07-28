@@ -16,7 +16,9 @@ OUT = "registry.json"
 
 PATTERNS = {
     "foreup": re.compile(r"foreupsoftware\.com/index\.php/booking(?:/index)?/(\d+)(?:/(\d+))?"),
-    "teeitup": re.compile(r"https?://([a-z0-9-]+)\.(?:book(?:-v2)?\.teeitup\.(?:com|golf)|play\.teeitup\.com)"),
+    # play.teeitup.GOLF joined the family with Florida (stoneybrook-east,
+    # palmetto-pine) — same kenna backend, same alias semantics as .com.
+    "teeitup": re.compile(r"https?://([a-z0-9-]+)\.(?:book(?:-v2)?\.teeitup\.(?:com|golf)|play\.teeitup\.(?:com|golf))"),
     "clubprophet": re.compile(r"https?://([a-z0-9]+)\.cps\.golf"),
     "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/club/([a-z0-9-]+)"),
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
@@ -35,6 +37,13 @@ PATTERNS = {
     # request shape, so the host is captured alongside the id.
     "teequest": re.compile(
         r"https?://(teetimes|bookateetime)\.teequest\.com/(?:course/)?(\d+)"),
+    # Golf With Access is Troon's public booking platform, and a
+    # troon.com/course/<tenant>/reserve-tee-time page fronts the same widget
+    # under the same tenant slug, so both URL shapes yield the tenant. The
+    # bookable course uuid is NOT in any URL (see the adapter's hazard notes) —
+    # it comes from EXTRA_IDS after a probe, so a URL-only row sits needs_ids.
+    "golfwithaccess": re.compile(
+        r"(?:golfwithaccess|troon)\.com/course/([a-z0-9-]+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -466,6 +475,8 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"site": g[1],
                 "host": f"{sub}.teequest.com",
                 "skin": "v2" if sub == "bookateetime" else "legacy"}
+    if platform == "golfwithaccess":
+        return {"tenant": g[0]}
     return {}
 
 
@@ -476,6 +487,7 @@ SOURCES = [
     ("colorado_golf_courses_booking.csv", "CO"),
     ("arizona_golf_courses_booking.csv", "AZ"),
     ("virginia_golf_courses_booking.csv", "VA"),
+    ("florida_golf_courses_booking.csv", "FL"),
 ]
 
 
@@ -552,6 +564,23 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # Both skins address a sheet by numeric site id, and both take it
         # straight out of the booking URL. This only fires on a row whose URL
         # is not a teequest link.
+        status = "needs_ids"
+    elif platform == "golfwithaccess" and not ids.get("course_id"):
+        # The adapter refuses to fetch without the pinned course uuid (hazard 1
+        # in its header: only the exact bookable course id returns rows, the
+        # facility-named id is a dead aggregate, and a wrong id silently
+        # succeeds with someone else's sheet). The uuid lives in the tenant
+        # page's SSR courses[] array, never in the URL, so a row that has only
+        # a tenant is honest work-to-do, not ready. Every CO/AZ/VA row already
+        # pins its uuid in EXTRA_IDS; this fires on new-state rows (FL Troon
+        # courses) until their probe runs.
+        status = "needs_ids"
+    elif platform == "totale" and not (ids.get("tenant") and ids.get("label")):
+        # browser_totale only fetches rows carrying tenant AND label (the
+        # exact course name its DNN sheet prints), and neither is in a booking
+        # URL that points at a club's own CMS page. Without this guard such a
+        # row reads "ready" while being silently skipped on every scrape — the
+        # Emerald Greens pattern the clubprophet guard above documents.
         status = "needs_ids"
     elif platform == "clubessential" and not (ids.get("host")
                                               and ids.get("course_ids")):
