@@ -104,7 +104,8 @@ class Adapter(abc.ABC):
     def base_tee_time(course: dict[str, Any], **kw) -> TeeTime:
         return TeeTime(
             course_slug=course["slug"],
-            course_name=course["name"],
+            # What the golfer reads. `name` stays the identity/matching string.
+            course_name=course.get("display_name") or course["name"],
             city=course.get("city", ""),
             state=course.get("state", ""),
             venue_id=course.get("venue_id") or course["slug"],
