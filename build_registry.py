@@ -279,6 +279,14 @@ EXTRA_IDS = {
         "host": "www.mcconnellgolf.com", "course_ids": [86, 84],
         "site_id": 2060},
 
+    # Club Prophet is a browser-owned tier and browser_cps.run() skips any row
+    # missing website_id or course_ids, so a tenant-only row is silently never
+    # attempted. Pinned from the tenant's own GetAllOptions on 2026-07-28: one
+    # course, id 1, named "Westfields Golf Club" — so there is no sibling on
+    # this tenant to publish by mistake.
+    "westfields golf club": {"website_id": "cc6fdbac-e37d-4235-e448-08d9bbe6c02f",
+                             "course_ids": [1]},
+
     "las colinas golf club":        {"course_id": "2c9b2f0d-72b7-49a3-a428-ee7efef5ebbf", "tenant": "las-colinas-golf-club"},
     "el conquistador golf club":    {"course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965", "tenant": "el-conquistador-golf-club"},
     "pusch ridge golf course":      {"course_id": "361624de-ac95-4208-bdf7-4af6e84f27e1", "tenant": "el-conquistador-golf-club"},
@@ -599,6 +607,15 @@ def main() -> None:
         with f:
             for row in csv.DictReader(f):
                 if row["Online Booking"] != "yes" or not row["Booking Platform"]:
+                    continue
+                # A closed course cannot sell a tee time, so it has no business
+                # in the registry no matter what its platform column still says.
+                # build_directory.py drops Closed rows, so a closed row that
+                # kept a platform became a registry venue with no card —
+                # exactly what verify_directory.py flags as "would render live
+                # with no card". The Colonial Golf Course (Lanexa) did this on
+                # 2026-07-28: retyped Closed while still carrying `golfnow`.
+                if (row.get("Type") or "").strip().lower() == "closed":
                     continue
                 vb = slugify(row["Course Name"])
                 groups.setdefault((state, vb), []).append(row)
