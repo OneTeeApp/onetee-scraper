@@ -58,18 +58,33 @@ EXTRA_IDS = {
     # *.totaleintegrated.com subdomain; `label` is the exact course name the
     # sheet prints, which browser_totale matches rows on. The Sun City West
     # seven share one tenant; Ken McDonald is its own.
-    "deer valley golf course":   {"tenant": "suncitywest", "label": "Deer Valley"},
-    "desert trails golf course": {"tenant": "suncitywest", "label": "Desert Trails"},
-    "echo mesa golf course":     {"tenant": "suncitywest", "label": "Echo Mesa"},
-    "grandview golf course":     {"tenant": "suncitywest", "label": "Grandview"},
-    "pebblebrook golf course":   {"tenant": "suncitywest", "label": "Pebblebrook"},
-    "stardust golf course":      {"tenant": "suncitywest", "label": "Stardust"},
-    "trail ridge golf course":   {"tenant": "suncitywest", "label": "Trail Ridge"},
-    # Ken McDonald's entry is gone on purpose. It migrated off this platform
-    # (2026-07-28): playkenmcdonald.totaleintegrated.com answers Cloudflare 525
-    # while the club sells a full sheet on Total-e's replacement gateway, so it
-    # is a courseco row now and takes its tenant straight from the new URL.
-    # Leaving a stale tenant here would silently override that.
+    # Sun City West moved to Total-e's replacement platform 2026-07-28, so these
+    # seven are courseco rows now, not totale. Three things have to be pinned by
+    # hand and none of them is in the booking URL:
+    #   * tenant  — the booking SITE subdomain, used for the Origin header.
+    #   * gateway — the API subdomain, read off the page's own
+    #     window.__config.apiBaseUrl. NOT derivable from tenant: Ken McDonald's
+    #     site is kenmcdonald but its gateway is courseco. Guessing 400s.
+    #   * course_id — the course code, a human string with spaces.
+    # The booking URL deliberately still points at the legacy .com PUBLIC page,
+    # because the .net portal bounces anonymous visitors to a login, so the
+    # courseco URL regex never fires for these rows and everything comes from
+    # here.
+    "deer valley golf course":   {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "DEER VALLEY"},
+    "desert trails golf course": {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "DESERT TRAILS"},
+    "echo mesa golf course":     {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "ECHO MESA"},
+    "grandview golf course":     {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "GRANDVIEW"},
+    "pebblebrook golf course":   {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "PEBBLEBROOK"},
+    "stardust golf course":      {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "STARDUST"},
+    "trail ridge golf course":   {"tenant": "suncitywest", "gateway": "suncitywest", "course_id": "TRAIL RIDGE"},
+    # Ken McDonald migrated off the legacy platform 2026-07-28
+    # (playkenmcdonald.totaleintegrated.com answers Cloudflare 525) and is a
+    # courseco row now. Its tenant comes free from the new booking URL, but its
+    # GATEWAY does not and cannot be guessed from it: the site is
+    # kenmcdonald.totaleintegrated.net while the API is
+    # courseco-gateway.totaleintegrated.net, because CourseCo is the management
+    # company. Read from the page's own window.__config.apiBaseUrl.
+    "ken mcdonald golf course":  {"gateway": "courseco"},
 
     # rGuest: Wildfire's two courses are two registry venues sharing ONE
     # property (tenant 2418), so each claims its own sheet by course_id.
@@ -483,9 +498,12 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # (probe-results/open_leads.txt section B). "needs_ids" is the honest
         # status: the platform is right, the identifiers are not known.
         status = "needs_ids"
-    elif platform == "courseco" and not ids.get("tenant"):
-        # Without the tenant there is no Origin to send, and the shared
-        # gateway answers for whoever asked — nobody, in that case.
+    elif platform == "courseco" and not (ids.get("tenant") and ids.get("gateway")):
+        # Both are required and neither is guessable. The gateway host decides
+        # WHOSE sheet you get; the Origin header (built from the tenant) has to
+        # agree with it or the gateway 400s. Measured 2026-07-28: the Sun City
+        # West gateway answers 200 from the Sun City West origin and 400 from
+        # Ken McDonald's, for a byte-identical request.
         status = "needs_ids"
     elif platform == "rguest" and not (ids.get("tenant") and ids.get("property")):
         # The adapter cannot address a sheet without both. Both come free from
