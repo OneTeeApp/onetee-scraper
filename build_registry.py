@@ -30,6 +30,11 @@ PATTERNS = {
     "supersaas": re.compile(r"supersaas\.com/schedule/([^/]+)/([^/?#]+)"),
     "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([a-z0-9-]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
+    # TeeQuest ships two skins. Legacy is teetimes.teequest.com/<site>; v2 is
+    # bookateetime.teequest.com/course/<site>. Same operator, different
+    # request shape, so the host is captured alongside the id.
+    "teequest": re.compile(
+        r"https?://(teetimes|bookateetime)\.teequest\.com/(?:course/)?(\d+)"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -260,6 +265,20 @@ EXTRA_IDS = {
     "lake monticello golf course": {"course_id": "324901f5-cbf7-4575-8304-f3b062efe61b", "tenant": "lake-monticello-golf-course"},
     "potomac shores golf club":    {"course_id": "10c68f5d-6ad2-4e04-ba84-9d96b79688c5", "tenant": "potomac-shores-golf-club"},
     "poston butte golf club":       {"course_id": "1107b804-2789-450d-bd61-8611fa9f742c", "tenant": "poston-butte-golf-club"},
+
+    # ClubEssential / NetCaddy. A ClubEssential club site is a CMS whose
+    # booking page URL names a module, not a course, so nothing is derivable
+    # from it. These three values are exactly what the club's own public
+    # widget sends: host, the GOLFCOURSE ids, and the SiteID every row of the
+    # response carries. The adapter drops any row whose SiteID or CourseId is
+    # not one of these — mcconnellgolf.com fronts a dozen-plus clubs and a
+    # host-global id space is how another club's tee sheet ends up published
+    # under our name. Captured 2026-07-28; 86 is offered by the widget but
+    # returns nothing, 84 is the live 18.
+    "pete dye river course of virginia tech": {
+        "host": "www.mcconnellgolf.com", "course_ids": [86, 84],
+        "site_id": 2060},
+
     "las colinas golf club":        {"course_id": "2c9b2f0d-72b7-49a3-a428-ee7efef5ebbf", "tenant": "las-colinas-golf-club"},
     "el conquistador golf club":    {"course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965", "tenant": "el-conquistador-golf-club"},
     "pusch ridge golf course":      {"course_id": "361624de-ac95-4208-bdf7-4af6e84f27e1", "tenant": "el-conquistador-golf-club"},
@@ -361,7 +380,8 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
-               "golfwithaccess", "totale", "rguest", "courseco"}
+               "golfwithaccess", "totale", "rguest", "courseco",
+               "teequest", "clubessential"}
 
 
 def slugify(name: str) -> str:
@@ -433,6 +453,11 @@ def extract_ids(platform: str, url: str) -> dict:
         # shape: two registry venues on ONE property, so those pin an extra
         # course_id in EXTRA_IDS to claim a single sheet each.
         return {"tenant": g[0], "property": g[1]}
+    if platform == "teequest":
+        sub = g[0]
+        return {"site": g[1],
+                "host": f"{sub}.teequest.com",
+                "skin": "v2" if sub == "bookateetime" else "legacy"}
     return {}
 
 
@@ -514,6 +539,18 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     elif platform == "membersports" and not ids.get("club_id"):
         # A shared city portal can leave a course pointing at its neighbour's
         # golfClubId. Better to publish nothing than someone else's tee sheet.
+        status = "needs_ids"
+    elif platform == "teequest" and not ids.get("site"):
+        # Both skins address a sheet by numeric site id, and both take it
+        # straight out of the booking URL. This only fires on a row whose URL
+        # is not a teequest link.
+        status = "needs_ids"
+    elif platform == "clubessential" and not (ids.get("host")
+                                              and ids.get("course_ids")):
+        # Nothing usable is in the booking URL — a ClubEssential club site is
+        # a CMS page whose querystring names a CMS module, not a course. The
+        # host and the GOLFCOURSE ids come out of the club's own widget call
+        # and are pinned in EXTRA_IDS, so a row without them is not fetchable.
         status = "needs_ids"
     else:
         status = "ready"
