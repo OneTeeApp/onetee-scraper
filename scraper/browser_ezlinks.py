@@ -99,9 +99,18 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 log.info("  portal %-18s ERROR %s", portal, last)
                 continue
             slots = EZLinksAdapter.raw_to_slots(rows)
-            # A portal that fronts exactly one of our courses needs no name
-            # matching — every slot on it is that course's by construction.
-            sole = len(pcourses) == 1
+            # sole_portal must be ASSERTED in the registry, never inferred from
+            # "we only registered one course on this portal". Inferring it is
+            # wrong in exactly the case that matters — when our portal is wrong.
+            # Measured 2026-07-28: The Legend at Arrowhead was pinned to
+            # arcisgolfazpp, which fronts 19 courses (Ocotillo, Palm Valley,
+            # McDowell, Raven, Stonecreek, Kokopelli, Continental, Superstition
+            # Springs) and NOT Legend at all. Being the only registered course
+            # there made it "sole", so it published all 19 clubs' sheets under
+            # its own name — 335 slots of other courses' inventory, most of it
+            # double-publishing clubs we already serve via their own portals.
+            sole = len(pcourses) == 1 and bool(
+                (pcourses[0].get("ids") or {}).get("sole_portal"))
             for c in pcourses:
                 tts = EZLinksAdapter.course_teetimes(c, slots, sole_course=sole)
                 tee_times.extend(tts)
