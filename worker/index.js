@@ -220,7 +220,7 @@ export default {
                     ) AS rn
                FROM filtered
            )
-           SELECT * FROM ranked WHERE rn = 1
+           SELECT ranked.*, g.lat AS lat, g.lng AS lng FROM ranked LEFT JOIN venue_geo g ON g.venue_id = ranked.vid WHERE rn = 1
             ORDER BY teetime LIMIT ?`).bind(...binds, limit).all();
 
         // Present venue as the course id and the sub-course in the name.
