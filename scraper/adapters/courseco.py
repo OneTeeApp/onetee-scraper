@@ -29,16 +29,24 @@ down looked exactly like a dark course from the inside. Expect the other
 totale tenants to follow, which is why this is a platform adapter and not a
 one-course patch.
 
-SIX HAZARDS THAT SHAPE THIS FILE, all measured:
+SEVEN HAZARDS THAT SHAPE THIS FILE, all measured:
 
-1. THE TENANT COMES FROM THE ORIGIN HEADER, NOT FROM ANY PARAMETER. The
-   gateway host is shared by every club. Asking it for CourseID
-   "CAMPUSCOMMONS" from the Ken McDonald origin returns zero rows and a
-   `Courses` list of exactly ANY/KENMCDONALD — the tenant was never in
-   question, only the course filter. So every request sends Origin and
-   Referer for the tenant's own booking host, and `ids.tenant` is what pins
-   the venue. Its CORS policy is scoped the same way: a browser call from any
-   other origin fails outright.
+1. THE GATEWAY HOST IS PER-TENANT AND IS NOT DERIVABLE FROM THE SITE HOST, AND
+   THE ORIGIN HEADER MUST AGREE WITH IT. Two separate namespaces, exactly like
+   a TeeItUp vanity host versus its kenna alias. Ken McDonald's booking site is
+   `kenmcdonald.totaleintegrated.net` but its gateway is
+   `courseco-gateway.totaleintegrated.net` (CourseCo is the management
+   company); Sun City West's site is `suncitywest.totaleintegrated.net` and its
+   gateway is `suncitywest-gateway.totaleintegrated.net`. Guessing either from
+   the other fails: every Sun City West call to the CourseCo gateway answered
+   400. So BOTH are pinned — `ids.tenant` for the site and `ids.gateway` for
+   the API — and both are read off the booking page's own
+   `window.__config.apiBaseUrl`, never inferred.
+
+   The Origin header is load-bearing on top of that. A byte-identical request
+   to the Sun City West gateway answers 200 from the Sun City West origin and
+   400 from the Ken McDonald origin, so the gateway validates Origin against
+   its own tenant. Every request sends Origin and Referer for `ids.tenant`.
 
 2. -0.01 IS A SENTINEL, NOT A PRICE. Every slot carries
    DiscountGolfPrice18 = -0.01 when no discount applies, and 0 in the
@@ -70,6 +78,17 @@ SIX HAZARDS THAT SHAPE THIS FILE, all measured:
    how many players can still be booked into the slot; its lower bound is the
    course's minimum group size. open_spots takes the upper bound.
 
+7. THE UNFILTERED QUERY IS SILENTLY CAPPED, SO IT IS NEVER USED FOR ROWS.
+   Asking Sun City West for every course at once returned EXACTLY 99 rows on
+   each of seven consecutive dates — a server-side cap, not a tee sheet. Asking
+   per course returned 49-71 rows for a SINGLE course on those same dates, so
+   the combined query was dropping roughly two thirds of the inventory and
+   three of the seven courses never appeared in it at all. A whole-tenant fetch
+   would therefore have published a truncated sheet and left real courses
+   looking permanently dark. `fetch()` always queries one course at a time; the
+   unfiltered call is used ONLY to read the `Courses` array, and it logs a
+   warning if it ever comes back at the cap again.
+
 A wrong CourseID is SAFE here, unlike golfwithaccess, teesnap and rguest: it
 returns an empty list rather than another course's sheet. Every row's own
 CourseID is still asserted against the one we asked for, because "safe today"
@@ -79,27 +98,38 @@ Dates beyond BookingDaysInAdvance answer 200 with an empty list rather than an
 error, so the far tier costs nothing and `courses_empty` can still deactivate
 stale rows.
 
-Registry shapes, both supported:
+Course codes are human strings, not ids — Sun City West's are "DEER VALLEY",
+"ECHO MESA", "TRAIL RIDGE", spaces and all. They are pinned verbatim.
 
-  * ONE venue, ONE course (Ken McDonald). Pin {tenant} and optionally
-    {course_id}; course_label stays "" because the venue IS the course.
-  * ONE tenant, MANY courses. Pin only {tenant}: a single request returns
-    every course's slots, and each row is labelled from the tenant's own
-    Courses list so same-time slots stay distinct rows in D1. Pin
-    {tenant, course_id} instead when two venues share one tenant.
+Registry shapes, both supported. Both pin {tenant, gateway}:
+
+  * ONE venue per course, sharing a tenant (Sun City West's seven, Ken
+    McDonald's one). Add {course_id}; course_label stays "" because the venue
+    IS the course. This is the normal shape.
+  * ONE venue covering several of a tenant's courses. Omit course_id: every
+    course on the tenant is fetched SEPARATELY (hazard 7) and labelled from the
+    tenant's own Courses list, so same-time slots on two courses stay distinct
+    rows in D1.
 """
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import threading
 from typing import Any
 
 from .base import Adapter
 from ..models import TeeTime
 
-GATEWAY = "https://courseco-gateway.totaleintegrated.net/Booking/Teetimes"
+log = logging.getLogger("teetime")
+
+GATEWAY = "https://{gateway}-gateway.totaleintegrated.net/Booking/Teetimes"
 TENANT_HOST = "https://{tenant}.totaleintegrated.net"
 BOOKING_PAGE = TENANT_HOST + "/web/tee-times"
+
+# The unfiltered (CourseID empty) query is CAPPED — see hazard 7. This is the
+# observed cap, kept only to make the truncation loud in logs if it reappears.
+COMBINED_ROW_CAP = 99
 
 # The search window the booking page itself uses. Narrower than the tee sheet
 # would ever be, so it never clips a real slot.
@@ -127,32 +157,66 @@ class CourseCoAdapter(Adapter):
                 "courseco: registry must pin ids.tenant (the subdomain of "
                 "<tenant>.totaleintegrated.net that fronts the booking page)")
 
-        want = str(ids.get("course_id") or "")
-        payload = self._search(tenant, want, date)
-        self._remember_courses(tenant, payload)
+        gateway = str(ids.get("gateway") or "")
+        if not gateway:
+            raise ValueError(
+                "courseco: registry must pin ids.gateway (the subdomain of "
+                "<gateway>-gateway.totaleintegrated.net, read from the booking "
+                "page's own window.__config.apiBaseUrl). It is NOT derivable "
+                "from ids.tenant — see hazard 1.")
 
-        rows = payload.get("TeeTimeData") or []
-        label_for = self._labeller(tenant, want)
+        want = str(ids.get("course_id") or "")
+        # Hazard 7: never take rows from an unfiltered query. Always ask for one
+        # course at a time, even when this venue is the tenant's only course.
+        targets = ([(want, "")] if want
+                   else [(c, n) for c, n in self._course_list(tenant, gateway,
+                                                              date)])
+        if not targets:
+            return []
+        label = len(targets) > 1
 
         out: list[TeeTime] = []
-        for slot in rows:
-            got = str(slot.get("CourseID") or "")
-            # Hazard: a wrong id returns empty today, but never publish a
-            # sheet under a name we did not ask for.
-            if want and got and got != want:
-                raise ValueError(
-                    f"courseco: asked {tenant} for course {want!r} but a row "
-                    f"came back as {got!r} — refusing to publish it")
-            tt = self._tee_time(course, slot, label_for(got), tenant, date)
-            if tt is not None:
-                out.append(tt)
+        for course_id, display in targets:
+            payload = self._search(tenant, gateway, course_id, date)
+            for slot in (payload.get("TeeTimeData") or []):
+                got = str(slot.get("CourseID") or "")
+                # A wrong id returns empty today, but never publish a sheet
+                # under a name we did not ask for.
+                if got and got != course_id:
+                    raise ValueError(
+                        f"courseco: asked {tenant} for course {course_id!r} but "
+                        f"a row came back as {got!r} — refusing to publish it")
+                tt = self._tee_time(course, slot, display if label else "",
+                                    tenant, date)
+                if tt is not None:
+                    out.append(tt)
         return out
+
+    def _course_list(self, tenant: str, gateway: str,
+                     date: dt.date) -> list[tuple[str, str]]:
+        """Every real course on the tenant, as (CourseValue, CourseDisplay).
+
+        Discovery only. The response's TeeTimeData is discarded because it is
+        capped (hazard 7); its `Courses` array is not.
+        """
+        with _LOCK:
+            hit = _COURSES.get(tenant)
+        if hit is None:
+            payload = self._search(tenant, gateway, "", date)
+            hit = [c for c in (payload.get("Courses") or [])
+                   if str(c.get("CourseValue") or "") not in ("", ANY_COURSE)]
+            with _LOCK:
+                _COURSES[tenant] = hit
+        return [(str(c["CourseValue"]), str(c.get("CourseDisplay") or ""))
+                for c in hit if not c.get("IsClosed")]
 
     # -- HTTP ----------------------------------------------------------------
 
     def _headers(self, tenant: str) -> dict[str, str]:
-        """Hazard 1: the tenant is identified by where the request claims to
-        come from, so these two headers are not optional politeness."""
+        """Hazard 1: the gateway checks Origin against its own tenant, so these
+        two headers are not optional politeness. Measured: the Sun City West
+        gateway answers 200 from the Sun City West origin and 400 from another
+        tenant's origin, for a byte-identical request."""
         host = TENANT_HOST.format(tenant=tenant)
         return {
             "Origin": host,
@@ -160,7 +224,8 @@ class CourseCoAdapter(Adapter):
             "Accept": "application/json, text/plain, */*",
         }
 
-    def _search(self, tenant: str, course_id: str, date: dt.date) -> dict:
+    def _search(self, tenant: str, gateway: str, course_id: str,
+                date: dt.date) -> dict:
         params = {
             "IsInitTeeTimeRequest": "false",
             "TeeTimeDate": date.isoformat(),
@@ -183,33 +248,14 @@ class CourseCoAdapter(Adapter):
             "CourseFavoritesChecked": "true",
             "QueryStringFilters": "null",
         }
-        data = self.get_json(GATEWAY, headers=self._headers(tenant),
-                             params=params)
-        return data or {}
-
-    def _remember_courses(self, tenant: str, payload: dict) -> None:
-        listed = [c for c in (payload.get("Courses") or [])
-                  if str(c.get("CourseValue") or "") not in ("", ANY_COURSE)]
-        if listed:
-            with _LOCK:
-                _COURSES[tenant] = listed
-
-    def _labeller(self, tenant: str, pinned: str):
-        """Return f(course_id) -> sub-course label.
-
-        A venue that IS the course gets "" so D1 keeps one row per time. A
-        tenant fronting several courses labels each row with that course's own
-        display name, so 8:00 on two courses stays two rows.
-        """
-        if pinned:
-            return lambda _cid: ""
-        with _LOCK:
-            listed = list(_COURSES.get(tenant) or [])
-        if len(listed) <= 1:
-            return lambda _cid: ""
-        names = {str(c.get("CourseValue")): str(c.get("CourseDisplay") or "")
-                 for c in listed}
-        return lambda cid: names.get(str(cid), "")
+        data = self.get_json(GATEWAY.format(gateway=gateway),
+                             headers=self._headers(tenant),
+                             params=params) or {}
+        if not course_id and len(data.get("TeeTimeData") or []) >= COMBINED_ROW_CAP:
+            log.warning("courseco: %s unfiltered query hit the %d-row cap; "
+                        "per-course queries are the only complete read",
+                        tenant, COMBINED_ROW_CAP)
+        return data
 
     # -- parsing -------------------------------------------------------------
 
