@@ -518,7 +518,15 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         status = "ready"
     return {
         "slug": slug,
+        # IDENTITY, not presentation. `name` feeds slugify() (so it must never
+        # move — D1 rows are keyed on the slug) and it is what the adapters that
+        # match by course name compare against. Golfer-facing text goes in
+        # `display_name` instead, which is why the two are separate fields.
         "name": row["Course Name"],
+        # Optional golfer-facing override, "Venue (Course)" for a facility whose
+        # courses are separate venues. Empty for the ~97% of rows whose own name
+        # already reads correctly.
+        "display_name": (row.get("Display Name") or "").strip(),
         # "Ahwatukee (Phoenix)" -> "Ahwatukee": the parenthetical metro hint is
         # directory metadata; the clean primary place name is what the frontend
         # displays and matches against its city list.
