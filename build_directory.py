@@ -202,7 +202,9 @@ def main() -> None:
         booking = clean_url(best.get("Booking URL", ""))
         out.append({
             "venue_id": vid,
-            "name": best["Course Name"],
+            # Golfer-facing. Falls back to Course Name, which is the identity
+            # string and stays untouched so venue_id/slug never move.
+            "name": (best.get("Display Name") or "").strip() or best["Course Name"],
             "city": best.get("City", ""),
             "state": state,
             "zip": best.get("Zip", ""),
