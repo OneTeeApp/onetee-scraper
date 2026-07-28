@@ -1,7 +1,7 @@
 === deploy log (full: whoami + deploy) ===
 === wrangler whoami (token scopes) ===
-npm warn deprecated rollup-plugin-inject@3.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
 npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+npm warn deprecated rollup-plugin-inject@3.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
 
  ⛅️ wrangler 3.114.17 (update available 4.114.0)
 ------------------------------------------------
@@ -36,32 +36,24 @@ Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more
   After installation, run Wrangler with `npx wrangler`.
 
 
-[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mYou are about to publish a Workers Service that was last published via the Cloudflare Dashboard.[0m
-
-  Edits that have been made via the dashboard will be overridden by your local code and config.
-
-
-? Would you like to continue?
-🤖 Using fallback value in non-interactive context: yes
-Total Upload: 5.67 KiB / gzip: 1.77 KiB
+Total Upload: 318.55 KiB / gzip: 37.32 KiB
 Your worker has access to the following bindings:
 - D1 Databases:
   - DB: onetee-teetimes (<redacted-id>)
-Uploaded onetee-api (1.58 sec)
-Deployed onetee-api triggers (0.35 sec)
+Uploaded onetee-api (2.16 sec)
+Deployed onetee-api triggers (0.44 sec)
   https://onetee-api.damp-snow-8025.workers.dev
+  schedule: */5 * * * *
 Current Version ID: <redacted-id>
 
 deployed URL: https://onetee-api.damp-snow-8025.workers.dev
 
 === GET https://onetee-api.damp-snow-8025.workers.dev/api/health ===
-{"ok":true,"total":28569,"active":15906}
+{"ok":true,"total":351121,"active":271662}
 === GET https://onetee-api.damp-snow-8025.workers.dev/api/courses?state=CO  (arrowhead / bella ridge should each appear ONCE, native platform) ===
-  cedaredge-golf-club | None | None slots | None
-  cedaredge-golf-club-golfnow | None | None slots | None
-  bella-ridge-golf-course | None | None slots | None
-  bella-ridge-golf-course-golfnow | None | None slots | None
-  arrowhead-golf-club | None | None slots | None
+  arrowhead-golf-club | ezlinks | 309 slots | CO
+  bella-ridge-golf-course | ezlinks | 1038 slots | CO
+  cedaredge-golf-club | foreup | 657 slots | CO
 
 duplicate-check: count of course_slugs containing '-golfnow' (should be 0):
   0
