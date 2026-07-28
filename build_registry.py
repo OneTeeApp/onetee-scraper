@@ -180,6 +180,17 @@ EXTRA_IDS = {
     "sierra vista golf center at pueblo del sol": {"alias": "pueblo-del-sol-country-club"},
     "ventana canyon golf & racquet club":         {"alias": "ventana-canyon"},
 
+    # Pinetop Lakes, same bug class again: the registry pinned the VANITY HOST
+    # (pinetop-lakes-public, from the booking URL) as if it were the kenna
+    # alias. It is not — the booking page's own /alias/ call names
+    # pinetop-lakes-golf-and-country-club, which resolves to exactly one
+    # facility (14204 "Pinetop Lakes Golf & Country Club") and returned 27
+    # slots for tomorrow when probed from a booking origin 2026-07-28.
+    # Later dates read zero, and that is real: this is a 6,000ft mountain
+    # course with a short booking window, not a dark sheet. Read the alias off
+    # the page; never infer it from the host.
+    "pinetop lakes golf & country club": {"alias": "pinetop-lakes-golf-and-country-club"},
+
     # Broadlands: the public booking front door is Noteefy (that's what the
     # Booking URL must point users to), but the tee sheet is scraped from the
     # Chronogolf marketplace API that mirrors it — so pin the chronogolf slug
