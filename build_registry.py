@@ -242,6 +242,7 @@ EXTRA_IDS = {
     # a sub-course id ("Conquistador Course" / "Gambler/Pioneer") rather than
     # the headline id.
     "rollingstone ranch golf club": {"course_id": "4ed9004a-c17f-4e52-aa86-d6c0bf46e869", "tenant": "rollingstone-ranch-golf-club"},
+    "lake monticello golf course": {"course_id": "324901f5-cbf7-4575-8304-f3b062efe61b", "tenant": "lake-monticello-golf-course"},
     "poston butte golf club":       {"course_id": "1107b804-2789-450d-bd61-8611fa9f742c", "tenant": "poston-butte-golf-club"},
     "las colinas golf club":        {"course_id": "2c9b2f0d-72b7-49a3-a428-ee7efef5ebbf", "tenant": "las-colinas-golf-club"},
     "el conquistador golf club":    {"course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965", "tenant": "el-conquistador-golf-club"},
