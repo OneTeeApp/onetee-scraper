@@ -33,6 +33,7 @@ from .adapters.foretees import ForeTeesAdapter
 from .adapters.ezlinks import EZLinksAdapter
 from .adapters.golfwithaccess import GolfWithAccessAdapter
 from .adapters.rguest import RGuestAdapter
+from .adapters.courseco import CourseCoAdapter
 from .adapters.experimental import (
     MemberSportsAdapter, GolfNowAdapter, OtherAdapter, TotaleAdapter,
 )
@@ -54,6 +55,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "golfwithaccess": GolfWithAccessAdapter,
     "totale": TotaleAdapter,          # browser-only; see scraper/browser_totale.py
     "rguest": RGuestAdapter,
+    "courseco": CourseCoAdapter,   # Total-e's replacement; plain HTTP
 }
 
 
