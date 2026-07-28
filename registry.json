@@ -6438,15 +6438,18 @@
    "state": "VA",
    "venue_id": "westfields-golf-club",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/1094-westfields-golf-club/search",
+   "platform": "clubprophet",
+   "booking_url": "https://westfields.cps.golf/onlineresweb/search-teetime",
    "ids": {
-    "golfnow_facility_id": "1094",
-    "golfnow_slug": "westfields-golf-club"
+    "tenant": "westfields",
+    "website_id": "cc6fdbac-e37d-4235-e448-08d9bbe6c02f",
+    "course_ids": [
+     1
+    ]
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Fred Couples signature public course. Own website (westfieldsgolf.com/bookteetimes) was unreachable to fetch (connection blocked), so its native engine could not be confirmed; GolfNow tee sheet for the course confirmed loading. | Region: Northern Virginia | Phone: (703) 631-3300 | 2026-07-28: probed for an alternate channel - its own site's Book A Tee Time link points back at the same page, no iframe, no engine in the network log. GolfNow really is the only channel and it is empty."
+   "notes": "Fred Couples signature public course. Own website (westfieldsgolf.com/bookteetimes) was unreachable to fetch (connection blocked), so its native engine could not be confirmed; GolfNow tee sheet for the course confirmed loading. | Region: Northern Virginia | Phone: (703) 631-3300 | 2026-07-28: probed for an alternate channel - its own site's Book A Tee Time link points back at the same page, no iframe, no engine in the network log. GolfNow really is the only channel and it is empty. | GolfNow no longer sells this course: its search API answered 404 on 3/3 dates 2026-07-28 while three VA controls in the same run returned 42, 136 and 99 rows. The SEO facility page still loads, which is what made the id look alive. RECOVERED 2026-07-28: it sells on Club Prophet instead - tenant westfields, verified serving 16+ slots for 7/30 at $100/$75 with the club's own Clifton address on the page. (The club's own /bookteetimes widget is broken - it posts course-id=0 back to itself - which is why this read as a dead end earlier.)"
   },
   {
    "slug": "old-trail-golf-club",
@@ -6939,24 +6942,6 @@
    "notes": "18-hole public course (Russell Breeden, 2002). Website navigation and contact page direct all tee-time bookings to the pro shop phone; no online booking engine linked anywhere on the site. | Region: Shenandoah Valley | Phone: (540) 269-8188 | RETAGGED 2026-07-28 from Brian's manual booking-URL audit; verified serving before tagging: chronogolf club 19000, bookable, 34 slots on +2."
   },
   {
-   "slug": "the-colonial-golf-course",
-   "name": "The Colonial Golf Course",
-   "display_name": "",
-   "city": "Lanexa",
-   "state": "VA",
-   "venue_id": "the-colonial-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/635-the-colonial-golf-course/search",
-   "ids": {
-    "golfnow_facility_id": "635",
-    "golfnow_slug": "the-colonial-golf-course"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Greater Williamsburg area (Lanexa, on the James City/New Kent line). No working course-owned website found; GolfNow facility page fetched and confirmed correct course. Chronogolf listing shows no online booking there. | Region: Hampton Roads | Phone: (757) 566-1600"
-  },
-  {
    "slug": "raspberry-falls-golf-and-hunt-club",
    "name": "Raspberry Falls Golf and Hunt Club",
    "display_name": "",
@@ -7105,24 +7090,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "18-hole public course in King William County. First candidate URL (queenfield.teesnap.net) was dead; correct Teesnap URL from official queenfieldgolf.com was fetched and confirmed to load the Queenfield Golf Club booking site. At time of check the tee sheet displayed 'Tee times are currently unavailable due to maintenance' \u2014 verify by phone if booking. | Region: Eastern Shore & Chesapeake Bay | Phone: (804) 769-8838"
-  },
-  {
-   "slug": "beaver-creek-golf-club-va",
-   "name": "Beaver Creek Golf Club",
-   "display_name": "",
-   "city": "Martinsville",
-   "state": "VA",
-   "venue_id": "beaver-creek-golf-club-va",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/17960-beaver-creek-golf-club-formerly-beaver-hills-golf-club/search",
-   "ids": {
-    "golfnow_facility_id": "17960",
-    "golfnow_slug": "beaver-creek-golf-club-formerly-beaver-hills-golf-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "Formerly Beaver Hills Golf Club; 18 holes, membership-based but sells public tee times through GolfNow. Fetched the GolfNow facility page and confirmed it is the booking page for this Martinsville course (tee sheet itself renders via JavaScript). No standalone club website \u2014 Facebook only. | Region: Southside Virginia | Phone: (276) 340-0412"
   },
   {
    "slug": "massanutten-resort-mountain-greens-golf-course",
@@ -7747,24 +7714,6 @@
    "notes": "18-hole City of Staunton municipal course in Gypsy Hill Park (est. 1919). Chronogolf club page fetched; active online booking ('Reserve now pay later') confirmed for this course. No standalone course website found. | Region: Shenandoah Valley | Phone: (540) 332-3949"
   },
   {
-   "slug": "ingleside-golf-club",
-   "name": "Ingleside Golf Club",
-   "display_name": "",
-   "city": "Staunton",
-   "state": "VA",
-   "venue_id": "ingleside-golf-club",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/7494-ingleside-resort-country-club/search",
-   "ids": {
-    "golfnow_facility_id": "7494",
-    "golfnow_slug": "ingleside-resort-country-club"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "18-hole former resort course (Ingleside Resort & Country Club) near Verona, open to the public. GolfNow facility page fetched and confirmed active. No standalone website found (Facebook presence only). | Region: Shenandoah Valley | Phone: (540) 248-1201"
-  },
-  {
    "slug": "the-club-of-staunton",
    "name": "The Club of Staunton",
    "display_name": "",
@@ -8171,24 +8120,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Arthur Hills course in the Colonial Heritage 55+ community; public tee times bookable. Booking link taken from colonialheritageclub.com; TeeItUp tenant page loads. | Region: Hampton Roads | Phone: (757) 645-2000"
-  },
-  {
-   "slug": "rock-harbor-golf-course",
-   "name": "Rock Harbor Golf Course",
-   "display_name": "",
-   "city": "Winchester",
-   "state": "VA",
-   "venue_id": "rock-harbor-golf-course",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/tee-times/facility/9938-rock-harbor-golf-course/search",
-   "ids": {
-    "golfnow_facility_id": "9938",
-    "golfnow_slug": "rock-harbor-golf-course"
-   },
-   "status": "experimental",
-   "confidence": "high",
-   "notes": "36 holes (Rock and Boulder courses). GolfNow facility page fetched and confirmed for Rock Harbor, Winchester VA. Course's own website is bot-blocked (403) and its Chronogolf listing shows no online booking, so GolfNow is the working online path. | Region: Shenandoah Valley | Phone: (540) 722-7111 | 2026-07-28: probed for an alternate channel - GolfNow-built WordPress site (golfnowbusiness.com) with no separate engine and no booking link on the homepage. GolfNow empty stands."
   },
   {
    "slug": "lake-ridge-golf-course",
