@@ -101,6 +101,26 @@ EXTRA_IDS = {
     # before pinning: 8 tee times at +2, HTTP 200.
     "fountain of the sun country club": {"website_id": "00000000-0000-0000-0000-000000000000", "course_ids": [1]},
 
+    # EZLinks portals VERIFIED 2026-07-28 to front exactly one venue: every
+    # course id the portal exposes belongs to this club, so its slots are ours
+    # without name matching. This is what rescued them — their sheets name the
+    # course differently from our directory ("Mt." vs "Mount", "PV -
+    # South/West", "The O'odham Course", "- Devil's Claw"), so name matching
+    # threw away portals that were answering 200 with real rows.
+    #
+    # Only ever set this after reading the portal's own init.Courses list and
+    # confirming every id is this club's. The Legend at Arrowhead is the
+    # cautionary case: its pinned portal arcisgolfazpp lists 19 courses and
+    # none of them is Legend, so it gets no flag and falls back to name
+    # matching, which correctly yields nothing until its real portal is found.
+    "mount graham golf course":     {"sole_portal": True},
+    "palm valley golf club":        {"sole_portal": True},
+    "talking stick golf club":      {"sole_portal": True},
+    "whirlwind golf club at wild horse pass": {"sole_portal": True},
+    "bear creek golf complex":      {"sole_portal": True},
+    "the foothills golf club":      {"sole_portal": True},
+    "lookout mountain golf club":   {"sole_portal": True},
+
     # Three CO courses were tagged with a NEIGHBOUR's golfClubId because the
     # city portal's booking URL is shared between two courses. The club-id scan
     # (probe-results/msscan.txt) asked each club what it actually owns and
