@@ -29,6 +29,7 @@ PATTERNS = {
     "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
     "supersaas": re.compile(r"supersaas\.com/schedule/([^/]+)/([^/?#]+)"),
     "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([a-z0-9-]+)"),
+    "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
 }
 
 # extra IDs known from research that aren't visible in the URL
@@ -64,7 +65,11 @@ EXTRA_IDS = {
     "pebblebrook golf course":   {"tenant": "suncitywest", "label": "Pebblebrook"},
     "stardust golf course":      {"tenant": "suncitywest", "label": "Stardust"},
     "trail ridge golf course":   {"tenant": "suncitywest", "label": "Trail Ridge"},
-    "ken mcdonald golf course":  {"tenant": "playkenmcdonald", "label": "Ken McDonald"},
+    # Ken McDonald's entry is gone on purpose. It migrated off this platform
+    # (2026-07-28): playkenmcdonald.totaleintegrated.com answers Cloudflare 525
+    # while the club sells a full sheet on Total-e's replacement gateway, so it
+    # is a courseco row now and takes its tenant straight from the new URL.
+    # Leaving a stale tenant here would silently override that.
 
     # rGuest: Wildfire's two courses are two registry venues sharing ONE
     # property (tenant 2418), so each claims its own sheet by course_id.
@@ -310,7 +315,7 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 # adapters that can actually fetch today
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
-               "golfwithaccess", "totale", "rguest"}
+               "golfwithaccess", "totale", "rguest", "courseco"}
 
 
 def slugify(name: str) -> str:
@@ -367,6 +372,14 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"club_key": g[0], "cid": g[1]}
     if platform == "supersaas":
         return {"account": g[0], "schedule": g[1]}
+    if platform == "courseco":
+        # <tenant>.totaleintegrated.net/web/tee-times. The tenant is the ONLY
+        # thing the gateway uses to decide whose sheet you get (it reads the
+        # Origin header, not any parameter), so it is the whole id for a
+        # single-course club. A tenant fronting several courses labels each
+        # row from its own Courses list; two venues sharing one tenant pin an
+        # extra course_id in EXTRA_IDS.
+        return {"tenant": g[0]}
     if platform == "rguest":
         # book.rguest.com/onecart/golf/courses/<tenant>/<property>. A property
         # with several courses (We-Ko-Pa, Camelback) needs nothing more — the
@@ -438,6 +451,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # against a control (indianpeaks) that mints a token fine
         # (probe-results/open_leads.txt section B). "needs_ids" is the honest
         # status: the platform is right, the identifiers are not known.
+        status = "needs_ids"
+    elif platform == "courseco" and not ids.get("tenant"):
+        # Without the tenant there is no Origin to send, and the shared
+        # gateway answers for whoever asked — nobody, in that case.
         status = "needs_ids"
     elif platform == "rguest" and not (ids.get("tenant") and ids.get("property")):
         # The adapter cannot address a sheet without both. Both come free from
