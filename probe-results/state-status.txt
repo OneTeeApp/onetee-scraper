@@ -4,9 +4,10 @@ PER-STATE COVERAGE
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
 CO          181   128    71%            1            2            0            3            0           47           60
-AZ          217   142    65%           25            2           16           18            0           14            1
+AZ          204   185    91%            4            0            0            1            0           14           14
+VA          234    91    39%            3            0            6            5            9          120           94
 -----------------------------------------------------------------------------------------------------------------------
-ALL         398   270    68%           26            4           16           21            0           61           61
+ALL         619   404    65%            8            2            6            9            9          181          168
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -15,27 +16,30 @@ ALL         398   270    68%           26            4           16           21
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     18   AZ:18
-  silent       quick18                      3   AZ:3
-  silent       golfwithaccess               3   AZ:3
+  silent       teeitup                      3   VA:3
+  silent       courseco                     2   AZ:2
   silent       teesnap                      1   CO:1
-  silent       clubprophet                  1   AZ:1
+  silent       quick18                      1   AZ:1
+  silent       foreup                       1   AZ:1
   needs_ids    clubprophet                  2   CO:2
-  needs_ids    teeitup                      1   AZ:1
-  needs_ids    foreup                       1   AZ:1
-  experimental golfnow                      9   AZ:9
-  experimental ezlinks                      7   AZ:7
-  unsupported  other:totale                 8   AZ:8
-  unsupported  other:rguest                 4   AZ:4
-  unsupported  other:embedded               3   AZ:3
+  experimental golfnow                      6   VA:6
+  unsupported  other:teequest               2   AZ:1 VA:1
   unsupported  other:square                 1   CO:1
   unsupported  clubprophet                  1   CO:1
   unsupported  other:goibsvision            1   CO:1
-  unsupported  other:chelsea                1   AZ:1
-  unsupported  other:clubhouseonline        1   AZ:1
-  unsupported  other:teequest               1   AZ:1
-  no_booking   —                           53   AZ:7 CO:46
-  no_booking   other:unclaimed-chron        8   AZ:7 CO:1
+  unsupported  other:webtrac                1   VA:1
+  unsupported  other:tenfore                1   VA:1
+  unsupported  other:eagleclubsystem        1   VA:1
+  unsupported  other:tyngo                  1   VA:1
+  no_platform  —                            8   VA:8
+  no_platform  golfnow                      1   VA:1
+  no_booking   —                          164   AZ:2 CO:46 VA:116
+  no_booking   other:unclaimed-chron        6   AZ:1 CO:1 VA:4
+  no_booking   golfnow                      4   AZ:4
+  no_booking   golfwithaccess               3   AZ:3
+  no_booking   teeitup                      2   AZ:2
+  no_booking   clubprophet                  1   AZ:1
+  no_booking   foreup                       1   AZ:1
 
 ==========================================================================
 CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 private), 128 live (71%)
@@ -103,92 +107,194 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  217 bookable courses (218 in arizona_golf_courses_booking.csv, 1 private), 142 live (65%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 185 live (91%)
 ==========================================================================
 
-  SILENT  (25) — believed scrapable, returning nothing
-     Aguila 9 Golf Course                         teeitup        Laveen
-     Ahwatukee Country Club                       teeitup        Ahwatukee
-     Antelope Hills Golf Course (North & South)   teeitup        Prescott
-     Arizona National Golf Club                   teeitup        Tucson
-     Augusta Ranch Golf Club                      teeitup        Mesa
-     Canoa Ranch Golf Club                        teeitup        Green Valley
-     Desert Springs Golf Course (Sun City Grand)  teeitup        Surprise
-     Falcon Golf Club                             teeitup        Litchfield Park
-     Fountain of the Sun Country Club             teeitup        Mesa
-     Francisco Grande Hotel & Golf Resort         teeitup        Casa Grande
-     Great Eagle Golf Club (Happy Trails Resort)  teeitup        Surprise
-     Junior National Golf Club (fka Tres Rios / E teeitup        Goodyear
-     Las Colinas Golf Club                        golfwithaccess Queen Creek
-     Mountain Brook Golf Club                     teeitup        Gold Canyon
-     Omni Tucson National (Catalina/Sonoran)      teeitup        Tucson
-     Pinetop Lakes Golf & Country Club            quick18        Pinetop-Lakeside
-     Poston Butte Golf Club                       golfwithaccess Florence
-     Pusch Ridge Golf Course                      golfwithaccess Oro Valley
-     San Tan Highlands Golf Club (fka Golf Club a teeitup        San Tan Valley
-     Sierra Vista Golf Center at Pueblo del Sol ( teeitup        Sierra Vista
-     Springfield Golf Resort                      quick18        Chandler
+  SILENT  (4) — believed scrapable, returning nothing
+     Deer Valley Golf Course (Sun City West)      courseco       Sun City West
+     Desert Trails Golf Course (Sun City West)    courseco       Sun City West
+     Francisco Grande Hotel & Golf Resort         foreup         Casa Grande
      SunRidge Canyon Golf Club                    quick18        Fountain Hills
-     The Views Golf Club                          clubprophet    Oro Valley
-     Ventana Canyon Golf & Racquet Club (Mountain teeitup        Tucson
-     Villa de Paz Golf Club                       teeitup        Phoenix
 
-  NEEDS_IDS  (2) — right platform, identifiers not captured
-     San Pedro Golf Course                        teeitup        Benson
-     Snowflake Municipal Golf Course              foreup         Snowflake
-
-  EXPERIMENTAL  (16) — adapter exists but is not production
-     Bear Creek Golf Complex                      ezlinks        Chandler
-     Cocopah Rio Colorado Golf Course             golfnow        Somerton
-     Falcon Dunes Golf Course                     golfnow        Waddell
-     Mount Graham Golf Course                     ezlinks        Safford
-     Palm Valley Golf Club                        ezlinks        Goodyear
-     Palo Duro Creek Golf Course                  golfnow        Nogales
-     Pinewood Country Club                        golfnow        Munds Park
-     Quail Canyon Golf Course                     golfnow        Tucson
-     Santa Rita Golf Club                         golfnow        Corona de Tucson
-     Sun City North Golf Course (RCSC)            golfnow        Sun City
-     Talking Stick Golf Club (O'odham & Piipaash) ezlinks        Scottsdale
-     The Golf Club at Dove Mountain (fka Ritz-Car ezlinks        Marana
-     The Legend at Arrowhead                      ezlinks        Glendale
-     Twin Lakes Golf Course                       golfnow        Willcox
-     Whirlwind Golf Club at Wild Horse Pass       ezlinks        Chandler
-     Wickenburg Ranch Golf & Social Club (Big Wic golfnow        Wickenburg
-
-  UNSUPPORTED  (18) — no adapter possible today
-     Birdie Ranch at Silver Creek (fka Silver Cre other:embedded Show Low
-     Bison Golf Club                              other:embedded Show Low
-     Camelback Golf Club (Ambiente & Padre)       other:rguest   Scottsdale
-     Deer Valley Golf Course (Sun City West)      other:totale   Sun City West
-     Desert Trails Golf Course (Sun City West)    other:totale   Sun City West
-     Echo Mesa Golf Course (Sun City West)        other:totale   Sun City West
+  UNSUPPORTED  (1) — no adapter possible today
      Emerald Canyon Golf Course                   other:teequest Parker
-     Golf Club at Eagle Mountain                  other:embedded Fountain Hills
-     Grandview Golf Course (Sun City West)        other:totale   Sun City West
-     Ken McDonald Golf Course                     other:totale   Tempe
-     Los Caballeros Golf Club                     other:clubhouseonline Wickenburg
-     Pebblebrook Golf Course (Sun City West)      other:totale   Sun City West
-     Stardust Golf Course (Sun City West)         other:totale   Sun City West
-     Sun Lakes Country Club                       other:chelsea  Sun Lakes
-     Trail Ridge Golf Course (Sun City West)      other:totale   Sun City West
-     We-Ko-Pa Golf Club (Cholla & Saguaro)        other:rguest   Fort McDowell
-     Wildfire Golf Club - Faldo Course (JW Marrio other:rguest   Phoenix
-     Wildfire Golf Club - Palmer Course (JW Marri other:rguest   Phoenix
 
   NO_BOOKING  (14) — playable, but no online booking in the source data
-     Alpine Country Club                          —              Alpine
+     Aguila 9 Golf Course                         teeitup        Laveen (Phoenix)
      Cocopah Bend RV & Golf Resort                —              Yuma
-     Desert Hills Golf Club                       —              Green Valley
+     Cocopah Rio Colorado Golf Course             golfnow        Somerton
      Fortuna del Rey Golf Club & RV Resort        other:unclaimed-chronogolf Yuma (Fortuna Foothills)
-     Havasu Island Golf Course                    —              Lake Havasu City
-     Lake Powell National Golf Course             other:unclaimed-chronogolf Page
-     Lookout Mountain Golf Club (Hilton Tapatio C other:unclaimed-chronogolf Phoenix
-     Scottsdale Country Club (formerly Starfire G other:unclaimed-chronogolf Scottsdale
-     The Boulders Golf Club (North & South)       other:unclaimed-chronogolf Carefree
-     The Foothills Golf Club                      other:unclaimed-chronogolf Ahwatukee (Phoenix)
-     Tonto Verde Golf Club                        —              Rio Verde
+     Las Colinas Golf Club                        golfwithaccess Queen Creek
+     Poston Butte Golf Club                       golfwithaccess Florence
+     Pusch Ridge Golf Course                      golfwithaccess Oro Valley
+     Quail Canyon Golf Course                     golfnow        Tucson
+     Santa Rita Golf Club                         golfnow        Corona de Tucson (Vail)
+     Snowflake Municipal Golf Course              foreup         Snowflake
+     The Views Golf Club                          clubprophet    Oro Valley
+     Twin Lakes Golf Course                       golfnow        Willcox
      Villa Monterey Public Golf Club              —              Scottsdale
-     Vista Verde Golf Club                        —              Rio Verde
-     Westin Kierland Golf Club                    other:unclaimed-chronogolf Scottsdale
+     Villa de Paz Golf Club                       teeitup        Phoenix
+
+==========================================================================
+VA  —  234 bookable courses (328 in virginia_golf_courses_booking.csv, 94 private), 91 live (39%)
+==========================================================================
+
+  SILENT  (3) — believed scrapable, returning nothing
+     Amelia Golf & Country Club                   teeitup        Amelia Court House
+     Pendleton Golf Club                          teeitup        Ruther Glen
+     The Club at Viniterra                        teeitup        New Kent
+
+  EXPERIMENTAL  (6) — adapter exists but is not production
+     Copper Cove Golf Club (formerly Westlake Gol golfnow        Hardy
+     Heron Ridge Golf Club                        golfnow        Virginia Beach
+     Ingleside Golf Club                          golfnow        Staunton
+     Rock Harbor Golf Course                      golfnow        Winchester
+     The Colonial Golf Course                     golfnow        Lanexa
+     Westfields Golf Club                         golfnow        Clifton
+
+  UNSUPPORTED  (5) — no adapter possible today
+     Colonial Hills Golf Club                     other:tenfore  Forest
+     Draper Valley Golf Club                      other:eagleclubsystems Draper
+     Fort Belvoir Golf Club                       other:webtrac  Fort Belvoir
+     Hanging Rock Golf Club                       other:teequest Salem
+     The Highland Course at Primland (Primland Re other:tyngo    Meadows of Dan
+
+  NO_PLATFORM  (9) — no booking platform in the source data
+     Battlefield Golf Club at Centerville         —              Chesapeake
+     Beaver Creek Golf Club                       golfnow        Martinsville
+     Kingsmill Resort                             —              Williamsburg
+     Pete Dye River Course of Virginia Tech       —              Radford
+     Potomac Shores Golf Club                     —              Dumfries
+     Skyland Lakes Golf Club                      —              Fancy Gap
+     The Omni Homestead Resort - Cascades Course  —              Hot Springs
+     The Omni Homestead Resort - Old Course       —              Hot Springs
+     Virginia Beach National Golf Club            —              Virginia Beach
+
+  NO_BOOKING  (120) — playable, but no online booking in the source data
+     Aeropines Golf Club (NAS Oceana)             other:unclaimed-chronogolf Virginia Beach
+     Alleghany Country Club                       —              Clifton Forge
+     Appleland Sports Center                      —              Stephens City
+     Aquia Harbour Golf Club                      —              Stafford (Aquia Harbour)
+     Auburn Hills Golf Club                       other:unclaimed-chronogolf Riner
+     Bide-A-Wee Golf Course                       other:unclaimed-chronogolf Portsmouth
+     Birdwood Golf at Boar's Head Resort          —              Charlottesville
+     Blue Ridge Country Club                      —              Galax
+     Botetourt Country Club (Botetourt Golf & Swi —              Troutville
+     Bow Creek Golf Course                        —              Virginia Beach
+     Bowling Green Country Club (North & South)   —              Front Royal
+     Brandermill Country Club                     —              Midlothian
+     Broad Run Golf and Practice Facility         —              Bristow
+     Brookside Par 3 Golf Course                  —              Roanoke
+     Brookwoods Golf Club                         —              Quinton
+     Cahoon Plantation Golf Club                  —              Chesapeake
+     Cameron Hills Golf Links                     —              King George
+     Cannon Ridge Golf Club                       —              Fredericksburg
+     Captain's Cove Golf & Yacht Club             —              Greenbackville
+     Cardinal Golf Club at Fort Gregg-Adams       —              Fort Gregg-Adams (Prince George)
+     Carper's Valley Golf Club                    —              Winchester
+     Castle Rock Golf & Recreation                —              Pembroke
+     Caverns Country Club                         —              Luray
+     Cedar Hill Country Club                      —              Jonesville
+     Cedar Hills Golf Club                        —              Lynchburg
+     Cedars Country Club                          —              Chatham
+     Clear Creek Golf Club                        —              Bristol
+     Cliff View Golf Club                         —              Covington
+     Cliftondale Country Club                     —              Clifton Forge
+     Countryside Golf Course                      —              Roanoke
+     Dan Hall Mountain Resort                     —              Coeburn
+     Deer Cove Golf Club (Cheatham Annex)         —              Williamsburg (Cheatham Annex, York County)
+     Deer Creek Golf Park                         —              Galax
+     Deer Field Golf Course                       —              Damascus
+     Devils Knob Golf Course at Wintergreen Resor —              Wintergreen
+     E&H Lynch Links Golf Course                  —              Meadowview
+     Eagle Haven Golf Course (JEB Little Creek)   —              Virginia Beach
+     Eaglewood Golf Course (Langley AFB)          —              Hampton
+     Emporia Country Club                         —              Emporia
+     Fauquier Springs Country Club                —              Warrenton
+     Fincastle on the Mountain                    —              Bluefield
+     First Tee Chesterfield (Tattersall Youth Dev —              North Chesterfield
+     Forest Park Country Club                     —              Martinsville
+     Front Royal Golf Club                        —              Front Royal
+     Galax Municipal Golf Course                  —              Galax
+     General's Ridge Golf Course                  —              Manassas Park
+     Glenwood Golf Club                           —              Richmond
+     Gloucester Country Club                      —              Gloucester
+     Goodyear Golf Club                           —              Danville
+     Goose Creek Golf Club                        —              Leesburg
+     Gordon Trent Golf Course                     —              Stuart
+     Green's Folly Golf Course                    —              South Boston
+     Greenway Creek Golf Course                   —              Glade Spring
+     Hat Creek Golf Course                        —              Brookneal
+     Heritage Golf Club (formerly Bassett Country —              Bassett
+     Heritage Hunt Golf and Country Club          —              Gainesville
+     Holston Hills Community Golf Course          —              Marion
+     Horsepasture Par-3 Golf Course               —              Ridgeway (Horse Pasture)
+     International Country Club                   —              Fairfax
+     Jordan Point Golf Club                       —              Hopewell
+     Kiln Creek Golf Club & Resort                —              Newport News
+     King Carter Golf Club                        —              Irvington
+     Lake Wright Golf Course                      —              Norfolk
+     Lakeview Golf Club                           —              Harrisonburg
+     Lambert's Point Golf Course                  —              Norfolk
+     Lee's Hill Golfers' Club                     —              Fredericksburg (Spotsylvania)
+     Longview Golf Course                         —              Galax
+     Miller's Glen Golf Course (Bushfield Country —              Mount Holly
+     Nansemond River Golf Club                    —              Suffolk
+     Olde Mill Golf Resort                        —              Laurel Fork
+     Ole Monterey Golf Club                       —              Roanoke
+     Osprey's Golf Club at Belmont Bay            —              Woodbridge
+     Owl's Creek Golf Course                      —              Virginia Beach
+     Packsaddle Ridge Golf Club                   —              Keezletown
+     Par 3 Golf at Sandy Bottom Park              —              Bridgewater
+     Peaks Par-3 Golf Course                      —              Lynchburg
+     Poplar Forest Golf Course                    —              Forest
+     Prince George Golf Course                    —              Disputanta
+     Ringgold Golf Club                           —              Ringgold
+     River's Bend Golf Club                       —              Chester
+     Riverfront Golf Club                         —              Suffolk
+     Royal Virginia Golf Club                     —              Hadensville
+     Salem Municipal Golf Course                  —              Salem
+     Saltville Golf Course                        —              Saltville
+     Scenic View Golf Course                      —              Chilhowie
+     Scott County Park & Golf                     —              Gate City
+     Sewells Point Golf Course (Naval Station Nor —              Norfolk
+     Shadow Ridge Golf Club                       —              Amherst
+     Shenandoah Crossing Golf Course              —              Gordonsville
+     Signature at West Neck                       —              Virginia Beach
+     Smithfield Downs Golf Course                 —              Smithfield
+     Southern Hills Golf Course                   —              Danville
+     Tartan Golf Club                             —              Weems
+     The Crossings Golf Club                      other:unclaimed-chronogolf Glen Allen
+     The Greens at Tanyard Golf Club              —              Louisa
+     The Hamptons Golf Course                     —              Hampton
+     The Hill at Blacksburg Municipal Golf Course —              Blacksburg
+     The Hollows Golf Club                        —              Montpelier
+     The Homestead - Lower Cascades Course        —              Hot Springs
+     The Links at City Park                       —              Portsmouth
+     The Manor Golf Club                          —              Farmville
+     The Meadows Golf and Country Club            —              Christiansburg
+     The Pines Golf Course (Fort Eustis)          —              Newport News
+     The Vista Links                              —              Buena Vista
+     The Willows at Runk & Pratt                  —              Hurt
+     The Woodlands Golf Course                    —              Hampton
+     Thorn Spring Golf Course                     —              Pulaski
+     Tradition Golf Club at Stonehouse            —              Toano
+     Village Green Golf Course                    —              Callao
+     Virginia National Golf Club                  —              Bluemont (Clarke County)
+     Virginia Oaks Golf Club                      —              Gainesville
+     Virginia Tech Golf Course                    —              Blacksburg
+     Waynesboro Country Club                      —              Waynesboro
+     Waynesboro Par-3 Golf Course                 —              Waynesboro
+     Westpark Golf Club                           —              Leesburg
+     Willow Creek Country Club                    —              Rocky Mount
+     Windy Hill Sports                            —              Midlothian
+     Winton Country Club                          —              Clifford
+     Wolf Creek Golf & Country Club               —              Bastian
+     Woodside Country Club                        —              Tappahannock
+
+==========================================================================
+REGISTRY DRIFT (1) — in registry.json, no matching course in the state CSV
+==========================================================================
+  VA  Beaver Creek Golf Club                       golfnow        0 rows
 
 wrote probe-results/state-status.json
