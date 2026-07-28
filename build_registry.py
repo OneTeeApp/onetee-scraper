@@ -79,6 +79,35 @@ EXTRA_IDS = {
     "wildfire golf club - faldo course":  {"course_id": 519},
     "wildfire golf club - palmer course": {"course_id": 520},
 
+    # Virginia additions (2026-07-28), all read off each platform's own API in
+    # a browser probe with serving controls — never guessed.
+    # The sixth vanity-host-is-not-the-alias instance: the booking host
+    # meadowcreek-golf-course-va 404s at kenna; the page's own /alias/ call
+    # names meadow-creek-golf-course-v2 (facility 18684).
+    "meadowcreek golf course": {"alias": "meadow-creek-golf-course-v2"},
+    # Quantico's chronogolf club lists a "Simulator Bay" course with
+    # online_booking_enabled=true beside the golf course; unpinned, the adapter
+    # would publish simulator slots as tee times. Pin the golf course only.
+    "medal of honor golf course": {"course_ids": [16571]},
+    # Two venues sharing one chronogolf club (19025, somerset-meadows-farms).
+    # Unpinned, each would fetch the whole club and publish the other's sheet —
+    # the Biltmore shape. Course ids from the club's own /courses list:
+    # Meadows Farms sells three 18-hole routing combos, Somerset Farms one.
+    "meadows farms golf course":  {"course_ids": [23369, 23371, 23370]},
+    "somerset farms golf course": {"course_ids": [23368]},
+    # Ford's Colony: three TeeItUp tenants, one per course. Blue Heron and
+    # Marsh Hawk are vanity-host-is-not-the-alias instances seven and eight —
+    # each alias read off its own booking page's /alias/ network call.
+    "ford's colony country club - blue heron course": {"alias": "fords-colony"},
+    "ford's colony country club - marsh hawk course":
+        {"alias": "ford-s-colony-country-club-marsh-hawk"},
+    # Two VA Club Prophet tenants, ids captured 2026-07-28 via the anonymous
+    # token -> GetAllOptions flow on each tenant's own origin.
+    "old trail golf club": {"website_id": "5be83a0d-e758-435b-138f-08dae2b1ae8f",
+                            "course_ids": [1]},
+    "williamsburg national golf club":
+        {"website_id": "ffa2bdfb-f752-4d47-b541-08d87f6a4174", "course_ids": [1, 2]},
+
     # Two AZ TeeItUp courses whose kenna alias is nothing like their booking
     # host — found 2026-07-27 by reading each booking page's OWN /alias/ call
     # instead of guessing spellings (three guesses each had 404'd). Junior
@@ -396,6 +425,7 @@ def extract_ids(platform: str, url: str) -> dict:
 SOURCES = [
     ("colorado_golf_courses_booking.csv", "CO"),
     ("arizona_golf_courses_booking.csv", "AZ"),
+    ("virginia_golf_courses_booking.csv", "VA"),
 ]
 
 
