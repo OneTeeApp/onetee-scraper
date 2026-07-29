@@ -52,6 +52,33 @@ transport-level asymmetry rather than a content reading, so it is worth
 following up — but it is still the HTML host, not the API the adapter calls,
 and a single 500 can be transient. It justifies a probe, not a retag.
 
+## Why the fetch path alone cannot settle the teeitup empties
+
+Added after commit 94d655b fixed the two silent Virginia teeitup rows, because
+it demolishes an assumption I had been working under.
+
+Viniterra's alias was `the-club-at-viniterra`, guessed from the course name.
+That is a **real TeeItUp tenant**. It answers 200 and returns zero rows on every
+date. The club actually sells on `club-at-viniterra` (no `the-`), facility 6270,
+verified serving 42 times. So a wrong alias did not error — it produced a clean,
+confident `empty`, twice, and was recorded as a genuine empty both times.
+
+The consequence for the silent cohort: `probe_newly_ready.py` runs the real
+fetch path and can only sort results into rows / empty / error. For teeitup,
+**the dominant failure mode lands in `empty`**, indistinguishable from a course
+that is simply closed or fully booked. So that probe narrows the 77 usefully —
+anything returning `rows` is a scheduling artefact, anything returning `error`
+comes with a message to act on — but it cannot clear the 57 teeitup empties. It
+was wrong of me to imply it could.
+
+Only the facilities route separates them, by asking kenna whether it has heard
+of the alias at all and what facilities that alias actually lists. That is
+`scripts/probe_teeitup_fl.py`, still waiting on its workflow file.
+
+The general rule from 94d655b, worth more than either row: **take a TeeItUp
+alias from the club's own booking link, never from its course name.** A
+name-derived alias can resolve to a real but wrong tenant and fail silently.
+
 ## What actually answers this
 
 `scripts/probe_teeitup_fl.py`, which hits kenna's real facilities/sheet/fetch

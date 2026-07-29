@@ -49,6 +49,7 @@ import datetime as dt
 import json
 import os
 import sys
+import time
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -109,6 +110,10 @@ def main() -> int:
                     help="probe only the unheld cohort, as before")
     ap.add_argument("--limit", type=int, default=0,
                     help="cap the target count (0 = no cap); a cap is logged")
+    ap.add_argument("--budget-minutes", type=float, default=20.0,
+                    help="stop cleanly after this long and report what was "
+                         "covered. Must stay under the workflow's step timeout "
+                         "(25 min) or the step is killed instead of finishing.")
     a = ap.parse_args()
 
     dates = [dt.date.today() + dt.timedelta(days=int(d))
@@ -138,6 +143,14 @@ def main() -> int:
     seen: set[str] = set()
     targets = [c for c in targets
                if not (c["slug"] in seen or seen.add(c["slug"]))]
+    # Silent cohort FIRST. If the clock runs out, the work that survives should
+    # be the open question, not the unheld cohort whose answer is already known
+    # from previous runs. (Tripling the target count from 34 to 118 without
+    # reordering is what made the first run useless.)
+    def _order(c):
+        in_silent = c["slug"] in silent or c.get("venue_id") in silent
+        return (0 if in_silent else 1, c["slug"])
+    targets.sort(key=_order)
     if a.limit and len(targets) > a.limit:
         # A cap is a silent loss of coverage unless it is said out loud.
         print(f"NOTE: --limit {a.limit} drops {len(targets) - a.limit} targets; "
@@ -152,8 +165,44 @@ def main() -> int:
     print(f"{len(targets)} courses x {len(dates)} dates "
           f"({', '.join(str(d) for d in dates)})\n", flush=True)
 
-    results = []
-    for c in targets:
+    os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
+
+    def flush(done: list, unreached: list, stopped: str | None) -> None:
+        """Write the report as it stands.
+
+        Called after EVERY course, not once at the end. The first run of the
+        two-cohort version died on the workflow's 25-minute step timeout with
+        118 targets, and because the file was only written after the last
+        course, every answer it had already obtained was thrown away — the
+        workflow's own comment says the step-level timeout exists precisely so
+        partial findings reach the commit, and writing only at the end defeated
+        that. Rewriting a ~100KB file per course is far cheaper than losing the
+        run.
+        """
+        tal = Counter(r["verdict"] for r in done)
+        with open(a.out, "w") as fh:
+            json.dump({"dates": [str(d) for d in dates],
+                       "probed": len(done), "tally": dict(tal),
+                       "complete": not unreached,
+                       "stopped_early": stopped,
+                       "not_reached": [c["slug"] for c in unreached],
+                       "results": done}, fh, indent=1)
+
+    started = time.monotonic()
+    budget = a.budget_minutes * 60
+    results: list = []
+    stopped: str | None = None
+    for i, c in enumerate(targets):
+        if budget and time.monotonic() - started > budget:
+            # A cap is only acceptable if it is said out loud, in the log AND
+            # in the artifact, so nobody reads a partial file as a full sweep.
+            stopped = (f"time budget {a.budget_minutes:g} min reached after "
+                       f"{len(results)} of {len(targets)} targets")
+            print(f"\nSTOPPING EARLY: {stopped}", flush=True)
+            print("  NOT reached: " + ", ".join(t["slug"] for t in targets[i:]),
+                  flush=True)
+            flush(results, targets[i:], stopped)
+            break
         per_date, errors, total = {}, [], 0
         for d in dates:
             res = fetch_course(c, d)
@@ -183,6 +232,7 @@ def main() -> int:
         if errors:
             row["errors"] = errors
         results.append(row)
+        flush(results, targets[i + 1:], None)
         print(f"{c.get('state')} {c['platform']:<11} {c['slug']:<44} "
               f"{verdict:<14} {total} rows", flush=True)
         if errors:
@@ -195,10 +245,9 @@ def main() -> int:
         if bad:
             print(f"  {v}: " + ", ".join(bad))
 
-    os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    with open(a.out, "w") as fh:
-        json.dump({"dates": [str(d) for d in dates], "probed": len(results),
-                   "tally": dict(tally), "results": results}, fh, indent=1)
+    if stopped:
+        print(f"\nINCOMPLETE: {stopped}")
+    flush(results, [] if not stopped else targets[len(results):], stopped)
     print(f"wrote {a.out}")
     return 0
 
