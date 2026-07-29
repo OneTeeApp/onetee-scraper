@@ -305,6 +305,18 @@ EXTRA_IDS = {
     "westfields golf club": {"website_id": "cc6fdbac-e37d-4235-e448-08d9bbe6c02f",
                              "course_ids": [1]},
 
+    # ResortSuite. The booking URL is a bare SPA route with nothing in it, and
+    # the ONLY thing separating the resort's two courses is the three-letter
+    # CourseId inside the SOAP body. Verified 2026-07-29 by driving CourseId
+    # directly: CAS answers 54 times on 10-minute intervals, OLD answers 68 on
+    # 8-minute intervals for the same date. The Old Course had been held as
+    # "unproven" because the SPA ignores its own route and re-sent CAS when you
+    # clicked through to it — an artifact of the page, not the service.
+    "the omni homestead resort - cascades course": {
+        "host": "omnihomesteadexperiences.com", "course_id": "CAS"},
+    "the omni homestead resort - old course": {
+        "host": "omnihomesteadexperiences.com", "course_id": "OLD"},
+
     "las colinas golf club":        {"course_id": "2c9b2f0d-72b7-49a3-a428-ee7efef5ebbf", "tenant": "las-colinas-golf-club"},
     "el conquistador golf club":    {"course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965", "tenant": "el-conquistador-golf-club"},
     "pusch ridge golf course":      {"course_id": "361624de-ac95-4208-bdf7-4af6e84f27e1", "tenant": "el-conquistador-golf-club"},
@@ -407,7 +419,7 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
-               "teequest", "clubessential"}
+               "teequest", "clubessential", "resortsuite"}
 
 
 def slugify(name: str) -> str:
@@ -615,6 +627,13 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # URL that points at a club's own CMS page. Without this guard such a
         # row reads "ready" while being silently skipped on every scrape — the
         # Emerald Greens pattern the clubprophet guard above documents.
+        status = "needs_ids"
+    elif platform == "resortsuite" and not (ids.get("host")
+                                            and ids.get("course_id")):
+        # Nothing is derivable from the booking URL — it is a bare SPA route.
+        # CourseId is a three-letter course code (CAS, OLD) that only appears
+        # inside the SOAP body, and it is the ONLY thing separating two courses
+        # that share a host, so it is pinned in EXTRA_IDS per row.
         status = "needs_ids"
     elif platform == "clubessential" and not (ids.get("host")
                                               and ids.get("course_ids")):
