@@ -1,0 +1,69 @@
+# PENDING — copy to .github/workflows/browser-golfback-probe.yml
+# See README.md in this folder for why it is here and not there.
+
+name: Probe the GolfBack API shape
+
+# GolfBack is the largest unsupported platform in the registry: 17 Florida
+# courses, each already carrying its course uuid, none scrapeable because no
+# adapter exists. The adapter needs the request shape, and that shape is only
+# observable inside a browser — golfback.com serves its SPA shell for every
+# path, and api.golfback.com is a live JSON host that exposes no Swagger and
+# 404s every guessed route.
+#
+# Read-only: it loads a public tee-sheet page and records what the page itself
+# requests. Nothing is submitted, no booking step is touched, no credentials are
+# entered, and auth-shaped header values are redacted before they are written.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      # Landing a change to the probe IS the request to run it.
+      - "scripts/browser_golfback_probe.py"
+      - ".github/workflows/browser-golfback-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browser-golfback-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml playwright
+      - run: python -m playwright install --with-deps chromium
+
+      - name: Probe
+        timeout-minutes: 15
+        run: |
+          mkdir -p probe-results
+          python scripts/browser_golfback_probe.py 2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 200 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/golfback-api.json || exit 0
+          git commit -m "Probe: GolfBack API shape [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push results after 5 attempts"; exit 1
