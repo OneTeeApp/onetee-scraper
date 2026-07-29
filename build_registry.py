@@ -24,6 +24,15 @@ PATTERNS = {
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
     "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)(?:/(\d+))?(?:/(\d+))?"),
     "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinks(?:golf)?\.com"),
+    # teeoff.com is EZLinks' CONSUMER marketplace, not a course's own portal —
+    # same URL shape as a GolfNow facility page, because GolfNow owns both. A
+    # row carrying one of these has no <portal>.ezlinksgolf.com host, so the
+    # ezlinks pattern above extracts nothing and browser_ezlinks skips it in
+    # silence. Capturing the facility id here does NOT make such a row
+    # scrapeable (no adapter reads teeoff yet); it preserves the identifier
+    # that was already discovered so a future pass starts from it instead of
+    # rediscovering it, while the status guard below keeps the row honest.
+    "teeoff": re.compile(r"teeoff\.com/tee-times/facility/(\d+)-([a-z0-9-]+)"),
     "golfnow": re.compile(r"golfnow\.com/tee-times/facility/(\d+)-([a-z0-9-]+)"),
     "teesnap": re.compile(r"https?://([a-z0-9-]+)\.teesnap\.net"),
     "quick18": re.compile(r"https?://([a-z0-9-]+)\.(?:quick18|play18)\.com"),
@@ -410,6 +419,17 @@ def slugify(name: str) -> str:
 
 
 def extract_ids(platform: str, url: str) -> dict:
+    # Checked before the platform's own pattern because a teeoff.com link
+    # NEVER matches it: four Florida rows tagged ezlinks carry a teeoff
+    # marketplace URL instead of a <portal>.ezlinksgolf.com host, so they
+    # extracted {} and sat at `experimental`, which browser_ezlinks skips in
+    # silence on every run. Keeping the facility id costs nothing and stops the
+    # next pass rediscovering it; the status guard still routes them to
+    # needs_ids, because no adapter can read teeoff today.
+    tm = PATTERNS["teeoff"].search(url or "")
+    if tm and platform in ("ezlinks", "golfnow"):
+        return {"teeoff_facility_id": tm.group(1),
+                "teeoff_slug": tm.group(2).removesuffix("/search")}
     m = PATTERNS.get(platform, re.compile(r"$^")).search(url or "")
     if not m:
         return {}
@@ -499,6 +519,20 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     ids.update(EXTRA_IDS.get(name_key, EXTRA_IDS.get(row["Course Name"].lower(), {})))
     if platform.startswith("other:"):
         status = "unsupported"
+    elif platform == "ezlinks" and not ids.get("portal"):
+        # browser_ezlinks addresses a sheet by portal subdomain and nothing
+        # else, so a row without one is skipped on every run while the registry
+        # calls it `experimental` — a status that reads as "the browser tier
+        # will get to it" and is therefore a quieter lie than needs_ids. Four
+        # Florida rows (Crane Watch, Martin Downs Osprey Creek, Savanna Club,
+        # Spruce Creek CC) carry teeoff.com marketplace links rather than a
+        # portal host and had never been attempted.
+        status = "needs_ids"
+    elif platform == "golfnow" and not ids.get("golfnow_facility_id"):
+        # Same shape: browser_golfnow needs the numeric facility id. Lakeview
+        # (FL) has an empty booking URL entirely, so there is nothing to
+        # address and "experimental" overstated it.
+        status = "needs_ids"
     elif platform not in IMPLEMENTED:
         status = "experimental"          # golfnow / ezlinks
     elif slug in PROBED_HOLDS:
