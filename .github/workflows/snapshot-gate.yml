@@ -40,24 +40,47 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p worker
-          code=$(curl -sS -o /tmp/gate.js -w '%{http_code}' \
+          code=$(curl -sS -o /tmp/gate.raw -w '%{http_code}' \
             -H "Authorization: Bearer ${CF_TOKEN}" \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/workers/scripts/onetee-gate")
 
           if [ "$code" != "200" ]; then
-            echo "::error::Cloudflare returned HTTP $code fetching onetee-gate"
-            head -c 400 /tmp/gate.js || true
+            echo "::error::Cloudflare returned HTTP $code fetching onetee-gate."
+            echo "::error::403 here means the CI token cannot read Worker scripts."
+            echo "::error::It has Workers Scripts:Edit for onetee-api; this job also"
+            echo "::error::needs Workers Scripts:Read covering onetee-gate."
+            head -c 400 /tmp/gate.raw || true
             exit 1
           fi
 
-          # A JSON body here means the API returned an error envelope rather
-          # than the script, and writing that over the master copy would look
-          # like the worker had been replaced by an error message.
-          if head -c 1 /tmp/gate.js | grep -q '{'; then
+          # A JSON body means an error envelope, not the script.
+          if head -c 1 /tmp/gate.raw | grep -q '{'; then
             echo "::error::Response is JSON, not worker source — refusing to overwrite"
-            head -c 400 /tmp/gate.js
+            head -c 400 /tmp/gate.raw
             exit 1
           fi
+
+          # A module Worker comes back as multipart/form-data, NOT raw JS: a
+          # --boundary line, Content-Disposition headers, the module, then the
+          # closing boundary. Committing that blob verbatim would look like a
+          # valid snapshot and would not parse as JavaScript — measured
+          # 2026-07-28, the envelope adds 184 bytes around a 28,595-byte module.
+          # So strip it, and prove what is left is really the module.
+          python3 - <<'PY'
+          import re, sys, pathlib
+          raw = pathlib.Path('/tmp/gate.raw').read_bytes().decode('utf-8')
+          if raw.startswith('--'):
+              boundary = raw.split('\r\n', 1)[0]
+              start = raw.index('\r\n\r\n') + 4
+              end = raw.index('\r\n' + boundary, start)
+              js = raw[start:end]
+          else:
+              js = raw            # plain-JS (service-worker format) response
+          if 'export default' not in js and 'addEventListener' not in js:
+              sys.exit('no worker entrypoint after unwrapping multipart')
+          pathlib.Path('/tmp/gate.js').write_text(js, encoding='utf-8')
+          print(f'unwrapped {len(raw)} bytes of envelope to {len(js)} bytes of module')
+          PY
 
           bytes=$(wc -c < /tmp/gate.js)
           echo "fetched ${bytes} bytes"
