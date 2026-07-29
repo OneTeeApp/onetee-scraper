@@ -1,21 +1,26 @@
-"""Why do ~87 Florida TeeItUp courses return nothing while ~127 work?
+"""Which silent Florida TeeItUp courses are broken, and which are merely empty?
 
-Florida is our largest TeeItUp state by far — 198 of its 460 booking sources
-are teeitup, more than triple Arizona's. Measured 2026-07-29T08:40Z, 127 were
-serving and 87 registry-`ready` rows were silent. That is the same shape
-Arizona had before scripts/probe_teeitup_az.py split its eighteen silents into
-distinct repairs, so this asks the same four questions across Florida's set.
+Florida is our largest TeeItUp state by far — 214 of its ready booking sources
+are teeitup, more than triple Arizona's. That is the same shape Arizona had
+before scripts/probe_teeitup_az.py split its eighteen silents into distinct
+repairs, so this asks the same four questions across Florida's silent set.
 
-The question that makes this worth running rather than waiting: TWENTY-FOUR of
-these rows landed in commit e7964e1 (the unknown-booking resolution pass), and
-their booking URLs came from links published on each course's OWN site. That
-feels authoritative and is not: the vanity booking host and the kenna
-x-be-alias are two different namespaces. Golden Hills served a real 29KB
+WAIT BEFORE YOU SUSPECT AN ALIAS. This probe was written to answer whether the
+sixteen teeitup rows commit e7964e1 added were dark because their aliases were
+wrong. They were not. Measured three hours after landing: 0 of 16 serving.
+Measured five hours later: 13 of 16 serving, with the state's silent teeitup
+count falling 87 -> 60 over the same window. The cause was the paced sweep's
+latency, and a probe fired at the three-hour mark would have burned kenna
+requests to rediscover that. On a freshly added row, give the sweep most of a
+day before treating silence as evidence of anything.
+
+What still justifies the probe is the residue: rows that stay dark well past
+that window. Their booking URLs came from links published on each course's OWN
+site, which feels authoritative and is not — the vanity booking host and the
+kenna x-be-alias are two different namespaces. Golden Hills served a real 29KB
 tenant page on a host kenna had never heard of, and Meadowcreek in Virginia
-was the sixth instance of the same thing. A newly-added row that is silent
-because its alias is wrong looks EXACTLY like one that is silent because the
-paced sweep has not reached it yet, and only the facilities route can tell
-them apart:
+was the sixth instance. A wrong alias and an un-swept course look identical
+from outside; only the facilities route separates them:
 
   facilities  does kenna know the alias at all (404 = wrong alias, the
               Golden Hills case — fix is one registry field)
@@ -26,12 +31,12 @@ them apart:
   fetch       the real production path, same as the hourly scan
   page        which backend and alias the booking host's bundle names
 
-Targets are derived FROM THE REGISTRY by state and status, never hand-typed,
-so this cannot drift out of step with what production actually uses; pass
---slugs to narrow to a specific set. Controls are Florida aliases confirmed
-serving in the same measurement, so a fleet-wide kenna throttle during the run
-cannot read as eighty-seven dead courses — the lesson from the two AZ probe
-runs that 429 poisoning invalidated.
+Targets are derived FROM THE REGISTRY crossed with the hourly inventory
+sample, never hand-typed, so the probe re-aims itself at whatever is silent
+today rather than at a list that was true once; pass --slugs to narrow.
+Controls are Florida aliases confirmed serving, so a fleet-wide kenna throttle
+during the run cannot read as dozens of dead courses — the lesson from the two
+AZ probe runs that 429 poisoning invalidated.
 
 Report only: public GETs, no D1 writes, no registry or CSV edits.
 
@@ -66,10 +71,11 @@ CONTROL_SLUGS = [
     "orange-county-national-golf-center-lodge-panther-lake",   # ?course= pins
 ]
 
-# Added by e7964e1 from links on each course's own site. Called out separately
-# in the report because "brand new" and "broken alias" need to stay apart:
-# a silent row here is expected until the paced sweep reaches it, and only the
-# facilities route distinguishes that from a Golden Hills.
+# Added by e7964e1 from links on each course's own site. Kept as a label, not
+# a target list: measured 2026-07-29, 13 of these 16 came live within five
+# hours of landing, which answered the question this probe was written for —
+# the cause was sweep latency, not aliases. Marking them in the report keeps
+# "brand new" and "broken alias" apart when reading a later run.
 NEWLY_ADDED = {
     "boca-dunes-golf-country-club",
     "cross-creek-country-club",
@@ -89,36 +95,60 @@ NEWLY_ADDED = {
     "zellwood-station-country-club",
 }
 
+# The hourly monitor's newest sample. Using it to choose targets is what keeps
+# this probe useful on the second run and not just the first: silence is a
+# moving quantity, and a hand-pasted list of dark courses libels every course
+# that started serving after it was pasted. This file is refreshed hourly in
+# the repo, and the probe re-measures every target anyway, so a stale entry
+# costs one wasted probe rather than a wrong verdict.
+INVENTORY = "probe-results/inventory-history.jsonl"
+
 DATE_OFFSETS = (1, 3, 7)
+
+
+def serving_now(path: str, state: str) -> set[str] | None:
+    """Venue slugs the newest inventory sample shows serving, or None."""
+    try:
+        with open(path) as fh:
+            last = [ln for ln in fh if ln.strip()][-1]
+        return set(json.loads(last)["states"][state]["courses"])
+    except (OSError, ValueError, KeyError, IndexError):
+        return None
 
 
 def build_targets(reg: dict[str, dict], slugs: list[str] | None,
                   every: bool) -> list[dict]:
     """Targets plus serving controls.
 
-    DEFAULT is the sixteen rows e7964e1 added, because that is the question
-    actually open: are those aliases real, or merely un-swept? `--all` widens
-    to every FL teeitup row the registry calls ready — 212 of them, and that
-    is deliberately not the default. The AZ probe ran eighteen targets; twelve
-    times that volume against one shared host is how kenna starts 429ing, and
-    a 429 storm turns every target empty, which reads exactly like a dead
-    fleet. Two earlier AZ runs were thrown away for precisely that.
+    DEFAULT is every FL teeitup row the registry calls ready that the newest
+    hourly sample shows serving nothing — the courses about which there is an
+    open question, and no others. `--all` widens to all ready FL teeitup rows
+    including the serving ones, and that is deliberately not the default: the
+    AZ probe ran eighteen targets, and an order of magnitude more volume
+    against one shared host is how kenna starts 429ing. A 429 storm turns
+    every target empty, which reads exactly like a dead fleet — two earlier AZ
+    runs were discarded for precisely that.
 
-    Silence is never read from a pasted API snapshot — a snapshot goes stale
-    the moment the next sweep lands, and a course that started serving in
-    between would be libelled as a broken alias. The probe measures it live.
+    If the inventory file cannot be read, this falls back to the rows e7964e1
+    added rather than silently probing all 214, so a missing artifact costs
+    coverage visibly instead of triggering the throttle it exists to avoid.
     """
+    ready = [c["slug"] for c in reg.values()
+             if c.get("state") == "FL" and c.get("platform") == "teeitup"
+             and c.get("status") == "ready" and c["slug"] not in CONTROL_SLUGS]
     if slugs:
         chosen = [s for s in slugs if s not in CONTROL_SLUGS]
     elif every:
-        chosen = sorted(
-            c["slug"] for c in reg.values()
-            if c.get("state") == "FL" and c.get("platform") == "teeitup"
-            and c.get("status") == "ready"
-            and c["slug"] not in CONTROL_SLUGS
-        )
+        chosen = sorted(ready)
     else:
-        chosen = sorted(s for s in NEWLY_ADDED if s not in CONTROL_SLUGS)
+        live = serving_now(INVENTORY, "FL")
+        if live is None:
+            print(f"NOTE: {INVENTORY} unreadable — falling back to the rows "
+                  f"e7964e1 added. Ready FL teeitup rows outside that set are "
+                  f"NOT covered by this run.")
+            chosen = sorted(s for s in NEWLY_ADDED if s not in CONTROL_SLUGS)
+        else:
+            chosen = sorted(s for s in ready if s not in live)
     targets = []
     for role, group in (("target", chosen), ("control", CONTROL_SLUGS)):
         for slug in group:
@@ -146,8 +176,8 @@ def main() -> int:
     ap.add_argument("--slugs", default="",
                     help="comma-separated subset to probe instead of the default")
     ap.add_argument("--all", action="store_true",
-                    help="probe every FL teeitup row the registry calls ready "
-                         "(212) rather than just the 16 e7964e1 added. High "
+                    help="probe every ready FL teeitup row (214) including the "
+                         "ones already serving, not just the silent ones. High "
                          "request volume against one shared host — do not run "
                          "this while a far sweep is active.")
     ap.add_argument("--limit", type=int, default=0,
@@ -167,7 +197,7 @@ def main() -> int:
               f"they are NOT covered by this report.")
         targets = targets[:a.limit]
 
-    print("probe_teeitup_fl: why ~87 FL aliases return nothing while ~127 work")
+    print("probe_teeitup_fl: which silent FL aliases are broken vs merely empty")
     print(f"targets: {sum(1 for t in targets if t['role'] == 'target')} "
           f"({sum(1 for t in targets if t.get('new'))} added by e7964e1), "
           f"controls: {sum(1 for t in targets if t['role'] == 'control')}")
