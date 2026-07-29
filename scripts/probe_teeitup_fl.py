@@ -63,12 +63,17 @@ _spec = importlib.util.spec_from_file_location("probe_teeitup_co", _co_path)
 co = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(co)
 
-# Confirmed serving in the 2026-07-29 measurement. Two shapes on purpose:
-# a plain single-facility alias, and a pinned multi-course tenant, so the
-# shared-tenant mechanics have a known-good example in the report.
+# Controls must be courses that serve RELIABLY, not ones that served once.
+# The first draft used blackstone-golf-course on the strength of a single
+# WebFetch reading; the monitor's four samples across 2026-07-29 show it has
+# never served at all, which would have made the probe self-invalidate on every
+# run and report its own targets as unknown. Both of these served in all four
+# samples with hundreds of slots each. Two shapes on purpose: a plain
+# single-facility alias, and a facility-pinned tenant, so the shared-tenant
+# mechanics have a known-good example in the report.
 CONTROL_SLUGS = [
-    "blackstone-golf-course",                                  # plain alias
-    "orange-county-national-golf-center-lodge-panther-lake",   # ?course= pins
+    "colony-west-golf-club-glades-course",   # plain alias, 487 slots
+    "kissimmee-bay-country-club",            # facility_id 9093 pinned, 481 slots
 ]
 
 # Added by e7964e1 from links on each course's own site. Kept as a label, not

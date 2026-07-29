@@ -60,6 +60,43 @@ from scraper.aggregate import fetch_course, load_registry  # noqa: E402
 # to quick18, so it is an untested code path for this course too.
 EXTRA = {"orange-tree-golf-resort"}
 
+# The hourly monitor's newest sample: which venues the public API is actually
+# serving. Crossing it with the registry gives the SILENT cohort — rows the
+# registry calls ready (or experimental) that serve nothing — which is the same
+# question this script already asks, just arrived at from the other direction.
+# The unheld cohort asks "we said these can scrape; can they?"; the silent
+# cohort asks "these should be scraping; why aren't they?" Both are answered by
+# running the real fetch path, so both belong here rather than in a second
+# script needing a second workflow.
+INVENTORY = "probe-results/inventory-history.jsonl"
+
+
+def silent_cohort(reg: list[dict], path: str) -> tuple[set[str], str]:
+    """Registry rows that should be serving and are not, per the newest sample.
+
+    Silence is read from the sample rather than pasted in, so this re-aims
+    itself every run; a course that started serving since the last sample just
+    drops out. Returns an empty set and a reason when the sample is unreadable,
+    because probing every ready course in the fleet as a "fallback" would be a
+    far bigger request storm than the thing it was meant to diagnose.
+    """
+    try:
+        with open(path) as fh:
+            last = [ln for ln in fh if ln.strip()][-1]
+        sample = json.loads(last)
+    except (OSError, ValueError, IndexError) as e:
+        return set(), f"inventory unreadable ({type(e).__name__}) — silent cohort skipped"
+    serving: set[str] = set()
+    for st in sample.get("states", {}).values():
+        serving |= set(st.get("courses") or {})
+    if not serving:
+        return set(), "inventory sample lists no serving venues — silent cohort skipped"
+    silent = {c["venue_id"] for c in reg
+              if c.get("source_role") == "primary"
+              and c.get("status") in ("ready", "experimental")
+              and c.get("venue_id") not in serving}
+    return silent, f"{len(silent)} silent per sample {sample.get('generated_at')}"
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -67,6 +104,11 @@ def main() -> int:
     ap.add_argument("--probe", default="probe-results/needs-ids.json")
     ap.add_argument("--out", default="probe-results/newly-ready.json")
     ap.add_argument("--days", default="1,4,9")
+    ap.add_argument("--inventory", default=INVENTORY)
+    ap.add_argument("--no-silent", action="store_true",
+                    help="probe only the unheld cohort, as before")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="cap the target count (0 = no cap); a cap is logged")
     a = ap.parse_args()
 
     dates = [dt.date.today() + dt.timedelta(days=int(d))
@@ -79,11 +121,35 @@ def main() -> int:
     # The unheld set: rows that were in the needs_ids probe and are `ready`
     # now. Derived rather than hardcoded, so this stays honest if the gate or
     # the holds change under it.
-    targets = [c for c in reg
-               if c["status"] == "ready"
-               and (c["slug"] in probed or c["slug"] in EXTRA)]
+    unheld = {c["slug"] for c in reg
+              if c["status"] == "ready"
+              and (c["slug"] in probed or c["slug"] in EXTRA)}
 
-    print(f"{len(targets)} newly-ready courses x {len(dates)} dates "
+    silent, why = (set(), "silent cohort disabled (--no-silent)")
+    if not a.no_silent:
+        silent, why = silent_cohort(reg, a.inventory)
+    print(f"unheld cohort: {len(unheld)}   silent cohort: {why}", flush=True)
+
+    chosen = unheld | silent
+    targets = [c for c in reg if c["slug"] in chosen
+               or (c.get("source_role") == "primary"
+                   and c.get("venue_id") in silent)]
+    # Deduplicate while keeping registry order.
+    seen: set[str] = set()
+    targets = [c for c in targets
+               if not (c["slug"] in seen or seen.add(c["slug"]))]
+    if a.limit and len(targets) > a.limit:
+        # A cap is a silent loss of coverage unless it is said out loud.
+        print(f"NOTE: --limit {a.limit} drops {len(targets) - a.limit} targets; "
+              f"they are NOT covered by this report.", flush=True)
+        targets = targets[:a.limit]
+
+    cohort_of = {c["slug"]: ("unheld+silent" if c["slug"] in unheld
+                             and (c["slug"] in silent
+                                  or c.get("venue_id") in silent)
+                             else "unheld" if c["slug"] in unheld else "silent")
+                 for c in targets}
+    print(f"{len(targets)} courses x {len(dates)} dates "
           f"({', '.join(str(d) for d in dates)})\n", flush=True)
 
     results = []
@@ -111,8 +177,9 @@ def main() -> int:
             verdict = "empty"
 
         row = {"slug": c["slug"], "state": c.get("state"),
-               "platform": c["platform"], "verdict": verdict,
-               "total_rows": total, "by_date": per_date}
+               "platform": c["platform"], "cohort": cohort_of.get(c["slug"], "?"),
+               "status": c.get("status"), "ids": c.get("ids") or {},
+               "verdict": verdict, "total_rows": total, "by_date": per_date}
         if errors:
             row["errors"] = errors
         results.append(row)
