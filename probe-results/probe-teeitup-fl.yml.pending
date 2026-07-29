@@ -1,0 +1,74 @@
+# PENDING WORKFLOW — copy to .github/workflows/probe-teeitup-fl.yml
+#
+# This lives in probe-results/ rather than .github/workflows/ because the
+# session that wrote it held a CONTENTS-scoped fine-grained PAT, and GitHub
+# refuses a workflow file from a token without `workflow` scope:
+#   "refusing to allow a Personal Access Token to create or update workflow
+#    .github/workflows/... without workflow scope"
+# Moving this one file into place (a plain `git mv` + commit, or paste in the
+# GitHub web editor) arms it. Once it is in place the `push` path below makes
+# landing a change to scripts/probe_teeitup_fl.py the request to run it, so no
+# further manual dispatch is needed.
+#
+# Modelled on probe-teeitup-az.yml. Read-only: public GETs, no Cloudflare
+# secrets, no D1 writes, no registry or CSV edits.
+
+name: Probe TeeItUp FL silent aliases
+
+on:
+  workflow_dispatch:
+    inputs:
+      all:
+        description: "Probe all 212 ready FL teeitup rows, not just the 16 new ones"
+        default: "no"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/probe_teeitup_fl.py"
+      - ".github/workflows/probe-teeitup-fl.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe-teeitup-fl
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+
+      - name: Probe
+        timeout-minutes: 40
+        run: |
+          mkdir -p probe-results
+          ALL=""
+          if [ "${{ github.event.inputs.all }}" = "yes" ]; then ALL="--all"; fi
+          python3 scripts/probe_teeitup_fl.py $ALL 2>&1 | tee probe.log
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 150 probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probe-results/teeitup-fl.json || exit 0
+          git commit -m "Probe: TeeItUp FL silent aliases [skip ci]" || exit 0
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push results after 5 attempts"; exit 1
