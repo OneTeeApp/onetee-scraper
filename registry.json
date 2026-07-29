@@ -6863,12 +6863,33 @@
    "state": "VA",
    "venue_id": "the-omni-homestead-resort-cascades-course",
    "source_role": "primary",
-   "platform": "other:resortsuite",
+   "platform": "resortsuite",
    "booking_url": "https://omnihomesteadexperiences.com/#/golfBooking",
-   "ids": {},
-   "status": "unsupported",
+   "ids": {
+    "host": "omnihomesteadexperiences.com",
+    "course_id": "CAS"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "18-hole William Flynn course, regarded among the top mountain courses in the US. Same Omni Homestead Experiences booking portal as the Old Course (link from official Omni golf page; JS app loads). | Region: Shenandoah Valley | Phone: (540) 839-7739 | RESOLVED 2026-07-28 but NEEDS AN ADAPTER: omnihomesteadexperiences.com runs ResortSuite - an anonymous SOAP endpoint /wso2wsas/services/RSWS, operation FetchGolfTeeSheet, route #/golfBooking/location/401/CAS/YYYY-MM-DD. Verified serving: 55 slots on 2026-08-05, 42 on 2026-08-15. Today is blocked (\"Course Reserved\")."
+   "notes": "18-hole William Flynn course, regarded among the top mountain courses in the US. Same Omni Homestead Experiences booking portal as the Old Course (link from official Omni golf page; JS app loads). | Region: Shenandoah Valley | Phone: (540) 839-7739 | RESOLVED 2026-07-28 but NEEDS AN ADAPTER: omnihomesteadexperiences.com runs ResortSuite - an anonymous SOAP endpoint /wso2wsas/services/RSWS, operation FetchGolfTeeSheet, route #/golfBooking/location/401/CAS/YYYY-MM-DD. Verified serving: 55 slots on 2026-08-05, 42 on 2026-08-15. Today is blocked (\"Course Reserved\"). | ResortSuite RSWS SOAP, anonymous (WebFolioId=0 works, no session). VERIFIED 2026-07-29: driving CourseId directly, CAS returns 54 times on 10-minute intervals and OLD returns 68 on 8-minute intervals for 2026-08-06 \u2014 different tee configurations, so these are genuinely two sheets. The old 'both routes return the same sheet' finding was the SPA keeping the selected course in state and ignoring its own route, not the service. CourseId CAS."
+  },
+  {
+   "slug": "the-omni-homestead-resort-old-course",
+   "name": "The Omni Homestead Resort - Old Course",
+   "display_name": "The Omni Homestead Resort (Old Course)",
+   "city": "Hot Springs",
+   "state": "VA",
+   "venue_id": "the-omni-homestead-resort-old-course",
+   "source_role": "primary",
+   "platform": "resortsuite",
+   "booking_url": "https://omnihomesteadexperiences.com/#/golfBooking",
+   "ids": {
+    "host": "omnihomesteadexperiences.com",
+    "course_id": "OLD"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "18 holes; oldest first tee in continuous use in the US (1892). Booking runs through Omni's own Homestead Experiences portal (link from omnihotels.com golf page; portal loads as an Omni Homestead-branded JS app; underlying software vendor not identified). Open to non-guests. | Region: Shenandoah Valley | Phone: (540) 839-7739 | 2026-07-28: NOT PROVEN BOOKABLE. The Homestead portal serves only the Cascades sheet - clicking \"The Old Course\" and rewriting the route both still send CourseCode=CAS and return a byte-identical response (29,978 bytes, 55 slots). An earlier reading of \"54 slots for OLD\" was the Cascades sheet under the Old Course URL. Registering it against that portal would publish Cascades inventory under this name - the Legend-at-Arrowhead bug. Needs its own evidence. | ResortSuite RSWS SOAP, anonymous (WebFolioId=0 works, no session). VERIFIED 2026-07-29: driving CourseId directly, CAS returns 54 times on 10-minute intervals and OLD returns 68 on 8-minute intervals for 2026-08-06 \u2014 different tee configurations, so these are genuinely two sheets. The old 'both routes return the same sheet' finding was the SPA keeping the selected course in state and ignoring its own route, not the service. CourseId OLD. This row was previously held as UNPROVEN on the strength of that same artifact; it is now proven and registered."
   },
   {
    "slug": "mariners-landing-golf-country-club",
