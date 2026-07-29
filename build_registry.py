@@ -39,7 +39,11 @@ PATTERNS = {
     "noteefy": re.compile(r"booking\.noteefy\.app/e/([0-9a-f-]+)"),
     "foretees": re.compile(r"foretees\.com/.*clubKey=([A-Za-z0-9]+)&cid=(\d+)"),
     "supersaas": re.compile(r"supersaas\.com/schedule/([^/]+)/([^/?#]+)"),
-    "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([a-z0-9-]+)"),
+    # Property is case-SENSITIVE and often camelCase ("RockyGapBook"), so the
+    # character class must allow capitals. It was [a-z0-9-] until Maryland
+    # arrived, which silently dropped Rocky Gap to needs_ids: the pattern did
+    # not match, so no tenant/property was extracted and nothing said why.
+    "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
     # TeeQuest ships two skins. Legacy is teetimes.teequest.com/<site>; v2 is
     # bookateetime.teequest.com/course/<site>. Same operator, different
