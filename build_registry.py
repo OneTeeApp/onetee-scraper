@@ -273,6 +273,27 @@ EXTRA_IDS = {
     # here since it's no longer extractable from the (Noteefy) booking URL.
     "broadlands golf course": {"slug": "broadlands-golf-course"},
 
+    # Maryland shared Chronogolf portals. Eleven Montgomery County courses and
+    # both Turf Valley courses answer on ONE club slug each, so without a pinned
+    # course_id the adapter fetches every course on the club and publishes the
+    # whole portal's sheet under each venue's name. Read off
+    # /private_api/clubs/<slug>/courses on 2026-07-29; the MCG list also carries
+    # a decoy row, id 21186 "DO NOT USE - PLEASE PICK YOUR COURSE", which is why
+    # this is pinned rather than filtered by name.
+    "hampshire greens golf course":      {"course_ids": [21183]},
+    "little bennett golf course":        {"course_ids": [21181]},
+    "needwood golf course":              {"course_ids": [21180]},
+    "needwood golf course - executive 9": {"course_ids": [21179]},
+    "laytonsville golf course":          {"course_ids": [21182]},
+    "poolesville golf course":           {"course_ids": [21176]},   # "Crossvines" in MCG
+    "falls road golf course":            {"course_ids": [21184]},
+    "northwest golf course":             {"course_ids": [21178]},
+    "northwest golf course - inside 9":  {"course_ids": [21177]},
+    "sligo creek golf course":           {"course_ids": [21174]},
+    "rattlewood golf course":            {"course_ids": [21175]},
+    "turf valley resort - original course": {"course_ids": [8698]},
+    "turf valley resort - hialeah course":  {"course_ids": [8697]},
+
     # Golf With Access (Troon): the bookable course uuid is NOT in the booking
     # URL — it lives in each tenant page's SSR courses:[{id,name}] array, so it
     # is pinned here, captured live July 2026 (browser network capture). Every
