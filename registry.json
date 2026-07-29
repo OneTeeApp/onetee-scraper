@@ -7260,13 +7260,13 @@
    "venue_id": "the-club-at-viniterra",
    "source_role": "primary",
    "platform": "teeitup",
-   "booking_url": "https://the-club-at-viniterra.book.teeitup.com/",
+   "booking_url": "https://club-at-viniterra.book.teeitup.com/",
    "ids": {
-    "alias": "the-club-at-viniterra"
+    "alias": "club-at-viniterra"
    },
    "status": "ready",
-   "confidence": "medium",
-   "notes": "Rees Jones championship course in the Viniterra community; marketed as a membership club but public tee times are listed on aggregators. TeeItUp tenant subdomain exactly matching the club loads a booking shell, but course branding could not be confirmed in the JS-only fetch. | Region: Richmond Metro | Phone: (804) 932-3888 | 2026-07-28: probed for an alternate channel - viniterra.com is the residential community site, not the club's booking surface. TeeItUp alias returns 0 on four dates. Still unresolved; the club's own golf page is the next place to look."
+   "confidence": "high",
+   "notes": "Rees Jones championship course in the Viniterra community; marketed as a membership club but public tee times are listed on aggregators. TeeItUp tenant subdomain exactly matching the club loads a booking shell, but course branding could not be confirmed in the JS-only fetch. | Region: Richmond Metro | Phone: (804) 932-3888 | 2026-07-28: probed for an alternate channel - viniterra.com is the residential community site, not the club's booking surface. TeeItUp alias returns 0 on four dates. Still unresolved; the club's own golf page is the next place to look. | RECOVERED 2026-07-29: our alias was WRONG. 'the-club-at-viniterra' is a real TeeItUp tenant that answers 200 and returns zero on every date, which is why this read as a genuine empty twice. The club's own site links 'club-at-viniterra' (no 'the-'), facility 6270, verified serving 42 times on 2026-08-01 at $95.98-$109.15. An alias guessed from the course name can resolve to a real but wrong tenant and fail silently - always take the alias from the club's own booking link."
   },
   {
    "slug": "shenvalee-golf-resort",
@@ -7591,23 +7591,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Bob Lohmann-designed public course. Booking URL quoted from the course's own website (JS app; tenant confirmed live). | Region: Northern Virginia | Phone: (804) 633-7888"
-  },
-  {
-   "slug": "pendleton-golf-club",
-   "name": "Pendleton Golf Club",
-   "display_name": "",
-   "city": "Ruther Glen",
-   "state": "VA",
-   "venue_id": "pendleton-golf-club",
-   "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://pendleton-golf-club.book.teeitup.com/",
-   "ids": {
-    "alias": "pendleton-golf-club"
-   },
-   "status": "ready",
-   "confidence": "medium",
-   "notes": "Public course in the Pendleton community. A live TeeItUp tenant named pendleton-golf-club exists (nonexistent tenants return an error page), but the JS app prevented confirming the course identity, and the club's former website domain has lapsed. Phone per GolfVirginia directory. | Region: Northern Virginia | Phone: (804) 448-4727"
   },
   {
    "slug": "hanging-rock-golf-club",
