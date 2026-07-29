@@ -110,10 +110,12 @@ def main() -> int:
                     help="probe only the unheld cohort, as before")
     ap.add_argument("--limit", type=int, default=0,
                     help="cap the target count (0 = no cap); a cap is logged")
-    ap.add_argument("--budget-minutes", type=float, default=20.0,
+    ap.add_argument("--budget-minutes", type=float, default=16.0,
                     help="stop cleanly after this long and report what was "
                          "covered. Must stay under the workflow's step timeout "
                          "(25 min) or the step is killed instead of finishing.")
+    ap.add_argument("--no-resume", action="store_true",
+                    help="ignore an incomplete previous report and start over")
     a = ap.parse_args()
 
     dates = [dt.date.today() + dt.timedelta(days=int(d))
@@ -151,6 +153,30 @@ def main() -> int:
         in_silent = c["slug"] in silent or c.get("venue_id") in silent
         return (0 if in_silent else 1, c["slug"])
     targets.sort(key=_order)
+
+    # Resume. The first two runs each died on the workflow's 25-minute step
+    # timeout partway down the list, and a run that always restarts from the top
+    # would re-probe the same leading courses forever and never reach the tail.
+    # So an INCOMPLETE previous report is carried forward and only its
+    # `not_reached` names are probed. A complete report is ignored — that is a
+    # fresh sweep, not a resume.
+    carried: list = []
+    if not a.no_resume and os.path.exists(a.out):
+        try:
+            with open(a.out) as fh:
+                prev = json.load(fh)
+            if not prev.get("complete", True) and prev.get("results"):
+                done_slugs = {r["slug"] for r in prev["results"]}
+                carried = [r for r in prev["results"] if r["slug"] in
+                           {c["slug"] for c in targets}]
+                before = len(targets)
+                targets = [c for c in targets if c["slug"] not in done_slugs]
+                print(f"RESUMING: carrying {len(carried)} answers from the "
+                      f"previous incomplete run; {before - len(targets)} "
+                      f"targets skipped, {len(targets)} to go", flush=True)
+        except (OSError, ValueError, KeyError) as e:
+            print(f"NOTE: could not resume ({type(e).__name__}) — starting over",
+                  flush=True)
     if a.limit and len(targets) > a.limit:
         # A cap is a silent loss of coverage unless it is said out loud.
         print(f"NOTE: --limit {a.limit} drops {len(targets) - a.limit} targets; "
@@ -190,7 +216,7 @@ def main() -> int:
 
     started = time.monotonic()
     budget = a.budget_minutes * 60
-    results: list = []
+    results: list = list(carried)
     stopped: str | None = None
     for i, c in enumerate(targets):
         if budget and time.monotonic() - started > budget:

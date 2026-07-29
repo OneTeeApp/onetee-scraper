@@ -413,6 +413,22 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
     "wigwam-golf-club-patriot-course": ("needs_ids", "chronogolf calls the "
                                         "club's courses Gold/Blue/Red — which "
                                         "is Patriot is unconfirmed"),
+    # Two Florida TeeItUp rows whose alias kenna has never heard of: the real
+    # production fetch path answered 404 on /v2/courses for both, on every date
+    # probed (probe-results/newly-ready.json, 2026-07-29). That is the Golden
+    # Hills signature — a vanity booking host that serves a real tenant page
+    # while the API namespace does not contain the alias — and it means these
+    # sat at `ready` erroring on every single scrape.
+    #
+    # Held rather than repaired because repairing needs the alias read off each
+    # club's own /alias/ network call, and guessing one is how Viniterra ended
+    # up on a REAL but wrong tenant that answered 200 with zero rows for weeks
+    # (94d655b). needs_ids is the honest status: platform right, alias unknown.
+    "capri-isles-golf-club": ("needs_ids", "kenna 404s alias "
+                              "capri-isles-golf-club on /v2/courses, all dates"),
+    "clermont-national-golf-club": ("needs_ids", "kenna 404s alias "
+                                    "the-grove-at-clermont-national on "
+                                    "/v2/courses, all dates"),
 }
 
 # adapters that can actually fetch today
