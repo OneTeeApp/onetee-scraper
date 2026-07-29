@@ -454,6 +454,33 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
     "clermont-national-golf-club": ("needs_ids", "kenna 404s alias "
                                     "the-grove-at-clermont-national on "
                                     "/v2/courses, all dates"),
+    # Five more of the same, from the 2026-07-29 resumed run. Each 404ed on
+    # kenna /v2/courses on ALL THREE dates, which is what makes them a verdict
+    # rather than noise: the same run was riddled with 429s (see the note in
+    # probe_newly_ready.py) and a 429 is a different status from a 404. Held,
+    # not repaired — the replacement alias has to be read off each club's own
+    # /alias/ call, and guessing is how Viniterra ended up on a real-but-wrong
+    # tenant (94d655b).
+    "legacy-golf-club": ("needs_ids", "kenna 404s alias legacy-golf-club-pcb "
+                         "on /v2/courses, all dates"),
+    "little-sandy-at-omni-amelia-island-resort":
+        ("needs_ids", "kenna 404s alias little-sandy-short-course-at-omni-"
+                      "amelia-island-resort-spa on /v2/courses, all dates"),
+    "sebring-international-golf-resort":
+        ("needs_ids", "kenna 404s alias sebring-international-golf-resort on "
+                      "/v2/courses, all dates"),
+    "stonecrest-golf-club":
+        ("needs_ids", "kenna 404s alias broad-stripes-golf-club-at-stonecrest "
+                      "on /v2/courses, all dates (club rebranded to Broad "
+                      "Stripes; the new vanity host is not a kenna alias)"),
+    "stoneybrook-west-golf-club":
+        ("needs_ids", "kenna 404s alias stoneybrook-west-golf-club on "
+                      "/v2/courses, all dates"),
+    # ForeUp booking page 22056 loads but exposes no schedule_id, so
+    # discover_ids() returns nothing and fetch() has nothing to query — the
+    # same shape as meeker and snowflake above.
+    "rocky-bayou-country-club": ("needs_ids", "foreup booking page 22056 "
+                                 "exposes no schedule_id"),
 }
 
 # adapters that can actually fetch today

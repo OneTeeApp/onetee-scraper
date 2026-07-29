@@ -193,6 +193,23 @@ def main() -> int:
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
 
+    def rate_limited(done: list) -> dict[str, int]:
+        """Platforms this run rate-limited itself on.
+
+        The 2026-07-29 resumed run returned HTTP 429 for 25 courses including
+        club-at-viniterra, which had been verified serving 42 tee times hours
+        earlier (94d655b). So a 429 here says nothing whatever about the course
+        — it says this probe fired too fast at a shared host, exactly the storm
+        that invalidated two Arizona probe runs. Counting them per platform and
+        writing the count into the artifact is what stops a later reader (or a
+        later me) treating a throttled row as a broken one.
+        """
+        hits: Counter = Counter()
+        for r in done:
+            if any("429" in e for e in (r.get("errors") or [])):
+                hits[r["platform"]] += 1
+        return dict(hits)
+
     def flush(done: list, unreached: list, stopped: str | None) -> None:
         """Write the report as it stands.
 
@@ -206,11 +223,25 @@ def main() -> int:
         run.
         """
         tal = Counter(r["verdict"] for r in done)
+        limited = rate_limited(done)
+        for r in done:
+            # Marked on the row itself, not only in a summary, because the rows
+            # are what a later pass reads when drafting registry fixes.
+            r["rate_limited"] = any("429" in e for e in (r.get("errors") or []))
         with open(a.out, "w") as fh:
             json.dump({"dates": [str(d) for d in dates],
                        "probed": len(done), "tally": dict(tal),
                        "complete": not unreached,
                        "stopped_early": stopped,
+                       "rate_limited_by_platform": limited,
+                       "rate_limit_warning": (
+                           "Rows with rate_limited=true returned HTTP 429. That "
+                           "is this probe throttling itself against a shared "
+                           "host, NOT a fault at the course — do not retag on "
+                           "it. Act only on errors whose status is specific "
+                           "(404 unknown alias, an adapter's own unclaimed/"
+                           "no-schedule_id verdict) and consistent across every "
+                           "date." if limited else None),
                        "not_reached": [c["slug"] for c in unreached],
                        "results": done}, fh, indent=1)
 
