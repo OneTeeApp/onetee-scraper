@@ -89,12 +89,26 @@ def fetch_state(api: str, state: str) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default=os.environ.get("ONETEE_API", DEFAULT_API))
-    ap.add_argument("--states", default="CO,AZ",
+    ap.add_argument("--states", default="CO,AZ,VA,FL",
                     help="first is the watched state; the rest are controls")
     ap.add_argument("--history", default="probe-results/inventory-history.jsonl")
     a = ap.parse_args()
 
     states = [s.strip().upper() for s in a.states.split(",") if s.strip()]
+    # The workflow pins --states to its own fallback list, which went stale
+    # the day VA launched and stayed stale through FL: the monitor simply
+    # never sampled the newest states. Rather than keeping two hardcoded
+    # lists in step (workflow fallback + this default), union the requested
+    # states with every state the registry actually covers — the first
+    # requested state stays the watched one, and a new state starts being
+    # sampled the moment its CSV lands in SOURCES, with no workflow edit
+    # (which a contents-scoped PAT cannot push anyway).
+    try:
+        with open("registry.json") as fh:
+            reg_states = {c.get("state") for c in json.load(fh)["courses"]}
+        states += sorted(s for s in reg_states if s and s not in states)
+    except (OSError, ValueError, KeyError):
+        pass                     # no registry checkout — sample what was asked
     now = dt.datetime.now(dt.timezone.utc)
 
     sample: dict = {"generated_at": now.isoformat(timespec="seconds"),
