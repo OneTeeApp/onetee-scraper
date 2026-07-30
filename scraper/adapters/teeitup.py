@@ -241,18 +241,36 @@ class TeeItUpAdapter(Adapter):
                 return None
 
         data = try_call(str(facility_id)) if facility_id else None
+        discovery_failed = False
         if data is None:
             discovered = ""
             try:
                 discovered = self._facility_ids(alias)
             except Exception as exc:  # noqa: BLE001
                 errors.append(exc)
+                discovery_failed = True
             if discovered and discovered != str(facility_id or ""):
                 data = try_call(discovered)
-        if data is None:
+        # The bare call is a last resort, but it is NOT a safe one for a row
+        # with no pinned facility id. Some aliases answer it 200 with an empty
+        # teetimes list (see the measurement above), so reaching it after the
+        # facilities lookup FAILED converts a transport error into a clean
+        # "nothing for sale" — and aggregate.py records that as courses_empty,
+        # which sync() acts on by deactivating the date. The course then reads
+        # as sold out rather than broken, and nothing ever flags it.
+        #
+        # Wicomico Shores (MD) is the measured case: kenna serves it 25-36
+        # times a day and D1 had never held a single row for it. Run alone
+        # through diag-course-pipeline the same adapter fetched 91 rows and
+        # landed all of them, so the fetch path was never the problem — the
+        # silent fallback was. A pinned facility id skips this hop entirely,
+        # which is why that row now pins one; this guard is for every row that
+        # does not.
+        if data is None and not (discovery_failed and not facility_id):
             data = try_call(None)
         if data is None:
-            raise errors[0]
+            raise errors[0] if errors else RuntimeError(
+                f"{course['slug']}: teeitup returned nothing and raised nothing")
 
         return self._parse(course, data)
 
