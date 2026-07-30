@@ -8660,12 +8660,12 @@
    "state": "FL",
    "venue_id": "img-academy-golf-club",
    "source_role": "primary",
-   "platform": "clubessential",
+   "platform": "other:clubhouseonline",
    "booking_url": "https://www.imgacademygolfclub.com/PublicTeeTimes/TeeSheet",
    "ids": {},
-   "status": "needs_ids",
+   "status": "unsupported",
    "confidence": "high",
-   "notes": "Public tee sheet on own domain, Powered by Jonas Club Software | ClubHouse Online E3 (Clubessential) \u2014 host/course ids need one-time widget capture | Region: Southwest FL | Phone: (941) 758-1466"
+   "notes": "ClubHouse Online E3 is NOT the NetCaddy engine our clubessential adapter reads. Measured 2026-07-30: the adapter's endpoint /a_master/net/netcaddy/api/teetimes/Available 404s on this host, and the public tee sheet is /CMSModules/CHO/TeeTimes/PublicTeeTimes.aspx - a Kentico-hosted ASP.NET WebForms page with no JSON API, one form, no times in the initial HTML and a cookie-consent wall in front of it. Retagged off clubessential, which was claiming \"right platform, missing ids\" for a platform we cannot read. Belongs with the ASP.NET postback family alongside the CPS webstore and proshopteetimes | Public tee sheet on own domain, Powered by Jonas Club Software | Region: Southwest FL | Phone: (941) 758-1466"
   },
   {
    "slug": "manatee-county-golf-course",
@@ -11296,12 +11296,12 @@
    "state": "FL",
    "venue_id": "harbor-hills-country-club",
    "source_role": "primary",
-   "platform": "clubessential",
+   "platform": "other:clubhouseonline",
    "booking_url": "https://harborhillsclub.clubhouseonline-e3.club/PublicTeeTimes/TeeSheet.aspx",
    "ids": {},
-   "status": "needs_ids",
+   "status": "unsupported",
    "confidence": "high",
-   "notes": "Public tee sheet page; 9-hole and 5+ player bookings by phone | ClubHouse Online E3 (Clubessential) \u2014 host/course ids need one-time widget capture | Region: Central FL (Orlando) | Phone: (352) 753-7711"
+   "notes": "ClubHouse Online E3 is NOT the NetCaddy engine our clubessential adapter reads. Measured 2026-07-30: the adapter's endpoint /a_master/net/netcaddy/api/teetimes/Available 404s on this host, and the public tee sheet is /CMSModules/CHO/TeeTimes/PublicTeeTimes.aspx - a Kentico-hosted ASP.NET WebForms page with no JSON API, one form, no times in the initial HTML and a cookie-consent wall in front of it. Retagged off clubessential, which was claiming \"right platform, missing ids\" for a platform we cannot read. Belongs with the ASP.NET postback family alongside the CPS webstore and proshopteetimes | Public tee sheet page; 9-hole and 5+ player bookings by phone | Region: Central FL (Orlando) | Phone: (352) 753-7711"
   },
   {
    "slug": "the-lakes-golf-club",
@@ -11758,36 +11758,6 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Domain redirects to Taylor Morrison; no golf site found | Region: Southwest FL | Research 2026-07-29: Booking link published on esplanadeazariolifestyle.com/golf"
-  },
-  {
-   "slug": "lakewood-national-golf-club-commander-course",
-   "name": "Lakewood National Golf Club - Commander Course",
-   "display_name": "",
-   "city": "Lakewood Ranch",
-   "state": "FL",
-   "venue_id": "lakewood-national-golf-club-commander-course",
-   "source_role": "primary",
-   "platform": "clubessential",
-   "booking_url": "",
-   "ids": {},
-   "status": "needs_ids",
-   "confidence": "medium",
-   "notes": "Member login portal only; no public tee sheet | ClubHouse Online E3 (Clubessential) \u2014 host/course ids need one-time widget capture | Region: Southwest FL | Phone: (941) 900-2424"
-  },
-  {
-   "slug": "lakewood-national-golf-club-piper-course",
-   "name": "Lakewood National Golf Club - Piper Course",
-   "display_name": "",
-   "city": "Lakewood Ranch",
-   "state": "FL",
-   "venue_id": "lakewood-national-golf-club-piper-course",
-   "source_role": "primary",
-   "platform": "clubessential",
-   "booking_url": "",
-   "ids": {},
-   "status": "needs_ids",
-   "confidence": "medium",
-   "notes": "Member login portal only; no public tee sheet | ClubHouse Online E3 (Clubessential) \u2014 host/course ids need one-time widget capture | Region: Southwest FL | Phone: (941) 900-2424"
   },
   {
    "slug": "plantation-palms-golf-club",
