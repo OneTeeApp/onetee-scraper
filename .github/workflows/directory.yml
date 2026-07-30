@@ -43,12 +43,28 @@ jobs:
         with:
           python-version: "3.12"
 
+      # `set -o pipefail` is load-bearing in both steps below, not style. A
+      # step's exit status is the LAST command in the pipeline, so `cmd | tee`
+      # reports tee's status — always 0 — and the failure vanishes. That is not
+      # hypothetical: from the Florida import until 2026-07-30 verify_directory
+      # exited 1 on every run (36 cards with no link, no phone and no recorded
+      # reason) while this job stayed green and the Commit step below, guarded on
+      # `steps.verify.outcome == 'success'`, ran every single time. The gate that
+      # exists to stop the site contradicting the live feed had never once
+      # blocked a publish. Same bug had made deploy-worker.yml permanently red
+      # for the opposite reason; pipelines and exit codes are worth re-reading.
       - name: Build
-        run: python3 build_directory.py | tee directory.log
+        run: |
+          set -o pipefail
+          python3 build_directory.py | tee directory.log
 
+      # A silent Build failure would be worse than a loud one: verify would then
+      # pass against the PREVIOUS directory.json still on disk and publish it.
       - name: Verify
         id: verify
-        run: python3 scripts/verify_directory.py 2>&1 | tee -a directory.log
+        run: |
+          set -o pipefail
+          python3 scripts/verify_directory.py 2>&1 | tee -a directory.log
 
       - name: Summary
         if: always()
