@@ -3,12 +3,13 @@ PER-STATE COVERAGE
 ==========================================================================
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
-CO          181   128    71%            1            2            0            3            0           47           60
-AZ          204   186    91%            4            0            0            0            0           14           14
-VA          227   110    48%            2            0            0            5            0          110          102
-FL          646   249    39%           67           38           16           83           21          172           10
+CO          181   128    71%            1            2            0            2            0           48           60
+AZ          204   185    91%            5            0            0            0            0           14           14
+VA          227   112    49%            1            0            0            4            0          110          102
+FL          646   266    41%           52           45           11           72           21          179           10
+MD          119    66    55%            0            1            0           17            2           33            1
 -----------------------------------------------------------------------------------------------------------------------
-ALL        1258   673    53%           74           40           16           91           21          343          186
+ALL        1377   757    55%           59           48           11           95           23          384          187
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -17,47 +18,53 @@ ALL        1258   673    53%           74           40           16           91
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     60   FL:58 VA:2
-  silent       chronogolf                   5   FL:5
+  silent       teeitup                     47   FL:46 VA:1
   silent       teesnap                      3   CO:1 FL:2
-  silent       courseco                     2   AZ:2
-  silent       foreup                       2   AZ:1 FL:1
+  silent       courseco                     3   AZ:3
+  silent       golfback                     2   FL:2
   silent       quick18                      1   AZ:1
+  silent       foreup                       1   AZ:1
+  silent       chronogolf                   1   FL:1
   silent       rguest                       1   FL:1
-  needs_ids    clubprophet                 12   CO:2 FL:10
-  needs_ids    chronogolf                  10   FL:10
+  needs_ids    clubprophet                 12   CO:2 FL:9 MD:1
+  needs_ids    teeitup                     11   FL:11
   needs_ids    golfwithaccess               7   FL:7
   needs_ids    rguest                       5   FL:5
-  needs_ids    clubessential                4   FL:4
-  needs_ids    foreup                       1   FL:1
+  needs_ids    chronogolf                   5   FL:5
+  needs_ids    ezlinks                      4   FL:4
+  needs_ids    foreup                       2   FL:2
+  needs_ids    golfnow                      1   FL:1
   needs_ids    totale                       1   FL:1
-  experimental ezlinks                     15   FL:15
-  experimental golfnow                      1   FL:1
+  experimental ezlinks                     11   FL:11
   unsupported  other:native                38   FL:38
-  unsupported  other:golfback              17   FL:17
+  unsupported  other:tenfore               13   FL:1 MD:11 VA:1
   unsupported  other:webtrac                6   FL:5 VA:1
+  unsupported  other:eagleclubsystem        4   FL:2 MD:1 VA:1
+  unsupported  other:unclaimed-chron        4   FL:4
   unsupported  other:booktrump              4   FL:4
-  unsupported  clubprophet                  3   CO:1 FL:2
-  unsupported  other:eagleclubsystem        3   FL:2 VA:1
-  unsupported  other:tenfore                2   FL:1 VA:1
+  unsupported  other:square                 2   CO:1 MD:1
+  unsupported  other:clubhouseonline        2   FL:2
+  unsupported  other:cps-shared             2   FL:1 MD:1
   unsupported  other:acuity                 2   FL:2
   unsupported  other:chelsea                2   FL:2
   unsupported  other:courserev              2   FL:2
   unsupported  other:linkline               2   FL:2
-  unsupported  other:square                 1   CO:1
+  unsupported  clubprophet                  2   FL:2
   unsupported  other:goibsvision            1   CO:1
-  unsupported  other:resortsuite            1   VA:1
   unsupported  other:tyngo                  1   VA:1
   unsupported  other:teewire                1   FL:1
-  unsupported  other:cps-shared             1   FL:1
   unsupported  other:buz                    1   FL:1
   unsupported  other:bailey                 1   FL:1
   unsupported  other:golf18network          1   FL:1
   unsupported  other:whoosh                 1   FL:1
+  unsupported  other:golfrev                1   MD:1
+  unsupported  other:easyteegolf            1   MD:1
+  unsupported  other:proshopteetimes        1   MD:1
   no_platform  —                           18   FL:18
   no_platform  teeitup                      2   FL:2
+  no_platform  foreup                       2   MD:2
   no_platform  chronogolf                   1   FL:1
-  no_booking   —                          324   AZ:2 CO:46 FL:168 VA:108
+  no_booking   —                          365   AZ:2 CO:47 FL:175 MD:33 VA:108
   no_booking   other:unclaimed-chron        4   AZ:1 CO:1 VA:2
   no_booking   golfnow                      4   AZ:4
   no_booking   golfwithaccess               3   AZ:3
@@ -78,12 +85,11 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Emerald Greens Golf Club                     clubprophet    Denver
      University of Denver Golf Club at Highlands  clubprophet    Littleton
 
-  UNSUPPORTED  (3) — no adapter possible today
+  UNSUPPORTED  (2) — no adapter possible today
      Cottonwood Links Golf Club                   other:square   Fowler
-     Lake Arbor Golf Club                         clubprophet    Arvada
      Telluride Ski & Golf Club                    other:goibsvision Telluride
 
-  NO_BOOKING  (47) — playable, but no online booking in the source data
+  NO_BOOKING  (48) — playable, but no online booking in the source data
      Broadmoor Golf Club                          —              Colorado Springs
      Cedar Ridges Golf Course                     —              Rangely
      Challenger Golf Course                       —              Crestone
@@ -102,6 +108,7 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Hugo Golf Club                               —              Hugo
      Indian Hills Golf Course                     —              Yuma
      La Junta Golf Club                           —              La Junta
+     Lake Arbor Golf Club                         —              Arvada
      Lake Estes Golf Course                       —              Estes Park
      Las Animas Golf Course                       —              Las Animas
      Mossland Memorial Golf Course                —              Flagler
@@ -133,13 +140,14 @@ CO  —  181 bookable courses (241 in colorado_golf_courses_booking.csv, 60 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 186 live (91%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 185 live (91%)
 ==========================================================================
 
-  SILENT  (4) — believed scrapable, returning nothing
+  SILENT  (5) — believed scrapable, returning nothing
      Deer Valley Golf Course (Sun City West)      courseco       Sun City West
      Desert Trails Golf Course (Sun City West)    courseco       Sun City West
      Francisco Grande Hotel & Golf Resort         foreup         Casa Grande
+     Stardust Golf Course (Sun City West)         courseco       Sun City West
      SunRidge Canyon Golf Club                    quick18        Fountain Hills
 
   NO_BOOKING  (14) — playable, but no online booking in the source data
@@ -159,19 +167,17 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Villa de Paz Golf Club                       teeitup        Phoenix
 
 ==========================================================================
-VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 110 live (48%)
+VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 112 live (49%)
 ==========================================================================
 
-  SILENT  (2) — believed scrapable, returning nothing
-     Pendleton Golf Club                          teeitup        Ruther Glen
-     The Club at Viniterra                        teeitup        New Kent
+  SILENT  (1) — believed scrapable, returning nothing
+     Ocean View Golf Course                       teeitup        Norfolk
 
-  UNSUPPORTED  (5) — no adapter possible today
+  UNSUPPORTED  (4) — no adapter possible today
      Colonial Hills Golf Club                     other:tenfore  Forest
      Draper Valley Golf Club                      other:eagleclubsystems Draper
      Fort Belvoir Golf Club                       other:webtrac  Fort Belvoir
      The Highland Course at Primland (Primland Re other:tyngo    Meadows of Dan
-     The Omni Homestead Resort - Cascades Course  other:resortsuite Hot Springs
 
   NO_BOOKING  (110) — playable, but no online booking in the source data
      Alleghany Country Club                       —              Clifton Forge
@@ -240,6 +246,7 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Owl's Creek Golf Course                      —              Virginia Beach
      Par 3 Golf at Sandy Bottom Park              —              Bridgewater
      Peaks Par-3 Golf Course                      —              Lynchburg
+     Pendleton Golf Club                          —              Ruther Glen (Caroline/Spotsylvania line)
      Poplar Forest Golf Course                    —              Forest
      Prince George Golf Course                    —              Disputanta
      Ringgold Golf Club                           —              Ringgold
@@ -266,7 +273,6 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      The Links at City Park                       —              Portsmouth
      The Manor Golf Club                          —              Farmville
      The Meadows Golf and Country Club            —              Christiansburg
-     The Omni Homestead Resort - Old Course       —              Hot Springs
      The Vista Links                              —              Buena Vista
      The Willows at Runk & Pratt                  —              Hurt
      The Woodlands Golf Course                    —              Hampton
@@ -286,25 +292,23 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Woodside Country Club                        —              Tappahannock
 
 ==========================================================================
-FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 249 live (39%)
+FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 266 live (41%)
 ==========================================================================
 
-  SILENT  (67) — believed scrapable, returning nothing
+  SILENT  (52) — believed scrapable, returning nothing
      Baytree Executive Golf Course                teeitup        Tavares
      Beacon Woods Golf Club                       teeitup        Hudson
      Blackstone Golf Course                       teeitup        DeFuniak Springs
      Bonita National Golf & Country Club          teeitup        Bonita Springs
      Buffalo Creek Golf Course                    teeitup        Palmetto
      Cape Royal Golf Club                         teeitup        Cape Coral
-     Capri Isles Golf Club                        teeitup        Venice
-     Clermont National Golf Club                  teeitup        Clermont
      Club Renaissance                             teeitup        Sun City Center
      Cocoa Beach Golf Course                      teeitup        Cocoa Beach
      Country Club of Sebring                      teeitup        Sebring
      Deer Creek Golf Club                         teesnap        Deerfield Beach
+     Eagle Ridge Golf Club at Del Webb Spruce Cre golfback       Summerfield
      Eagle Springs Golf Course                    teeitup        DeFuniak Springs
      Eaglewood Golf Course                        teeitup        Hobe Sound
-     East Bay Golf Club                           chronogolf     Largo
      Eco Golf Club                                teeitup        Hollywood
      Fairwinds Golf Course                        teeitup        Fort Pierce
      Falcon's Fire Golf Club                      teeitup        Kissimmee
@@ -313,31 +317,22 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Hollywood Beach Golf Club                    teeitup        Hollywood
      Indian Hills Golf Course                     teeitup        Fort Pierce
      Juliette Falls Golf Club                     teeitup        Dunnellon
-     Legacy Golf Club                             teeitup        Panama City Beach
-     Little Sandy at Omni Amelia Island Resort    teeitup        Fernandina Beach
      Mainlands Golf Club                          teeitup        Pinellas Park
-     Manatee County Golf Course                   chronogolf     Bradenton
      Meadow Oaks Golf & Country Club              teeitup        Hudson
      Oak Hills Golf Club                          teeitup        Spring Hill
      Oakwood Golf Club                            teeitup        Lake Wales
-     Ocean Palm Golf Course                       chronogolf     Flagler Beach
      Ocean Village Golf Course                    chronogolf     Fort Pierce
      Pelican Preserve Golf Club                   teeitup        Fort Myers
      Placid Lakes Country Club                    teesnap        Lake Placid
      Polo Park Golf Course                        teeitup        Davenport
      Port Charlotte Golf Club                     teeitup        Port Charlotte
      River Greens Golf Course                     teeitup        Avon Park
-     River Hall Country Club                      chronogolf     Alva
      Riviera Golf Club                            teeitup        Naples
-     Rocky Bayou Country Club                     foreup         Niceville
      Saltleaf Golf Preserve - The Leaf            teeitup        Bonita Springs
      Saltleaf Golf Preserve - The Preserve Course teeitup        Bonita Springs
-     Sebring International Golf Resort            teeitup        Sebring
      Shell Point Golf Club                        teeitup        Fort Myers
      Silverado Golf & Country Club                teeitup        Zephyrhills
      St. Augustine Shores Golf Club               teeitup        St. Augustine
-     Stonecrest Golf Club                         teeitup        Summerfield
-     Stoneybrook West Golf Club                   teeitup        Winter Garden
      Stoneybrook at Heritage Harbour Golf Club    teeitup        Bradenton
      Summerfield Crossings Golf Club              teeitup        Riverview
      Suncoast Golf Center                         teeitup        Sarasota
@@ -347,44 +342,44 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      The Links at Boynton Beach - Championship Co teeitup        Boynton Beach
      The Links at Boynton Beach - The Family Cour teeitup        Boynton Beach
      The Ritz-Carlton Golf Club, Orlando, Grande  rguest         Orlando
-     The River Club                               teeitup        Bradenton
      The Rookery at Marco                         teeitup        Naples
      Timber Creek Golf Course                     teeitup        Bradenton
      Timber Greens Golf & Country Club            teeitup        New Port Richey
      Treasure Bay Golf & Tennis                   teeitup        Treasure Island
-     Water Oak Golf Club                          teeitup        Lady Lake
+     Wentworth Golf Club                          golfback       Tarpon Springs
      Westchase Golf Club                          teeitup        Tampa
-     Wildcat Crossing Golf Club                   teeitup        Lehigh Acres
-     Willow Lakes Golf Club                       teeitup        Titusville
-     Winter Park Pines Golf Course                teeitup        Winter Park
 
-  NEEDS_IDS  (38) — right platform, identifiers not captured
+  NEEDS_IDS  (45) — right platform, identifiers not captured
      Bent Creek Golf Course                       golfwithaccess Jacksonville
      Brentwood Golf Course                        golfwithaccess Jacksonville
-     Citrus Hills Golf & Country Club - Meadows C chronogolf     Hernando
-     Citrus Hills Golf & Country Club - Oaks Cour chronogolf     Hernando
+     Capri Isles Golf Club                        teeitup        Venice
+     Clermont National Golf Club                  teeitup        Clermont
      Crane Lakes Golf & Country Club              clubprophet    Port Orange
+     Crane Watch Club                             ezlinks        Palm City
      Eagle Landing Golf Club                      golfwithaccess Orange Park
-     Harbor Hills Country Club                    clubessential  Lady Lake
      Highlands Ridge Golf Club - North Course     clubprophet    Avon Park
      Highlands Ridge Golf Club - South Course     clubprophet    Avon Park
-     IMG Academy Golf Club                        clubessential  Bradenton
      Ibis Landing Golf & Country Club             golfwithaccess Lehigh Acres
      Jacaranda Golf Club - East Course            totale         Plantation
      Kings Point Executive Golf Course            chronogolf     Delray Beach
      Kings Point Par 3 Golf Course                chronogolf     Delray Beach
-     Lakewood National Golf Club - Commander Cour clubessential  Lakewood Ranch
-     Lakewood National Golf Club - Piper Course   clubessential  Lakewood Ranch
-     Miami Beach Golf Club                        chronogolf     Miami Beach
+     Lakeview Golf Club                           golfnow        Delray Beach
+     Legacy Golf Club                             teeitup        Panama City Beach
+     Little Sandy at Omni Amelia Island Resort    teeitup        Fernandina Beach
+     Martin Downs Golf Club - Osprey Creek Course ezlinks        Palm City
      Miami Shores Country Club                    chronogolf     Miami Shores
      Mystic Dunes Golf Club                       golfwithaccess Celebration
-     Normandy Shores Golf Club                    chronogolf     Miami Beach
      Oriole Golf Club                             clubprophet    Margate
      Ridgewood Lakes Golf Club                    foreup         Davenport
-     Skyview at Terra Vista                       chronogolf     Hernando
+     Rocky Bayou Country Club                     foreup         Niceville
+     Savanna Club Golf Course                     ezlinks        Port St. Lucie
+     Sebring International Golf Resort            teeitup        Sebring
      Southern Dunes Golf & Country Club           clubprophet    Haines City
+     Spruce Creek Country Club                    ezlinks        Port Orange
      St. James Bay Golf Club                      clubprophet    Carrabelle
      Stonebrook Golf Club                         clubprophet    Pace
+     Stonecrest Golf Club                         teeitup        Summerfield
+     Stoneybrook West Golf Club                   teeitup        Winter Garden
      Streamsong Black                             rguest         Bowling Green
      Streamsong Blue                              rguest         Bowling Green
      Streamsong Red                               rguest         Bowling Green
@@ -394,30 +389,27 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      The Plantation at Leesburg Golf Club - Crane chronogolf     Leesburg
      The Plantation at Leesburg Golf Club - Otter chronogolf     Leesburg
      Wakulla Sands Golf Course                    clubprophet    Crawfordville
-     Windswept Dunes Golf Club                    clubprophet    Freeport
+     Water Oak Golf Club                          teeitup        Lady Lake
+     Wildcat Crossing Golf Club                   teeitup        Lehigh Acres
+     Willow Lakes Golf Club                       teeitup        Titusville
+     Winter Park Pines Golf Course                teeitup        Winter Park
      World Golf Village - King & Bear             golfwithaccess St. Augustine
      World Golf Village - Slammer & Squire        golfwithaccess St. Augustine
 
-  EXPERIMENTAL  (16) — adapter exists but is not production
+  EXPERIMENTAL  (11) — adapter exists but is not production
      Bardmoor Golf & Tennis Club                  ezlinks        Largo
      Bobby Jones Golf Club - The Gillespie Course ezlinks        Sarasota
      ChampionsGate Golf Club - International Cour ezlinks        ChampionsGate
      ChampionsGate Golf Club - National Course    ezlinks        ChampionsGate
      Champs Par 3 Course at ChampionsGate         ezlinks        ChampionsGate
      Chi Chi Rodriguez Golf Club                  ezlinks        Clearwater
-     Crane Watch Club                             ezlinks        Palm City
      LPGA International - Arthur Hills Course     ezlinks        Daytona Beach
      LPGA International - Rees Jones Course       ezlinks        Daytona Beach
-     Lakeview Golf Club                           golfnow        Delray Beach
-     Martin Downs Golf Club - Osprey Creek Course ezlinks        Palm City
-     Savanna Club Golf Course                     ezlinks        Port St. Lucie
-     Spruce Creek Country Club                    ezlinks        Port Orange
      The National Golf & Country Club at Ave Mari ezlinks        Ave Maria
      Tiburon Golf Club - Black Course             ezlinks        Naples
      Tiburon Golf Club - Gold Course              ezlinks        Naples
 
-  UNSUPPORTED  (83) — no adapter possible today
-     Blackwater Golf Club                         other:golfback Crestview
+  UNSUPPORTED  (72) — no adapter possible today
      Blue Sky Golf Club                           other:tenfore  Jacksonville
      Bonaventure Golf Club                        other:native   Weston
      Bonita Fairways Golf Club                    other:native   Bonita Springs
@@ -425,8 +417,6 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Cabot Citrus Farms - Roost                   other:native   Brooksville
      Cabot Citrus Farms - The Squeeze             other:native   Brooksville
      Cabot Citrus Farms - The Wedge               other:native   Brooksville
-     Country Club of Mount Dora                   other:golfback Mount Dora
-     Crane's Bend at Orange Lake Resort           other:golfback Kissimmee
      Cypress Head Golf Club                       other:native   Port Orange
      Cypress Woods Golf & Country Club            other:chelsea  Naples
      Deer Creek Golf & Country Club               other:native   Davenport
@@ -435,40 +425,38 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Disney's Oak Trail Golf Course               other:native   Lake Buena Vista
      Disney's Palm Golf Course                    other:native   Lake Buena Vista
      Eagle Lakes Golf Club                        other:native   Naples
-     Eagle Ridge Golf Club at Del Webb Spruce Cre other:golfback Summerfield
+     East Bay Golf Club                           other:unclaimed-chronogolf Largo
      Fort Myers Country Club                      other:webtrac  Fort Myers
      Granada Golf Course                          other:teewire  Coral Gables
      Halifax Plantation Golf Club                 other:native   Ormond Beach
      Hammock Creek Golf Club                      other:golf18network Palm City
+     Harbor Hills Country Club                    other:clubhouseonline Lady Lake
      Heritage Landing Golf & Country Club         other:chelsea  Punta Gorda
      Heron Creek Golf & Country Club              other:bailey   North Port
      Hidden Hills Golf Club                       other:native   Jacksonville
      Hilaman Golf Course                          clubprophet    Tallahassee
+     IMG Academy Golf Club                        other:clubhouseonline Bradenton
      Inverness Golf & Country Club                other:eagleclubsystems Inverness
      Jacksonville Beach Golf Club                 other:eagleclubsystems Jacksonville Beach
      Jake Gaither Golf Course                     clubprophet    Tallahassee
-     Jensen Beach Golf Club                       other:golfback Jensen Beach
-     Julington Creek Golf Club                    other:golfback St. Johns
      La Cita Country Club                         other:native   Titusville
-     Lake Wales Country Club                      other:golfback Lake Wales
      Largo Golf Course                            other:webtrac  Largo
-     Legends Walk at Orange Lake Resort           other:golfback Kissimmee
      Lely Resort Golf & Country Club - Flamingo I other:native   Naples
      Lely Resort Golf & Country Club - Mustang Co other:native   Naples
      Madison Green Golf Club                      other:native   Royal Palm Beach
+     Manatee County Golf Course                   other:unclaimed-chronogolf Bradenton
      Meadowood Golf & Tennis Club                 other:buz      Fort Pierce
      Miami Lakes Golf Club at Shula's             other:native   Miami Lakes
      Miccosukee Golf & Country Club               other:native   Miami
-     Mission Resort + Club - El Campeon Course    other:golfback Howey-in-the-Hills
-     Mission Resort + Club - Las Colinas Course   other:golfback Howey-in-the-Hills
      Myakka Pines Golf Club                       other:native   Englewood
-     Palm Beach Par 3 Golf Course                 other:golfback Palm Beach
+     Ocean Palm Golf Course                       other:unclaimed-chronogolf Flagler Beach
      Palm-Aire Country Club - Cypress Course      other:linkline Pompano Beach
      Palm-Aire Country Club - Oaks Course         other:linkline Pompano Beach
      Plantation Preserve Golf Course & Club       other:webtrac  Plantation
      Pompano Beach Golf Course - Palms Course     other:webtrac  Pompano Beach
      Pompano Beach Golf Course - Pines Course     other:webtrac  Pompano Beach
      River Bend Golf Links                        other:native   Green Cove Springs
+     River Hall Country Club                      other:unclaimed-chronogolf Alva
      Rotonda Golf & Country Club - Long Marsh Gol other:native   Rotonda West
      Rotonda Golf & Country Club - Pinemoor Golf  other:native   Rotonda West
      Rotonda Golf & Country Club - The Hills Cour other:native   Rotonda West
@@ -477,7 +465,6 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Sandestin Golf and Beach Resort - The Links  other:native   Miramar Beach
      Sandhill Crane Golf Club                     other:native   Palm Beach Gardens
      Sanlan Golf Course                           other:native   Lakeland
-     Scenic Hills Country Club                    other:golfback Pensacola
      Signal Hill Golf Course                      other:native   Panama City Beach
      Silver Dollar Golf & Trap Club               other:native   Odessa
      Spessard Holland Golf Course                 other:acuity   Melbourne Beach
@@ -488,18 +475,13 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      The Golf Club of Jupiter                     other:native   Jupiter
      The Habitat Golf Course                      other:acuity   Malabar
      The Hamptons Golf & Country Club             other:native   Auburndale
-     The Legends at Orange Lake Resort            other:golfback Kissimmee
      The Links of Lake Bernadette                 other:native   Zephyrhills
      The Nest Par 3 at Sandhill Crane Golf Club   other:native   Palm Beach Gardens
      The Park West Palm                           other:whoosh   West Palm Beach
-     The Reserve at Orange Lake Resort            other:golfback Kissimmee
      Trump National Doral Miami - Blue Monster    other:booktrump Doral
      Trump National Doral Miami - Golden Palm     other:booktrump Doral
      Trump National Doral Miami - Red Tiger       other:booktrump Doral
      Trump National Doral Miami - Silver Fox      other:booktrump Doral
-     Viera East Golf Club                         other:golfback Viera
-     Wentworth Golf Club                          other:golfback Tarpon Springs
-     Windsor Parke Golf Club                      other:golfback Jacksonville
 
   NO_PLATFORM  (21) — no booking platform in the source data
      Arrowhead Golf Course                        —              Naples
@@ -524,7 +506,7 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Wellen Park Golf & Country Club              —              Venice
      Willowbrook Golf Course                      teeitup        Winter Haven
 
-  NO_BOOKING  (172) — playable, but no online booking in the source data
+  NO_BOOKING  (179) — playable, but no online booking in the source data
      Alico Family Golf                            —              Fort Myers
      American Golfers Club                        —              Fort Lauderdale
      Aquarina Country Club                        —              Melbourne Beach
@@ -544,6 +526,8 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Carrollwood Country Club                     —              Tampa
      Charlotte Harbor National Golf Club          —              North Port
      Cheeca Lodge & Spa Golf Course               —              Islamorada
+     Citrus Hills Golf & Country Club - Meadows C —              Hernando
+     Citrus Hills Golf & Country Club - Oaks Cour —              Hernando
      Clewiston Golf Course                        —              Clewiston
      Club Med Sandpiper Bay Golf Course           —              Port St. Lucie
      Coconut Creek Golf Course                    —              Coconut Creek
@@ -592,6 +576,8 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Lake Venice Golf Club                        —              Venice
      Lake Worth Beach Golf Club                   —              Lake Worth Beach
      LakeSide Country Club                        —              Inverness
+     Lakewood National Golf Club - Commander Cour —              Lakewood Ranch
+     Lakewood National Golf Club - Piper Course   —              Lakewood Ranch
      Lauderhill Golf Course                       —              Lauderhill
      Lily Lake Golf & RV Resort                   —              Frostproof
      Little Pine Golf Course (Pine Ridge Golf Clu —              Beverly Hills
@@ -652,6 +638,7 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Shady Brook Golf & RV Resort                 —              Sumterville
      Sherwood Golf Club                           —              Titusville
      Silver Lakes RV Resort & Golf Club           —              Naples
+     Skyview at Terra Vista                       —              Hernando
      Sorrento Par 3 Golf Course                   —              Nokomis
      Southern Hills Plantation Club               —              Brooksville
      Space Coast Golf Club                        —              Merritt Island
@@ -691,25 +678,96 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Turtle Creek Golf Club                       —              Rockledge
      Venice East Golf Club                        —              Venice
      Ventura Country Club                         —              Orlando
+     Viera East Golf Club                         —              Viera
      Vinoy Golf Club                              —              St. Petersburg
      Westchester Golf & Country Club              —              Boynton Beach
      Williston Highlands Golf & Country Club      —              Williston
+     Windswept Dunes Golf Club                    —              Freeport
      Woodmont Country Club                        —              Tamarac
      YMCA Par 3 - Home of First Tee Lakeland      —              Lakeland
      ZenSprings Golf Club                         —              Dunnellon
 
 ==========================================================================
-REGISTRY DRIFT (3) — in registry.json, no matching course in the state CSV
+MD  —  119 bookable courses (120 in maryland_golf_courses_booking.csv, 1 private), 66 live (55%)
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     243 rows
-  FL  Providence Golf Club                         teeitup        123 rows
-  FL  Willowbrook Golf Course                      teeitup        194 rows
+
+  NEEDS_IDS  (1) — right platform, identifiers not captured
+     Musket Ridge Golf Club                       clubprophet    Myersville
+
+  UNSUPPORTED  (17) — no adapter possible today
+     Chesapeake Bay Golf Club - Rising Sun        other:proshopteetimes Rising Sun
+     Falls Road Golf Course                       other:tenfore  Potomac
+     Geneva Farm Golf Club                        other:cps-shared Street
+     Great Hope Golf Course                       other:eagleclubsystems Westover
+     Hampshire Greens Golf Course                 other:tenfore  Ashton
+     Laytonsville Golf Course                     other:tenfore  Gaithersburg
+     Little Bennett Golf Course                   other:tenfore  Clarksburg
+     Needwood Golf Course                         other:tenfore  Derwood
+     Needwood Golf Course - Executive 9           other:tenfore  Derwood
+     Northwest Golf Course                        other:tenfore  Silver Spring
+     Northwest Golf Course - Inside 9             other:tenfore  Silver Spring
+     Poolesville Golf Course (Crossvines)         other:tenfore  Poolesville
+     Rattlewood Golf Course                       other:tenfore  Mount Airy
+     Richland Golf Club                           other:easyteegolf Middletown
+     Sligo Creek Golf Course                      other:tenfore  Silver Spring
+     Valley Springs Golf & Event Venue            other:square   Frederick
+     Walden Golf Club                             other:golfrev  Crofton
+
+  NO_PLATFORM  (2) — no booking platform in the source data
+     Fox Hollow Golf Course                       foreup         Timonium (Baltimore)
+     Rocky Point Golf Course                      foreup         Essex (Baltimore)
+
+  NO_BOOKING  (33) — playable, but no online booking in the source data
+     Assateague Greens Golf Course                —              West Ocean City
+     Beach Club Golf Links                        —              Berlin
+     Beaver Creek Country Club                    —              Hagerstown
+     Blue Heron Golf Course                       —              Stevensville
+     Chesapeake Bay Golf Club - North East        —              North East
+     Choptank River Golf & Events                 —              Cambridge
+     Cumberland Country Club                      —              Cumberland
+     Deer Run Golf Club                           —              Berlin
+     Elks Golf Club                               —              Salisbury
+     Enterprise Golf Course                       —              Bowie
+     Frederick Golf Club                          —              Frederick
+     Furnace Bay Golf Course                      —              Perryville
+     Gunpowder Golf Club                          —              Laurel
+     Henson Creek Golf Course                     —              Fort Washington
+     Hobbit's Glen Golf Club                      —              Columbia
+     Horse Bridge Golf Course                     —              Salisbury
+     McDaniel College Golf Club                   —              Westminster
+     Mellomar Golf Park                           —              Owings
+     Mitchell's Golf Complex                      —              Reisterstown
+     Nassawango Country Club                      —              Snow Hill
+     Night Hawk Golf Center                       —              Gambrills
+     Pine Shore Golf Course                       —              Berlin
+     River House at the Easton Club               —              Easton
+     Safe Harbor Great Oak Landing                —              Chestertown
+     The Greens at Hamilton Run                   —              Hagerstown
+     The Wetlands Golf Course                     —              Aberdeen
+     Upland Golf Club                             —              Denton
+     Wakefield Valley Golf Course                 —              Westminster
+     White Plains Golf Course                     —              White Plains
+     Winnfield Golf                               —              Lonaconing
+     Winter Quarters Golf Course                  —              Pocomoke City
+     Wood Creek Golf Links                        —              Delmar
+     Yingling's Golf Center                       —              Hagerstown
 
 ==========================================================================
-UNATTRIBUTED LIVE (3) — serving tee times, not traceable to a CSV course
+REGISTRY DRIFT (5) — in registry.json, no matching course in the state CSV
+==========================================================================
+  FL  Continental Country Club                     chronogolf     261 rows
+  FL  Providence Golf Club                         teeitup        262 rows
+  FL  Willowbrook Golf Course                      teeitup        197 rows
+  MD  Fox Hollow Golf Course                       foreup         247 rows
+  MD  Rocky Point Golf Course                      foreup         259 rows
+
+==========================================================================
+UNATTRIBUTED LIVE (5) — serving tee times, not traceable to a CSV course
 ==========================================================================
   continental-country-club-fl
+  fox-hollow-golf-course-md
   providence-golf-club-fl
+  rocky-point-golf-course-md
   willowbrook-golf-course-fl
 
 wrote probe-results/state-status.json
