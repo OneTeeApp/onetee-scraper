@@ -52,6 +52,9 @@ PATTERNS = {
     # not match, so no tenant/property was extracted and nothing said why.
     "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
+    # GolfBack puts the course uuid in the SPA fragment, so every row carries
+    # its own id and nothing needs pinning. The trailing slash is optional.
+    "golfback": re.compile(r"golfback\.com/#/course/([0-9a-f]{8}-[0-9a-f-]{27})"),
     # TeeQuest ships two skins. Legacy is teetimes.teequest.com/<site>; v2 is
     # bookateetime.teequest.com/course/<site>. Same operator, different
     # request shape, so the host is captured alongside the id.
@@ -425,6 +428,14 @@ EXTRA_IDS = {
     "sewailo golf club":   {"website_id": "a719a286-7fcc-4c03-d59b-08db1f359d2a", "course_ids": [1]},
     "the views golf club": {"website_id": "8c0a1716-ea2b-4c84-adff-08d8df3c1472", "course_ids": [1, 2, 3]},
 
+    # Green Hill CC (MD) is NetCaddy/ClubEssential on the club's own host, not
+    # a bespoke widget. Verified 2026-07-30 against the adapter's exact endpoint,
+    # /a_master/net/netcaddy/api/teetimes/Available: SiteID 4614, CourseId 1,
+    # 29-69 rows a day at $58-$88, and the sheet answers for exactly the day
+    # asked for. Nothing new to build - the row was simply tagged other:*.
+    "green hill country club": {"host": "www.greenhillcc.com", "site_id": 4614,
+                                "course_ids": [1]},
+
     # --- Maryland cps.golf tenants (GetAllOptions, 2026-07-30) ---------------
     #
     # Read GetAllOptions, NOT Home/Configuration. Every one of these tenants
@@ -590,7 +601,7 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
-               "teequest", "clubessential", "resortsuite"}
+               "teequest", "clubessential", "resortsuite", "golfback"}
 
 
 def slugify(name: str) -> str:
@@ -658,6 +669,8 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"club_key": g[0], "cid": g[1]}
     if platform == "supersaas":
         return {"account": g[0], "schedule": g[1]}
+    if platform == "golfback":
+        return {"course_uuid": g[0]}
     if platform == "courseco":
         # <tenant>.totaleintegrated.net/web/tee-times. The tenant is the ONLY
         # thing the gateway uses to decide whose sheet you get (it reads the
@@ -761,6 +774,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # against a control (indianpeaks) that mints a token fine
         # (probe-results/open_leads.txt section B). "needs_ids" is the honest
         # status: the platform is right, the identifiers are not known.
+        status = "needs_ids"
+    elif platform == "golfback" and not ids.get("course_uuid"):
+        # The uuid is the whole address and it is always in the booking URL, so
+        # this only fires on a row whose URL is not a golfback.com course link.
         status = "needs_ids"
     elif platform == "courseco" and not (ids.get("tenant") and ids.get("gateway")):
         # Both are required and neither is guessable. The gateway host decides
