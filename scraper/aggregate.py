@@ -37,6 +37,7 @@ from .adapters.courseco import CourseCoAdapter
 from .adapters.teequest import TeeQuestAdapter
 from .adapters.clubessential import ClubEssentialAdapter
 from .adapters.resortsuite import ResortSuiteAdapter
+from .adapters.golfback import GolfBackAdapter
 from .adapters.experimental import (
     MemberSportsAdapter, GolfNowAdapter, OtherAdapter, TotaleAdapter,
 )
@@ -62,6 +63,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "teequest": TeeQuestAdapter,          # two skins, both server-rendered HTML
     "clubessential": ClubEssentialAdapter,  # NetCaddy JSON on the club's host
     "resortsuite": ResortSuiteAdapter,      # anonymous ResortSuite SOAP
+    "golfback": GolfBackAdapter,            # one anonymous POST per course-day
 }
 
 
