@@ -39,7 +39,24 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Was 25, which this job had silently outgrown. Measured in run #213 shard
+    # 0: day 3 took 10m31s, day 4 took 13m18s, day 5 started at 10:08:22 and
+    # was cancelled 78 seconds later. Two of five dates, every hour, for as
+    # long as nobody looked — so days 5, 6 and 7 were not being scraped in ANY
+    # state. It showed in the feed exactly as you would predict: Maryland
+    # served 59 venues on day 3, 31 on day 4, then 16 and 14, while the far
+    # tier held a steady 28 from day 8 out. A tier that covers the near half of
+    # its window and abandons the rest reads, from outside, as "these courses
+    # stop taking bookings after Tuesday".
+    #
+    # The clock was never the fault, though; the redundancy was. 353 of this
+    # tier's 646 courses are TeeItUp and 330 of them have their own alias, and
+    # every date re-fetched every alias's unchanging facility metadata from
+    # scratch, because every date is its own process. The on-disk cache in
+    # scraper/adapters/teeitup.py now shares that across the date loop, which
+    # should bring a run to roughly 35 minutes. 50 is that plus room, and still
+    # short enough that a wedged run frees the hour instead of eating it.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -66,7 +83,15 @@ jobs:
           # changed the registry/scraper refreshes days 0-7 immediately.
           START=3; DAYS=5
           if [ "${{ github.event_name }}" = "push" ]; then START=0; DAYS=8; fi
-          for DATE in $(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS}); do
+          mkdir -p output
+          # Shuffled, for the same reason scrape-far.yml shuffles: a date loop
+          # that always runs in order starves the SAME dates whenever the run
+          # is short of budget, and starves them every single time. In order,
+          # this tier fed days 3 and 4 and abandoned 5, 6 and 7 permanently.
+          # Shuffled, a short run leaves a different gap each hour and the
+          # union across a few runs still covers the window — so the failure
+          # degrades into staleness instead of a wall the feed falls off.
+          for DATE in $(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS} | shuf); do
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
@@ -74,8 +99,35 @@ jobs:
               --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,totale \
               --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
+            echo "${DATE}" >> output/.dates_done
             echo "::endgroup::"
           done
+
+      # The whole reason this bug survived so long is that a cancelled step
+      # leaves nothing behind saying what it did not get to — the artifact
+      # upload below is skipped on cancellation too, so there was no trail at
+      # all. `if: always()` runs this even when the job is being torn down, so
+      # a truncated run says so in its own summary instead of looking like a
+      # completed one that simply found less.
+      - name: Which dates actually finished
+        if: always()
+        run: |
+          START=3; DAYS=5
+          [ "${{ github.event_name }}" = "push" ] && { START=0; DAYS=8; }
+          WANT=$(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS} || true)
+          DONE=$(cat output/.dates_done 2>/dev/null || true)
+          MISSED=""
+          for D in ${WANT}; do
+            echo "${DONE}" | grep -qx "${D}" || MISSED="${MISSED} ${D}"
+          done
+          {
+            echo "### mid tier shard ${{ matrix.shard }}/4"
+            echo "covered: $(echo ${DONE} | wc -w) of $(echo ${WANT} | wc -w) date(s)"
+            [ -n "${MISSED}" ] && echo ":warning: **never scraped:**${MISSED}"
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+          [ -n "${MISSED}" ] && echo "::warning::mid tier ran out of budget before${MISSED}"
+          exit 0
 
       - name: Upload raw results as artifact (7-day debugging trail)
         uses: actions/upload-artifact@v4
