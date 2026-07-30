@@ -16699,12 +16699,14 @@
    "state": "MD",
    "venue_id": "musket-ridge-golf-club",
    "source_role": "primary",
-   "platform": "other:cps-shared",
-   "booking_url": "https://sc.cps.golf/MusketRidgeWebstore/",
-   "ids": {},
-   "status": "unsupported",
+   "platform": "clubprophet",
+   "booking_url": "https://musketridgemd.cps.golf/",
+   "ids": {
+    "tenant": "musketridgemd"
+   },
+   "status": "needs_ids",
    "confidence": "high",
-   "notes": "Club site's Book A Tee Time button redirects here via musketridge.com/golf/tee-times | Club Prophet on the SHARED sc.cps.golf host with a path tenant; our clubprophet regex expects <tenant>.cps.golf and would mis-extract tenant=sc, so this ships as other:cps-shared (the Fleming Island precedent) \u2014 golfers get a working link, the scraper does not guess | Central & Northern MD region | From Brian's MD registry rev 2026-07-30 (VERIFIED) | Pro shop (301) 293-9930"
+   "notes": "Booking URL corrected: it pointed at sc.cps.golf/MusketRidgeWebstore/, which is the PRO SHOP STORE - gift cards, memberships, golf shop, junior golf, event registration - with no tee-time page anywhere in it. The club's own /golf/tee-times page links both, and an earlier pass took the wrong one. Its real tee sheet is musketridgemd.cps.golf, a standard <tenant>.cps.golf onlineresweb SPA, so this is plain clubprophet rather than a shared-host special case. Held at needs_ids for the websiteId and courseIds: this tenant's /identityapi/myconnect/token/short answers 404 to an anonymous POST even though the SPA itself calls that exact path, so its build differs from the Ruark and Ocean City tenants and needs one more look | Central & Northern MD region | From Brian's MD registry rev 2026-07-30 (VERIFIED) | Pro shop (301) 293-9930"
   },
   {
    "slug": "chesapeake-bay-golf-club-rising-sun",
@@ -16730,11 +16732,11 @@
    "venue_id": "geneva-farm-golf-club",
    "source_role": "primary",
    "platform": "other:cps-shared",
-   "booking_url": "https://e.cps.golf/GenevaFarmsV3/",
+   "booking_url": "https://www.genevafarmgolf.com/bookteetimes",
    "ids": {},
    "status": "unsupported",
    "confidence": "high",
-   "notes": "Club Prophet on the shared e.cps.golf host with a path tenant (GenevaFarmsV3), the same unhandled shape as Musket Ridge and Fleming Island (FL). Found on the club's own /bookteetimes page. Three courses now wait on this one URL shape | Site has a page at /bookteetimes titled Tee Times that could not be loaded; Chronogolf listing is an inactive stub. Likely phone-only - worth a manual look | Central & Northern MD region | From Brian's MD registry rev 2026-07-30 (UNVERIFIED) | Pro shop (410) 836-8816 | From Brian's gap audit 2026-07-30"
+   "notes": "Booking URL corrected: e.cps.golf/GenevaFarmsV3/ now returns HTTP 503 Service Unavailable, so the link we were publishing was dead. Pointing at the club's own tee-times page instead, which carries whichever CPS link is current. Recorded for the next pass: the club's site offers e.cps.golf/GenevaFarmsV3/ (tee times, 503 today) and e.cps.golf/GenevaFarmsWebStoreV3/ (shop) - and note an earlier probe of that host read a 503 error page as a 200 catch-all shell, so check the title, not just the status code | Site has a page at /bookteetimes titled Tee Times that could not be loaded; Chronogolf listing is an inactive stub. Likely phone-only - worth a manual look | Central & Northern MD region | From Brian's MD registry rev 2026-07-30 (UNVERIFIED) | Pro shop (410) 836-8816 | From Brian's gap audit 2026-07-30"
   },
   {
    "slug": "maple-run-golf-club",
