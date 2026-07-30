@@ -481,6 +481,35 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
     # same shape as meeker and snowflake above.
     "rocky-bayou-country-club": ("needs_ids", "foreup booking page 22056 "
                                  "exposes no schedule_id"),
+    # Final three kenna-404s from the completed 2026-07-29 sweep. Same test as
+    # the five above: 404 on /v2/courses, every date, while the same run's 429s
+    # were confined to other rows.
+    "water-oak-golf-club": ("needs_ids", "kenna 404s alias water-oak-golf-club "
+                            "on /v2/courses, all dates"),
+    "wildcat-crossing-golf-club": ("needs_ids", "kenna 404s alias "
+                                   "wildcat-crossing-golf-club on /v2/courses, "
+                                   "all dates"),
+    "willow-lakes-golf-club": ("needs_ids", "kenna 404s alias "
+                               "willow-lakes-golf-club on /v2/courses, all dates"),
+    # A DIFFERENT fault, kept separate because conflating them would send the
+    # next pass looking for the wrong thing. Winter Park Pines' alias RESOLVES —
+    # its 404 is on /v2/tee-times?...&facilityIds=5634, i.e. kenna knows the
+    # tenant and does not know facility 5634. So the alias is right and the
+    # pinned facility_id is wrong or stale. Unpinning would make it fetch the
+    # tenant's whole sheet, which on a shared tenant publishes a neighbour's tee
+    # times under this name (the Biltmore hazard), so it waits for the real
+    # facility id off the club's own booking call.
+    "winter-park-pines-golf-course":
+        ("needs_ids", "alias winter-park-pines-golf-club-wp18 resolves but "
+                      "kenna 404s facilityIds=5634 on /v2/tee-times, all dates "
+                      "— pinned facility id is wrong/stale, not the alias"),
+    # Maryland, surfaced by the same sweep. Chronogolf's own marketplace reports
+    # the club as claimed but exposing zero online-bookable courses — a
+    # different message from the unclaimed-listing class, so it is held here
+    # rather than retagged as unclaimed.
+    "river-run-golf-club": ("needs_ids", "chronogolf club "
+                            "river-run-golf-club-community resolves but reports "
+                            "no online-bookable courses, all dates"),
 }
 
 # adapters that can actually fetch today
