@@ -36,7 +36,9 @@ list before comparing anything.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
+import tempfile
 import threading
 import time as _time
 import zoneinfo
@@ -50,9 +52,144 @@ API_BASE = "https://phx-api-be-east-1b.kenna.io"
 # kenna's `teetime` strings are true UTC ("2026-07-25T18:40:00.000Z" = 12:40 PM
 # Denver — probe-verified). They MUST be converted to course-local time or the
 # site shows times ~6-7h in the future (which also read as bookable-past slots).
-# Facility metadata carries the IANA timeZone; fall back by state.
+# Facility metadata carries the IANA timeZone and is what we use whenever it is
+# available; this table is the fallback for when the lookup fails.
+#
+# It listed CO, AZ and VA only, so Maryland and Florida — 175 live TeeItUp
+# courses between them — fell through `.get(state, "America/Denver")` to
+# MOUNTAIN time. That is two hours early on an Eastern sheet, in the direction
+# that turns a 6:30am slot into 4:30am and pushes the day's real tee times
+# behind the API's past-cutoff. It has not fired in D1 yet (checked
+# 2026-07-30: zero MD/FL rows before 06:00), but it is one rate-limited
+# facilities call away, and the run that measured it was already taking 123 of
+# those per shard.
+#
+# FLORIDA IS NOT ONE TIMEZONE. The panhandle west of the Apalachicola River —
+# Pensacola, Destin, Freeport (Windswept Dunes is ours) — is Central. Eastern
+# is the right default for the state because that is where all but a handful of
+# Florida courses are, but it is a default over a genuinely split state, which
+# is exactly why the facility's own timeZone must stay the primary source and
+# this must stay the fallback.
 _STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix",
-             "VA": "America/New_York"}
+             "VA": "America/New_York", "MD": "America/New_York",
+             "FL": "America/New_York"}
+_TZ_DEFAULT = "America/New_York"
+
+# ---------------------------------------------------------------------------
+# Facility metadata cache, on disk, shared by every process on this runner.
+#
+# A facility's integer id, Mongo courseId, name and timeZone are its identity,
+# not its inventory: they do not change between today and next Tuesday. They
+# were nonetheless re-fetched from scratch for EVERY DATE, because each date is
+# its own `python -m scraper.aggregate` process and `_FACILITIES` lives in that
+# process's memory. 330 of the fleet's 353 TeeItUp courses have their own
+# alias, so almost none of that work is shared: ~82 redundant calls per shard
+# per date, against the single host that rate-limits the whole fleet.
+#
+# The near tier makes it much worse than that sounds. It loops three dates
+# every five minutes for five and a half hours — roughly 66 passes, each
+# spawning three fresh processes — so one shard re-asks kenna for the same
+# unchanged facility list on the order of 16,000 times per run.
+#
+# Measured 2026-07-30 in mid-tier run #213: 123 HTTP 429s in shard 0 alone,
+# errors climbing 69 -> 117 between the first date and the second while
+# captured tee times fell 6455 -> 3582. The throttle was never the binding
+# constraint; the redundancy was.
+#
+# This changes nothing about what is fetched, how it is paced, or what is
+# published. It only stops asking a second time for an answer already on disk.
+# ---------------------------------------------------------------------------
+_CACHE_DEFAULT = ".cache/kenna_facilities.json"
+# Read per call, not once at import, so a test or a diag can turn it off after
+# the module is loaded. Set KENNA_FACILITIES_CACHE="" to force every lookup to
+# go to kenna — which is what you want when the question is "what does kenna
+# say right now", and never what you want in a scrape.
+_CACHE_DISABLED = {"", "0", "off", "none"}
+
+
+def _cache_path() -> str:
+    p = os.environ.get("KENNA_FACILITIES_CACHE", _CACHE_DEFAULT)
+    return "" if p.strip().lower() in _CACHE_DISABLED else p
+# Long enough to cover a 5.5-hour near-tier run and every hourly tier in
+# between; short enough that a club renaming a course or moving timezone heals
+# by itself within a week without anyone remembering this file exists.
+_CACHE_TTL = dt.timedelta(days=7)
+_DISK: dict[str, dict] | None = None
+_DISK_LOCK = threading.Lock()
+
+
+def _disk_reset() -> None:
+    """Drop the in-memory view of the file. For tests; harmless in a scrape."""
+    global _DISK
+    with _DISK_LOCK:
+        _DISK = None
+
+
+def _disk_load(path: str) -> dict[str, dict]:
+    global _DISK
+    if _DISK is None:
+        try:
+            with open(path) as fh:
+                blob = json.load(fh)
+            _DISK = blob.get("aliases", {}) if isinstance(blob, dict) else {}
+        except (OSError, ValueError):
+            _DISK = {}                 # absent or corrupt: start clean, no fuss
+    return _DISK
+
+
+def _disk_get(alias: str) -> list | None:
+    path = _cache_path()
+    if not path:
+        return None
+    with _DISK_LOCK:
+        entry = _disk_load(path).get(alias)
+    if not isinstance(entry, dict):
+        return None
+    try:
+        age = dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(
+            entry["at"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if age > _CACHE_TTL:
+        return None
+    facilities = entry.get("facilities")
+    return facilities if isinstance(facilities, list) and facilities else None
+
+
+def _disk_put(alias: str, facilities: list) -> None:
+    """Persist one alias. Empty lists are NOT stored.
+
+    A facilities list that came back empty is indistinguishable here from one
+    that came back empty because kenna was shedding load, and writing it down
+    would turn a transient throttle into a week of "this alias has no
+    courses" — the same shape of bug as the silent-empty fallback this file
+    already carries a long comment about. Re-asking on the rare genuinely
+    empty alias is cheap; remembering a wrong answer is not.
+    """
+    if not facilities:
+        return
+    path = _cache_path()
+    if not path:
+        return
+    with _DISK_LOCK:
+        cache = _disk_load(path)
+        cache[alias] = {"at": dt.datetime.now(dt.timezone.utc).isoformat(
+                            timespec="seconds"),
+                        "facilities": facilities}
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            # Written through a temp file in the same directory and renamed, so
+            # a run cancelled mid-write (which is how every mid-tier run ended
+            # before the timeout was raised) leaves the previous cache intact
+            # rather than a truncated file every later process has to discard.
+            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
+                                       suffix=".tmp")
+            with os.fdopen(fd, "w") as fh:
+                json.dump({"v": 1, "aliases": cache}, fh)
+            os.replace(tmp, path)
+        except OSError:
+            pass                       # a read-only workspace must not fail a scrape
+
 
 # All TeeItUp courses hit one shared kenna host, so the WHOLE fleet — across
 # every parallel shard — must stay under its burst 429 limit. Within a process
@@ -98,16 +235,26 @@ class TeeItUpAdapter(Adapter):
         return {"x-be-alias": alias}
 
     def _facilities_cached(self, alias: str) -> list[dict]:
-        """discover_facilities() with a per-alias cache. Raises on failure."""
+        """discover_facilities() with a per-alias cache. Raises on failure.
+
+        Three layers, cheapest first: this process's memory, then the runner's
+        disk (see the cache notes at the top of this file), then kenna.
+        """
         with self._META_LOCK:
             if alias in self._FACILITIES:
                 return self._FACILITIES[alias]
+        stored = _disk_get(alias)
+        if stored is not None:
+            with self._META_LOCK:
+                self._FACILITIES[alias] = stored
+            return stored
         with _KENNA_SEM:
             _kenna_throttle()
             facilities = self.discover_facilities(alias)
         facilities = facilities if isinstance(facilities, list) else []
         with self._META_LOCK:
             self._FACILITIES[alias] = facilities
+        _disk_put(alias, facilities)
         return facilities
 
     def _facility_meta(self, alias: str) -> dict:
@@ -288,7 +435,13 @@ class TeeItUpAdapter(Adapter):
 
         blocks = data if isinstance(data, list) else [data]
         meta = self._facility_meta(alias)
-        state_tz = _STATE_TZ.get(course.get("state", ""), "America/Denver")
+        state = course.get("state", "")
+        state_tz = _STATE_TZ.get(state, _TZ_DEFAULT)
+        # Announced once per course, and only when it actually bites: kenna
+        # gave no timeZone AND this state has no entry, so every slot below is
+        # about to be stamped with a coast somebody guessed. A new state's
+        # first scrape is precisely when a silent default does its damage.
+        unmapped_state = bool(state) and state not in _STATE_TZ
 
         # A pinned facility_id means this registry row is ONE course inside a
         # shared alias (seven facilities share city-of-phoenix-golf-courses),
@@ -349,6 +502,12 @@ class TeeItUpAdapter(Adapter):
             holes = sorted({r.get("holes") for r in rates
                             if r.get("holes")})
             fmeta = meta.get(str(slot.get("courseId")), {})
+            if unmapped_state and not fmeta.get("tz"):
+                print(f"    {course['slug']}: kenna gave no timeZone and state "
+                      f"{state!r} is not in _STATE_TZ — stamping "
+                      f"{_TZ_DEFAULT}; add the state in "
+                      f"scraper/adapters/teeitup.py")
+                unmapped_state = False          # once per course, not per slot
             out.append(self.base_tee_time(
                 course,
                 teetime=self._to_local(slot.get("teetime", ""),
