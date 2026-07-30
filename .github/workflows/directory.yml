@@ -68,7 +68,7 @@ jobs:
       - name: Rebuild the registry so verify compares like with like
         run: |
           set -o pipefail
-          python3 build_registry.py | tee registry.log
+          python3 build_registry.py | tee /tmp/registry.log
 
       - name: Build
         run: |
@@ -93,6 +93,17 @@ jobs:
       # Only publish a directory that passed. A verify failure means the file
       # on disk contradicts the live feed, and committing it would deploy that
       # contradiction to the site.
+      # The rebuild above leaves registry.json modified in the workspace, and
+      # Commit's "git pull --rebase" refuses to run with unstaged changes. Not a
+      # guess: run 30509775412 burned all five push attempts on "cannot pull with
+      # rebase: You have unstaged changes." Verify has already read the file, so
+      # putting it back costs nothing. Same bug deploy-worker.yml had when its
+      # "sed -i" left wrangler.toml dirty — a step that dirties a tracked file
+      # breaks every later step that rebases, however unrelated it looks.
+      - name: Put registry.json back (rebuild-registry.yml owns the committed copy)
+        if: always()
+        run: git checkout -- registry.json
+
       - name: Commit
         if: steps.verify.outcome == 'success'
         run: |
