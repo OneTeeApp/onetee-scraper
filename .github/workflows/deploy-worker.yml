@@ -48,6 +48,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
+          # pipefail or the gate below is decorative: this step's status is the
+          # LAST command in the pipeline, so `wrangler deploy | tee` reports
+          # tee's 0 even when the deploy fails, `steps.deploy.outcome` is always
+          # 'success', and "Fail if deploy errored" can never fire. A broken
+          # deploy would have been reported as a green run. The `|| true` on
+          # whoami still does its job — that one genuinely may fail.
+          set -o pipefail
           cd worker
           sed -i "s/REPLACE_WITH_YOUR_D1_DATABASE_ID/${CLOUDFLARE_D1_DB_ID}/" wrangler.toml
           echo "=== wrangler whoami (token scopes) ===" | tee ../deploy.log
