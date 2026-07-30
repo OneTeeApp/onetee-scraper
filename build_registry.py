@@ -20,7 +20,14 @@ PATTERNS = {
     # palmetto-pine) — same kenna backend, same alias semantics as .com.
     "teeitup": re.compile(r"https?://([a-z0-9-]+)\.(?:book(?:-v2)?\.teeitup\.(?:com|golf)|play\.teeitup\.(?:com|golf))"),
     "clubprophet": re.compile(r"https?://([a-z0-9]+)\.cps\.golf"),
-    "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/club/([a-z0-9-]+)"),
+    # Two shapes, one capture group. The marketplace link is /club/<slug>; the
+    # embeddable widget a club pastes into its own site is
+    # /en/club/<club_id>/widget?... — same club, but the locale segment made the
+    # pattern miss and the row extracted nothing. extract_ids() already sorts
+    # digits into club_id and words into slug, so allowing an optional two-letter
+    # locale is the whole fix. Fore Sisters (MD) was the row that found this: it
+    # sat at needs_ids with the club id sitting in plain sight in its URL.
+    "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/(?:[a-z]{2}/)?club/([a-z0-9-]+)"),
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
     "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)(?:/(\d+))?(?:/(\d+))?"),
     "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinks(?:golf)?\.com"),
@@ -293,6 +300,26 @@ EXTRA_IDS = {
     "rattlewood golf course":            {"course_ids": [21175]},
     "turf valley resort - original course": {"course_ids": [8698]},
     "turf valley resort - hialeah course":  {"course_ids": [8697]},
+    # Queenstown Harbor: one Chronogolf club (7597) fronting both courses, so
+    # each venue must claim exactly one sheet or the two publish each other's
+    # tee times. Verified live 2026-07-30: River 8665 (70 times, from $155),
+    # Lakes 8664 (74 times). The club also lists LBI National and Vineyard
+    # National with online booking disabled — out-of-state courses on the same
+    # tenant, which is the second reason not to leave these rows unpinned.
+    "queenstown harbor - river course":  {"course_ids": [8665]},
+    "queenstown harbor - lakes course":  {"course_ids": [8664]},
+    # Single bookable course, pinned anyway: club 7630 also carries a "UMD Sim
+    # Room" sheet with online booking disabled today. The adapter filters on
+    # that flag, so an unpinned row works right now — until someone enables the
+    # sim room and the course starts publishing indoor bays as golf.
+    "university of maryland golf course": {"course_ids": [8701]},
+    # Fore Sisters pins its course id because the one in its own booking URL is
+    # WRONG: the widget link ends #?course_id=21287, and club 19031's live course
+    # list has exactly one entry, 23386. Asking for 21287 gets a 422, so a future
+    # pass that "helpfully" reads the fragment would break a working course.
+    # Measured 2026-07-30: 58 times on each of 07-30, 07-31, 08-02 and 08-04
+    # (08-01 empty, 08-06 onward 422 — the club books about a week out).
+    "fore sisters golf course": {"course_ids": [23386]},
 
     # Golf With Access (Troon): the bookable course uuid is NOT in the booking
     # URL — it lives in each tenant page's SSR courses:[{id,name}] array, so it
@@ -503,13 +530,14 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
         ("needs_ids", "alias winter-park-pines-golf-club-wp18 resolves but "
                       "kenna 404s facilityIds=5634 on /v2/tee-times, all dates "
                       "— pinned facility id is wrong/stale, not the alias"),
-    # Maryland, surfaced by the same sweep. Chronogolf's own marketplace reports
-    # the club as claimed but exposing zero online-bookable courses — a
-    # different message from the unclaimed-listing class, so it is held here
-    # rather than retagged as unclaimed.
-    "river-run-golf-club": ("needs_ids", "chronogolf club "
-                            "river-run-golf-club-community resolves but reports "
-                            "no online-bookable courses, all dates"),
+    # River Run (MD) used to be held here: chronogolf club 19908 resolves but its
+    # only course, 28443, has online_booking_enabled=false, re-verified live
+    # 2026-07-30. The hold is retired rather than kept because the CSV no longer
+    # sends it to chronogolf at all — Brian's 2026-07-30 revision moved it to
+    # TeeItUp alias river-run-golf-club, measured at 62-82 times/day on facility
+    # 950. A status override that names a platform the row has left is a trap:
+    # it would pin the venue at needs_ids no matter how well the new engine
+    # works, and the comment would explain a fault that no longer exists.
 }
 
 # adapters that can actually fetch today
