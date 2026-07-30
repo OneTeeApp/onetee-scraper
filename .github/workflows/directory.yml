@@ -53,6 +53,23 @@ jobs:
       # exists to stop the site contradicting the live feed had never once
       # blocked a publish. Same bug had made deploy-worker.yml permanently red
       # for the opposite reason; pipelines and exit codes are worth re-reading.
+      # Rebuild registry.json in the workspace before verifying against it. The
+      # committed copy is one workflow-run behind on a CSV push, because this job
+      # and rebuild-registry.yml both trigger on the same commit and race: this
+      # job checks out the registry built from the PREVIOUS CSV while
+      # build_directory.py reads the new one. Any CSV edit that retires a
+      # registry venue therefore fails verify's "registry venue with no card"
+      # check exactly once, then passes on the next unrelated push — a gate that
+      # cries wolf on a real change and is silent on the next one. It happened on
+      # the first push that used it (c500aeb, the Maryland revision): five courses
+      # retyped Closed were absent from the new directory and still present in the
+      # old registry. Nothing is committed here; rebuild-registry.yml still owns
+      # the file. This only makes the two sides of the comparison the same age.
+      - name: Rebuild the registry so verify compares like with like
+        run: |
+          set -o pipefail
+          python3 build_registry.py | tee registry.log
+
       - name: Build
         run: |
           set -o pipefail
