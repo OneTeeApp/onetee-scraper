@@ -424,6 +424,52 @@ EXTRA_IDS = {
     "del lago golf club":  {"website_id": "03dffe68-f3cf-4563-c22c-08ddcacdb8cb", "course_ids": [1]},
     "sewailo golf club":   {"website_id": "a719a286-7fcc-4c03-d59b-08db1f359d2a", "course_ids": [1]},
     "the views golf club": {"website_id": "8c0a1716-ea2b-4c84-adff-08d8df3c1472", "course_ids": [1, 2, 3]},
+
+    # --- Maryland cps.golf tenants (GetAllOptions, 2026-07-30) ---------------
+    #
+    # Read GetAllOptions, NOT Home/Configuration. Every one of these tenants
+    # reports websiteId 00000000-0000-0000-0000-000000000000 at
+    # /onlineresweb/Home/Configuration, and OnlineCourses answers that zero GUID
+    # with HTTP 200 and an EMPTY course list — so a tenant that sells 250 tee
+    # times a day looks like a tenant with no courses, and nothing errors.
+    # GetAllOptions/<tenant> returns the real webSiteId plus courseOptions.
+    #
+    # Ruark Golf runs FIVE courses on ONE site (websiteId 7b7ca697...), which is
+    # what Brian meant by "one portal for 5 courses". Each course keeps its own
+    # <tenant>.cps.golf booking URL because that is what a golfer should be sent
+    # to, and each was verified to serve its OWN sheet from its OWN host with
+    # this shared websiteId: lighthousesound/2=45, manowar/3=50,
+    # nutterscrossing/4=67, rumpointe/5=42, waradmiral/6=49 on 2026-07-31.
+    "glenriddle - man o' war":       {"website_id": "7b7ca697-54ee-4d4f-bc04-08dadc553eee", "course_ids": [3]},
+    "glenriddle - war admiral":      {"website_id": "7b7ca697-54ee-4d4f-bc04-08dadc553eee", "course_ids": [6]},
+    "links at lighthouse sound":     {"website_id": "7b7ca697-54ee-4d4f-bc04-08dadc553eee", "course_ids": [2]},
+    "nutters crossing golf club":    {"website_id": "7b7ca697-54ee-4d4f-bc04-08dadc553eee", "course_ids": [4]},
+    "rum pointe seaside golf links": {"website_id": "7b7ca697-54ee-4d4f-bc04-08dadc553eee", "course_ids": [5]},
+    # Ocean City Golf Club: one tenant, two courses, verified 45 and 50 times.
+    "ocean city golf club - newport bay": {"website_id": "273a2a31-c18a-460e-e8af-08dd18610ede", "course_ids": [1]},
+    "ocean city golf club - seaside":     {"website_id": "273a2a31-c18a-460e-e8af-08dd18610ede", "course_ids": [2]},
+    # Eagle's Landing left Chronogolf for its own CPS tenant; 27 times verified.
+    "eagle's landing golf course":   {"website_id": "385ada1f-3d2f-47a3-33bb-08dd0d75edeb", "course_ids": [1]},
+
+    # --- Baltimore County Golf: five schedules under one foreUp course -------
+    #
+    # `schedule_name` is the field that identifies these, and it disagrees with
+    # `course_name` on every row. course_name says "Baltimore County Golf" or
+    # "Diamond Ridge & The Woodlands"; schedule_name says which course it
+    # actually is. Reading course_name is what left this portal unresolved for
+    # two sessions, including a written conclusion that Diamond Ridge and The
+    # Woodlands could not be separated at all. They separate cleanly:
+    #   4168 Greystone   4169 Diamond Ridge   4170 Fox Hollow
+    #   4171 Rocky Point 4177 The Woodlands
+    # Each schedule id lives in its own row's booking URL. What has to be pinned
+    # is the booking class: this portal 401s for every class except 38 ("General
+    # Public"), and 400s with none at all, so an unpinned row cannot read a
+    # single tee time. Verified 2026-07-31 with real prices ($28-$48).
+    "greystone golf course":     {"booking_class": "38"},
+    "diamond ridge golf course": {"booking_class": "38"},
+    "fox hollow golf course":    {"booking_class": "38"},
+    "rocky point golf course":   {"booking_class": "38"},
+    "the woodlands golf course": {"booking_class": "38"},
 }
 
 # Courses the platform itself, when asked, said it could not serve — recorded
