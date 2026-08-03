@@ -1,0 +1,2815 @@
+From 576083043aea2e4546007a7a68d5dff7869c2ef7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 3 Aug 2026 04:59:05 +0000
+Subject: [PATCH 1/2] Bug audit: adapter data-loss guards, FL panhandle
+ timezone, worker/CI fixes
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01ULH6WdxwqVeF13RCzMDXie
+---
+ .github/workflows/co-regression.yml           |  8 +-
+ .github/workflows/co-verify-empties.yml       |  8 +-
+ .github/workflows/crosscheck-golfnow.yml      |  5 +-
+ .github/workflows/deploy-worker.yml           |  5 +-
+ .github/workflows/diag-course-pipeline.yml    |  9 +-
+ .github/workflows/diag-golfnow.yml            | 10 ++-
+ .github/workflows/directory.yml               | 21 +++--
+ .github/workflows/enrich-phones.yml           | 32 +++++--
+ .github/workflows/flap-golfnow.yml            |  8 +-
+ .github/workflows/monitor-inventory.yml       |  5 +-
+ .github/workflows/ms-scan.yml                 |  1 +
+ .github/workflows/niche-probe.yml             |  9 +-
+ .github/workflows/probe-needs-ids.yml         |  8 +-
+ .github/workflows/probe-newly-ready.yml       |  5 +-
+ .github/workflows/probe-staleness.yml         |  7 +-
+ .github/workflows/rebuild-registry.yml        |  4 +-
+ .../workflows/scrape-clubcaddie-browser.yml   | 17 ++--
+ .github/workflows/scrape-cps-browser.yml      |  6 +-
+ .github/workflows/scrape-ezlinks-browser.yml  |  6 +-
+ .github/workflows/scrape-golfnow-browser.yml  |  6 +-
+ .../workflows/scrape-supersaas-browser.yml    |  6 +-
+ .github/workflows/scrape.yml                  | 11 ++-
+ .github/workflows/state-status.yml            |  5 +-
+ .gitignore                                    |  3 +
+ build_registry.py                             |  3 +-
+ frontend/directory-cards.js                   | 27 +++++-
+ frontend/state-filter.js                      |  7 +-
+ scraper/adapters/base.py                      |  8 +-
+ scraper/adapters/chronogolf.py                | 20 ++++-
+ scraper/adapters/clubessential.py             |  6 +-
+ scraper/adapters/clubprophet.py               | 10 ++-
+ scraper/adapters/courseco.py                  |  9 ++
+ scraper/adapters/ezlinks.py                   | 18 +++-
+ scraper/adapters/resortsuite.py               |  6 +-
+ scraper/adapters/rguest.py                    |  9 ++
+ scraper/adapters/teeitup.py                   |  6 ++
+ scraper/adapters/teequest.py                  | 47 ++++++++---
+ scraper/adapters/teesnap.py                   |  5 ++
+ scraper/aggregate.py                          | 21 +++--
+ scraper/browser_clubcaddie.py                 | 31 +++++--
+ scraper/browser_cps.py                        | 14 +++-
+ scraper/browser_ezlinks.py                    | 27 ++++--
+ scraper/browser_golfnow.py                    | 82 ++++++++++--------
+ scraper/browser_teeitup.py                    | 19 ++++-
+ scraper/browser_totale.py                     |  9 +-
+ scraper/d1.py                                 | 49 ++++++++++-
+ scripts/enrich_phones.py                      |  5 ++
+ scripts/test_teeitup_adapter.py               | 14 +++-
+ worker/index.js                               | 83 ++++++++++++++++---
+ 49 files changed, 586 insertions(+), 154 deletions(-)
+
+diff --git a/.github/workflows/co-regression.yml b/.github/workflows/co-regression.yml
+index afda8b6..30da668 100644
+--- a/.github/workflows/co-regression.yml
++++ b/.github/workflows/co-regression.yml
+@@ -30,13 +30,17 @@ jobs:
+           python -m playwright install --with-deps chromium
+       - name: Run full CO regression across every fetcher
+         run: |
++          set -o pipefail
+           mkdir -p probe-results output
+           python scripts/co_regression.py 2>&1 | tee probe-results/co_regression.txt
+       - name: Commit report
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+-          git pull --rebase origin main || true
+           git add probe-results/co_regression.txt
+           git commit -m "CO regression report [skip ci]" || exit 0
+-          git push
++          for i in 1 2 3 4 5; do
++            git pull --rebase origin main && git push && exit 0
++            sleep $((i * 5))
++          done
++          echo "could not push the report after 5 attempts"; exit 1
+diff --git a/.github/workflows/co-verify-empties.yml b/.github/workflows/co-verify-empties.yml
+index 9ac5782..c4d951a 100644
+--- a/.github/workflows/co-verify-empties.yml
++++ b/.github/workflows/co-verify-empties.yml
+@@ -30,13 +30,17 @@ jobs:
+           python -m playwright install --with-deps chromium
+       - name: Multi-date confirmation of flagged CO courses
+         run: |
++          set -o pipefail
+           mkdir -p probe-results output
+           python scripts/co_verify_empties.py 2>&1 | tee probe-results/co_empties.txt
+       - name: Commit report
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+-          git pull --rebase origin main || true
+           git add probe-results/co_empties.txt
+           git commit -m "CO empties confirmation [skip ci]" || exit 0
+-          git push
++          for i in 1 2 3 4 5; do
++            git pull --rebase origin main && git push && exit 0
++            sleep $((i * 5))
++          done
++          echo "could not push the report after 5 attempts"; exit 1
+diff --git a/.github/workflows/crosscheck-golfnow.yml b/.github/workflows/crosscheck-golfnow.yml
+index 672bc6a..b0aa4c7 100644
+--- a/.github/workflows/crosscheck-golfnow.yml
++++ b/.github/workflows/crosscheck-golfnow.yml
+@@ -48,9 +48,12 @@ jobs:
+ 
+       - name: Replay
+         timeout-minutes: 9
++        env:
++          INPUT_HOST: ${{ github.event.inputs.host }}
+         run: |
++          set -o pipefail
+           python3 scripts/crosscheck_golfnow.py \
+-            --host "${{ github.event.inputs.host || 'cedaredge-golf-club-golfnow' }}" \
++            --host "${INPUT_HOST:-cedaredge-golf-club-golfnow}" \
+             2>&1 | tee crosscheck.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/deploy-worker.yml b/.github/workflows/deploy-worker.yml
+index 44e4a98..db985e7 100644
+--- a/.github/workflows/deploy-worker.yml
++++ b/.github/workflows/deploy-worker.yml
+@@ -58,7 +58,10 @@ jobs:
+           cd worker
+           sed -i "s/REPLACE_WITH_YOUR_D1_DATABASE_ID/${CLOUDFLARE_D1_DB_ID}/" wrangler.toml
+           echo "=== wrangler whoami (token scopes) ===" | tee ../deploy.log
+-          npx --yes wrangler@3 whoami 2>&1 | tee -a ../deploy.log || true
++          # whoami prints the account email and id. The repo is public, and so
++          # is this job's log — send the output ONLY to deploy.log, which the
++          # verify step below redacts before it is committed. Never tee it.
++          npx --yes wrangler@3 whoami >> ../deploy.log 2>&1 || true
+           echo "=== wrangler deploy ===" | tee -a ../deploy.log
+           # deploy; capture all output (incl. the published workers.dev URL)
+           npx --yes wrangler@3 deploy 2>&1 | tee -a ../deploy.log
+diff --git a/.github/workflows/diag-course-pipeline.yml b/.github/workflows/diag-course-pipeline.yml
+index b934885..88e8a1a 100644
+--- a/.github/workflows/diag-course-pipeline.yml
++++ b/.github/workflows/diag-course-pipeline.yml
+@@ -75,15 +75,18 @@ jobs:
+           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
++          INPUT_COURSES: ${{ github.event.inputs.courses }}
++          INPUT_DAYS: ${{ github.event.inputs.days }}
++          INPUT_PUSH: ${{ github.event.inputs.push }}
+         run: |
+           mkdir -p probe-results
+           PUSH=""
+-          if [ "${{ github.event.inputs.push || 'true' }}" = "true" ]; then
++          if [ "${INPUT_PUSH:-true}" = "true" ]; then
+             PUSH="--push"
+           fi
+           python3 scripts/diag_course_pipeline.py \
+-            --courses "${{ github.event.inputs.courses || 'trinidad-golf-course,vail-golf-club,golf-granby-ranch' }}" \
+-            --days "${{ github.event.inputs.days || '3' }}" \
++            --courses "${INPUT_COURSES:-trinidad-golf-course,vail-golf-club,golf-granby-ranch}" \
++            --days "${INPUT_DAYS:-3}" \
+             $PUSH 2>&1 | tee diag.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/diag-golfnow.yml b/.github/workflows/diag-golfnow.yml
+index a3f538e..ea78cf4 100644
+--- a/.github/workflows/diag-golfnow.yml
++++ b/.github/workflows/diag-golfnow.yml
+@@ -52,10 +52,14 @@ jobs:
+         # Step-level so a hang still reaches the commit below with partial
+         # findings, which are worth more than a cancelled job's nothing.
+         timeout-minutes: 14
++        env:
++          INPUT_SLUGS: ${{ github.event.inputs.slugs }}
++          INPUT_OFFSETS: ${{ github.event.inputs.offsets }}
+         run: |
+-          python3 scripts/diag_golfnow.py \
+-            ${{ github.event.inputs.slugs && format('--slugs {0}', github.event.inputs.slugs) || '' }} \
+-            --offsets "${{ github.event.inputs.offsets || '0,1,3' }}" \
++          EXTRA=()
++          [ -n "$INPUT_SLUGS" ] && EXTRA+=(--slugs "$INPUT_SLUGS")
++          python3 scripts/diag_golfnow.py "${EXTRA[@]}" \
++            --offsets "${INPUT_OFFSETS:-0,1,3}" \
+             2>&1 | tee golfnow-diag.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/directory.yml b/.github/workflows/directory.yml
+index 3d22219..8374406 100644
+--- a/.github/workflows/directory.yml
++++ b/.github/workflows/directory.yml
+@@ -5,10 +5,11 @@ name: Build + verify the course directory
+ #
+ # Separate from the state-status workflow on purpose. That one commits with
+ # [skip ci], which is right for a report nobody deploys — but the directory
+-# lands in worker/directory.gen.js, and a [skip ci] commit there would update
+-# the file without ever deploying it, leaving the API serving the previous
+-# directory indefinitely. This workflow commits normally so the existing
+-# worker/** trigger on deploy-worker picks the change up.
++# lands in worker/directory.gen.js, and a commit there that never deploys
++# would leave the API serving the previous directory indefinitely. Pushes made
++# with GITHUB_TOKEN never trigger other workflows (so deploy-worker's worker/**
++# push trigger cannot fire from here); this workflow therefore dispatches
++# deploy-worker.yml itself after a successful push.
+ #
+ # The verify step is the one that matters: it fails if a course we are
+ # actively selling tee times for is tagged "call the pro shop" or "members
+@@ -28,6 +29,7 @@ on:
+ 
+ permissions:
+   contents: write
++  actions: write
+ 
+ concurrency:
+   group: directory
+@@ -105,6 +107,7 @@ jobs:
+         run: git checkout -- registry.json
+ 
+       - name: Commit
++        id: commit
+         if: steps.verify.outcome == 'success'
+         run: |
+           git config user.name "github-actions[bot]"
+@@ -113,7 +116,15 @@ jobs:
+           git diff --cached --quiet && { echo "directory unchanged"; exit 0; }
+           git commit -m "Rebuild course directory from the state CSVs"
+           for i in 1 2 3 4 5; do
+-            git pull --rebase origin main && git push && exit 0
++            git pull --rebase origin main && git push \
++              && { echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; }
+             sleep $((i * 5))
+           done
+           echo "could not push the directory after 5 attempts"; exit 1
++
++      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
++        if: steps.commit.outputs.pushed == 'true'
++        env:
++          GH_TOKEN: ${{ github.token }}
++        run: |
++          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"
+diff --git a/.github/workflows/enrich-phones.yml b/.github/workflows/enrich-phones.yml
+index 6feb659..17ff0dd 100644
+--- a/.github/workflows/enrich-phones.yml
++++ b/.github/workflows/enrich-phones.yml
+@@ -45,6 +45,7 @@ on:
+ 
+ permissions:
+   contents: write
++  actions: write
+ 
+ concurrency:
+   group: enrich-phones
+@@ -72,11 +73,17 @@ jobs:
+         # with whatever it found. A job-level timeout would cancel the job
+         # outright and throw away an hour of deliberately slow crawling.
+         timeout-minutes: 90
++        env:
++          INPUT_STATES: ${{ github.event.inputs.states }}
++          INPUT_REFRESH: ${{ github.event.inputs.refresh }}
++          INPUT_DELAY: ${{ github.event.inputs.delay }}
+         run: |
+-          python3 scripts/enrich_phones.py \
+-            ${{ github.event.inputs.states && format('--states {0}', github.event.inputs.states) || '' }} \
+-            ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }} \
+-            --delay "${{ github.event.inputs.delay || '1.5' }}" \
++          set -o pipefail
++          EXTRA=()
++          [ -n "$INPUT_STATES" ] && EXTRA+=(--states "$INPUT_STATES")
++          [ "$INPUT_REFRESH" = "true" ] && EXTRA+=(--refresh)
++          python3 scripts/enrich_phones.py "${EXTRA[@]}" \
++            --delay "${INPUT_DELAY:-1.5}" \
+             2>&1 | tee phones.log
+ 
+       - name: Rebuild the directory with the numbers folded in
+@@ -102,18 +109,29 @@ jobs:
+           echo '```' >> $GITHUB_STEP_SUMMARY
+ 
+       - name: Commit
++        id: commit
+         if: always()
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+           # The Worker's bundled copy has to go with it: phones land in
+           # directory.json, and committing that alone would leave the API
+-          # serving a directory with no numbers in it. No [skip ci] for the
+-          # same reason — deploy-worker's worker/** trigger is what ships it.
++          # serving a directory with no numbers in it. GITHUB_TOKEN pushes
++          # never trigger other workflows (deploy-worker's worker/** push
++          # trigger cannot fire from here), so the step below dispatches
++          # deploy-worker.yml itself when a push actually landed.
+           git add local/phones.json directory.json worker/directory.gen.js
+           git commit -m "Directory phone numbers" || exit 0
+           for i in 1 2 3 4 5; do
+-            git pull --rebase origin main && git push && exit 0
++            git pull --rebase origin main && git push \
++              && { echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; }
+             sleep $((i * 5))
+           done
+           echo "could not push phone numbers after 5 attempts"; exit 1
++
++      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
++        if: always() && steps.commit.outputs.pushed == 'true'
++        env:
++          GH_TOKEN: ${{ github.token }}
++        run: |
++          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"
+diff --git a/.github/workflows/flap-golfnow.yml b/.github/workflows/flap-golfnow.yml
+index 4236fa9..d7dcbf1 100644
+--- a/.github/workflows/flap-golfnow.yml
++++ b/.github/workflows/flap-golfnow.yml
+@@ -52,10 +52,14 @@ jobs:
+ 
+       - name: Alternate and time
+         timeout-minutes: 14
++        env:
++          INPUT_GOOD: ${{ github.event.inputs.good }}
++          INPUT_BAD: ${{ github.event.inputs.bad }}
+         run: |
++          set -o pipefail
+           python3 scripts/flap_golfnow.py \
+-            --good "${{ github.event.inputs.good || 'cedaredge-golf-club-golfnow' }}" \
+-            --bad  "${{ github.event.inputs.bad  || 'clubcorp-at-black-bear-golf-club' }}" \
++            --good "${INPUT_GOOD:-cedaredge-golf-club-golfnow}" \
++            --bad  "${INPUT_BAD:-clubcorp-at-black-bear-golf-club}" \
+             2>&1 | tee flap.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/monitor-inventory.yml b/.github/workflows/monitor-inventory.yml
+index d35b8fa..84d708a 100644
+--- a/.github/workflows/monitor-inventory.yml
++++ b/.github/workflows/monitor-inventory.yml
+@@ -49,10 +49,13 @@ jobs:
+ 
+       - name: Sample
+         timeout-minutes: 10
++        env:
++          INPUT_STATES: ${{ github.event.inputs.states }}
+         run: |
++          set -o pipefail
+           mkdir -p probe-results
+           python3 scripts/monitor_inventory.py \
+-            --states "${{ github.event.inputs.states || 'CO,AZ' }}" \
++            --states "${INPUT_STATES:-CO,AZ}" \
+             2>&1 | tee monitor.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/ms-scan.yml b/.github/workflows/ms-scan.yml
+index 91cbf74..88462af 100644
+--- a/.github/workflows/ms-scan.yml
++++ b/.github/workflows/ms-scan.yml
+@@ -43,6 +43,7 @@ jobs:
+           MS_SCAN_LO: ${{ github.event.inputs.lo || '4000' }}
+           MS_SCAN_HI: ${{ github.event.inputs.hi || '4600' }}
+         run: |
++          set -o pipefail
+           mkdir -p probe-results
+           python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan2.txt
+           # Second band, below the one msscan.txt already covered. Meadows Golf
+diff --git a/.github/workflows/niche-probe.yml b/.github/workflows/niche-probe.yml
+index 23b9cf7..2ab0f7c 100644
+--- a/.github/workflows/niche-probe.yml
++++ b/.github/workflows/niche-probe.yml
+@@ -159,7 +159,10 @@ jobs:
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+-          git pull --rebase origin main || true
+-          git add probe-results/
++          git add probe-results/liveapi.txt probe-results/runstatus.txt
+           git commit -m "probe: verify deployed worker [skip ci]" || exit 0
+-          git push
++          for i in 1 2 3 4 5; do
++            git pull --rebase origin main && git push && exit 0
++            sleep $((i * 5))
++          done
++          echo "could not push probe results after 5 attempts"; exit 1
+diff --git a/.github/workflows/probe-needs-ids.yml b/.github/workflows/probe-needs-ids.yml
+index 78e5e4b..7a6452f 100644
+--- a/.github/workflows/probe-needs-ids.yml
++++ b/.github/workflows/probe-needs-ids.yml
+@@ -54,10 +54,14 @@ jobs:
+         # with whatever it managed to answer. A job-level cap would cancel the
+         # job and throw the partial finding away.
+         timeout-minutes: 15
++        env:
++          INPUT_PLATFORMS: ${{ github.event.inputs.platforms }}
++          INPUT_DELAY: ${{ github.event.inputs.delay }}
+         run: |
++          set -o pipefail
+           python3 scripts/probe_needs_ids.py \
+-            --platforms "${{ github.event.inputs.platforms || 'chronogolf,foreup' }}" \
+-            --delay "${{ github.event.inputs.delay || '1.0' }}" \
++            --platforms "${INPUT_PLATFORMS:-chronogolf,foreup}" \
++            --delay "${INPUT_DELAY:-1.0}" \
+             2>&1 | tee probe.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/probe-newly-ready.yml b/.github/workflows/probe-newly-ready.yml
+index e66712a..96c143d 100644
+--- a/.github/workflows/probe-newly-ready.yml
++++ b/.github/workflows/probe-newly-ready.yml
+@@ -49,10 +49,13 @@ jobs:
+         # with whatever it managed to answer. A job-level cap would cancel the
+         # job and throw the partial finding away.
+         timeout-minutes: 25
++        env:
++          INPUT_DAYS: ${{ github.event.inputs.days }}
+         run: |
++          set -o pipefail
+           mkdir -p probe-results
+           python3 scripts/probe_newly_ready.py \
+-            --days "${{ github.event.inputs.days || '1,4,9' }}" \
++            --days "${INPUT_DAYS:-1,4,9}" \
+             2>&1 | tee probe.log
+ 
+       - name: Summary
+diff --git a/.github/workflows/probe-staleness.yml b/.github/workflows/probe-staleness.yml
+index 05a7d79..3ddc287 100644
+--- a/.github/workflows/probe-staleness.yml
++++ b/.github/workflows/probe-staleness.yml
+@@ -72,14 +72,17 @@ jobs:
+           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
++          INPUT_MAX_AGE_HOURS: ${{ github.event.inputs.max_age_hours }}
++          INPUT_DEACTIVATE: ${{ github.event.inputs.deactivate }}
+         run: |
++          set -o pipefail
+           mkdir -p probe-results
+           DEACTIVATE=""
+-          if [ "${{ github.event.inputs.deactivate || 'true' }}" = "true" ]; then
++          if [ "${INPUT_DEACTIVATE:-true}" = "true" ]; then
+             DEACTIVATE="--deactivate"
+           fi
+           python3 scripts/probe_staleness.py \
+-            --max-age-hours "${{ github.event.inputs.max_age_hours || '6' }}" \
++            --max-age-hours "${INPUT_MAX_AGE_HOURS:-6}" \
+             --also "$MANUAL_ORPHANS" \
+             $DEACTIVATE \
+             2>&1 | tee probe.log
+diff --git a/.github/workflows/rebuild-registry.yml b/.github/workflows/rebuild-registry.yml
+index 48c15dd..58b13ce 100644
+--- a/.github/workflows/rebuild-registry.yml
++++ b/.github/workflows/rebuild-registry.yml
+@@ -33,7 +33,9 @@ jobs:
+         with:
+           python-version: "3.12"
+       - name: Rebuild registry.json
+-        run: python3 build_registry.py | tee registry.log
++        run: |
++          set -o pipefail
++          python3 build_registry.py | tee registry.log
+       - name: Summary
+         if: always()
+         run: |
+diff --git a/.github/workflows/scrape-clubcaddie-browser.yml b/.github/workflows/scrape-clubcaddie-browser.yml
+index b4aac73..36809bd 100644
+--- a/.github/workflows/scrape-clubcaddie-browser.yml
++++ b/.github/workflows/scrape-clubcaddie-browser.yml
+@@ -41,25 +41,30 @@ jobs:
+         run: |
+           pip install requests playwright
+           python -m playwright install --with-deps chromium
+-      - name: Scrape 3 days (one widget load per course) + push each to D1
++      - name: Scrape the tiered horizon (one widget load per course) + push each to D1
+         env:
+           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+         run: |
+-          START=$(date -u +%F)
+-          python -m scraper.browser_clubcaddie --date "${START}" --days 3 \
+-            --out-dir output || true
+           # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
+           # manual deep dispatch stretch to the full 30-day horizon. Browser
+           # scrapes are too slow to loop at the near tier's cadence, so daily
+-          # is the far-tier freshness for these platforms.
++          # is the far-tier freshness for these platforms. The horizon is
++          # computed BEFORE the scrape so the scrape itself covers it, not
++          # just the push loop.
+           DEEP=no
+           [ "$(date -u +%H)" = "10" ] && DEEP=yes
+           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+           LAST=6
+           [ "$DEEP" = "yes" ] && LAST=30
++          DAYS=$((LAST + 1))
++          # Day 0 from scraper.dates, not `date -u`: after ~5pm Mountain the
++          # UTC date is already tomorrow and a UTC "today" skips the real one.
++          START=$(python -m scraper.dates --registry registry.json --days 1 | head -1)
++          python -m scraper.browser_clubcaddie --date "${START}" --days "${DAYS}" \
++            --out-dir output || true
+           for OFFSET in $(seq 0 $LAST); do
+-            DATE=$(date -u -d "+${OFFSET} days" +%F)
++            DATE=$(date -d "$START +${OFFSET} days" +%F)
+             python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
+           done
+diff --git a/.github/workflows/scrape-cps-browser.yml b/.github/workflows/scrape-cps-browser.yml
+index 3ae7960..82fb5bb 100644
+--- a/.github/workflows/scrape-cps-browser.yml
++++ b/.github/workflows/scrape-cps-browser.yml
+@@ -59,8 +59,10 @@ jobs:
+           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+           LAST=6
+           [ "$DEEP" = "yes" ] && LAST=30
+-          for OFFSET in $(seq 0 $LAST); do
+-            DATE=$(date -u -d "+${OFFSET} days" +%F)
++          # Dates from scraper.dates (union of local todays across covered
++          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
++          # already tomorrow and a UTC "today" skips the real one.
++          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+             echo "::group::cps browser ${DATE}"
+             python -m scraper.browser_cps --date "${DATE}" \
+               --out "output/cps_${DATE}.json" || true
+diff --git a/.github/workflows/scrape-ezlinks-browser.yml b/.github/workflows/scrape-ezlinks-browser.yml
+index 0d77811..fb0641b 100644
+--- a/.github/workflows/scrape-ezlinks-browser.yml
++++ b/.github/workflows/scrape-ezlinks-browser.yml
+@@ -60,8 +60,10 @@ jobs:
+           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+           LAST=6
+           [ "$DEEP" = "yes" ] && LAST=30
+-          for OFFSET in $(seq 0 $LAST); do
+-            DATE=$(date -u -d "+${OFFSET} days" +%F)
++          # Dates from scraper.dates (union of local todays across covered
++          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
++          # already tomorrow and a UTC "today" skips the real one.
++          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+             echo "::group::ezlinks browser ${DATE}"
+             python -m scraper.browser_ezlinks --date "${DATE}" \
+               --out "output/ez_${DATE}.json" || true
+diff --git a/.github/workflows/scrape-golfnow-browser.yml b/.github/workflows/scrape-golfnow-browser.yml
+index b90341b..cf77570 100644
+--- a/.github/workflows/scrape-golfnow-browser.yml
++++ b/.github/workflows/scrape-golfnow-browser.yml
+@@ -59,8 +59,10 @@ jobs:
+           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+           LAST=6
+           [ "$DEEP" = "yes" ] && LAST=30
+-          for OFFSET in $(seq 0 $LAST); do
+-            DATE=$(date -u -d "+${OFFSET} days" +%F)
++          # Dates from scraper.dates (union of local todays across covered
++          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
++          # already tomorrow and a UTC "today" skips the real one.
++          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+             echo "::group::golfnow browser ${DATE}"
+             python -m scraper.browser_golfnow --date "${DATE}" \
+               --out "output/gn_${DATE}.json" || true
+diff --git a/.github/workflows/scrape-supersaas-browser.yml b/.github/workflows/scrape-supersaas-browser.yml
+index d44cc3c..247860f 100644
+--- a/.github/workflows/scrape-supersaas-browser.yml
++++ b/.github/workflows/scrape-supersaas-browser.yml
+@@ -56,8 +56,10 @@ jobs:
+           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+           LAST=6
+           [ "$DEEP" = "yes" ] && LAST=30
+-          for OFFSET in $(seq 0 $LAST); do
+-            DATE=$(date -u -d "+${OFFSET} days" +%F)
++          # Dates from scraper.dates (union of local todays across covered
++          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
++          # already tomorrow and a UTC "today" skips the real one.
++          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+             OUT="output/ss_${DATE}.json"
+             python -m scraper.browser_supersaas --date "${DATE}" --out "${OUT}" || true
+             python -m scraper.d1 push --data "${OUT}" || true
+diff --git a/.github/workflows/scrape.yml b/.github/workflows/scrape.yml
+index fea0eb8..208f502 100644
+--- a/.github/workflows/scrape.yml
++++ b/.github/workflows/scrape.yml
+@@ -94,12 +94,17 @@ jobs:
+           for DATE in $(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS} | shuf); do
+             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
+             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
++            # A date only counts as done if BOTH the aggregate and the push
++            # succeeded — the `|| OK=no` keeps a failed date from killing the
++            # loop (same semantics `|| true` had) without letting it claim
++            # coverage it never delivered.
++            OK=yes
+             python -m scraper.aggregate --date "${DATE}" --workers 10 \
+               --shard "${{ matrix.shard }}/4" \
+               --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,totale \
+-              --out "${OUT}" || true
+-            python -m scraper.d1 push --data "${OUT}" || true
+-            echo "${DATE}" >> output/.dates_done
++              --out "${OUT}" || OK=no
++            python -m scraper.d1 push --data "${OUT}" || OK=no
++            [ "$OK" = "yes" ] && echo "${DATE}" >> output/.dates_done
+             echo "::endgroup::"
+           done
+ 
+diff --git a/.github/workflows/state-status.yml b/.github/workflows/state-status.yml
+index 9f815d1..e0d1c3a 100644
+--- a/.github/workflows/state-status.yml
++++ b/.github/workflows/state-status.yml
+@@ -57,6 +57,7 @@ jobs:
+           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+         run: |
++          set -o pipefail
+           python scripts/state_status.py --d1 \
+             --json probe-results/state-status.json \
+             2>&1 | tee probe-results/state-status.txt
+@@ -89,7 +90,9 @@ jobs:
+ 
+       - name: Fail on regression
+         if: always()
++        env:
++          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
+         run: |
+           python scripts/state_regression.py \
+             probe-results/.previous.json probe-results/state-status.json \
+-            --tolerance "${{ github.event.inputs.tolerance || 3 }}"
++            --tolerance "${INPUT_TOLERANCE:-3}"
+diff --git a/.gitignore b/.gitignore
+index 4515999..e4c620a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -10,3 +10,6 @@ demo/index.html
+ # itself tracked.
+ *.env
+ !*.env.example
++
++# Adapter facilities disk cache (scraper/adapters/teeitup.py) — never commit
++.cache/
+diff --git a/build_registry.py b/build_registry.py
+index 3491e1b..c29a68d 100644
+--- a/build_registry.py
++++ b/build_registry.py
+@@ -413,7 +413,8 @@ EXTRA_IDS = {
+     "green valley ranch golf club":{"website_id": "e6b92812-d6c4-4f86-7eea-08d9fadf154d", "course_ids": [1, 2, 3, 4]},
+     "haymaker golf course":        {"website_id": "b74c91b6-8f7d-4db2-3fd0-08d9f56b5de1", "course_ids": [1, 2, 4]},
+     "indian tree golf course":     {"website_id": "e6d9cd59-8d46-4334-8601-08dad3012d25", "course_ids": [1]},
+-    "mariana butte golf course":   {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "course_ids": [3]},
++    # (mariana butte is pinned once, above with the discover3 batch — a second
++    #  copy here once shadowed it as a duplicate dict key)
+     "red hawk ridge golf course":  {"website_id": "1ca33515-0bb5-4f13-3ebb-08d9d9c521b3", "course_ids": [1, 2]},
+     "the olde course at loveland": {"website_id": "e1be30d2-b87c-40ec-44dd-08dbf84ad30b", "course_ids": [2]},
+     # The Arizona Biltmore's two rows share one Chronogolf club (18077), whose
+diff --git a/frontend/directory-cards.js b/frontend/directory-cards.js
+index 1547686..f55b113 100644
+--- a/frontend/directory-cards.js
++++ b/frontend/directory-cards.js
+@@ -142,9 +142,15 @@
+     inflight = fetch(API_BASE + "/api/directory")
+       .then(function (r) { return r.json(); })
+       .then(function (d) { cache = (d && d.courses) || []; return cache; })
+-      .catch(function () { cache = []; return cache; });   // stay silent: the
+-    return inflight;                                       // live list is fine
+-  }                                                        // without us
++      .catch(function () {
++        // Stay silent (the live list is fine without us) but do NOT cache
++        // the failure: caching [] here meant one blip on first paint hid the
++        // directory for the whole session. Next render() retries.
++        inflight = null;
++        return [];
++      });
++    return inflight;
++  }
+ 
+   function norm(s) {
+     return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+@@ -212,9 +218,22 @@
+       var q = (opts.query || "").toLowerCase();
+       var seen = shownKeys(opts.teeTimes);
+ 
++      // Directory cities can be qualified — "Laveen (Phoenix)",
++      // "Cornville/Cottonwood" — while the tee-time feed says "Phoenix".
++      // Exact equality excluded those venues from precisely the city views
++      // they belong to; match any of the qualified segments too.
++      function cityMatches(raw, want) {
++        var s = String(raw || "").toLowerCase();
++        if (s === want) return true;
++        var inParens = s.match(/\(([^)]+)\)/);
++        if (inParens && inParens[1].trim() === want) return true;
++        return s.split("/").some(function (part) {
++          return part.replace(/\([^)]*\)/g, "").trim() === want;
++        });
++      }
+       var rest = all.filter(function (c) {
+         if (st && c.state !== st) return false;
+-        if (city && String(c.city || "").toLowerCase() !== city) return false;
++        if (city && !cityMatches(c.city, city)) return false;
+         if (q && String(c.name || "").toLowerCase().indexOf(q) === -1) return false;
+         if (seen["id:" + c.venue_id]) return false;
+         if (seen["nm:" + c.state + norm(c.name)]) return false;
+diff --git a/frontend/state-filter.js b/frontend/state-filter.js
+index b06fcb6..1834289 100644
+--- a/frontend/state-filter.js
++++ b/frontend/state-filter.js
+@@ -83,11 +83,16 @@ function stateName(code) {
+ function fillStateOptions(rows, selectEl) {
+   const present = Array.from(new Set(rows.map(stateOf).filter(Boolean))).sort();
+   const keep = selectEl.value;
++  // The user's selection stays in the list even when the latest fetch has no
++  // rows for it (empty day, truncated response). Silently falling back to
++  // "All states" rendered every state's results under a filter the golfer
++  // believed was still applied — the AZ/CO-leak symptom class.
++  if (keep && present.indexOf(keep) === -1) present.push(keep) && present.sort();
+   selectEl.innerHTML = '<option value="">All states</option>' +
+     present.map(function (c) {
+       return '<option value="' + c + '">' + stateName(c) + '</option>';
+     }).join('');
+-  if (keep && present.indexOf(keep) !== -1) selectEl.value = keep;
++  if (keep) selectEl.value = keep;
+ }
+ 
+ /* ===========================================================================
+diff --git a/scraper/adapters/base.py b/scraper/adapters/base.py
+index e33897c..52de020 100644
+--- a/scraper/adapters/base.py
++++ b/scraper/adapters/base.py
+@@ -74,7 +74,13 @@ class Adapter(abc.ABC):
+                     # short backoff w/ jitter; respect Retry-After but cap it so
+                     # one slow host can't blow the workflow time budget
+                     ra = getattr(getattr(e, "response", None), "headers", {})
+-                    wait = min(float(ra.get("Retry-After", 0)), 5) if ra else 0
++                    try:
++                        # RFC 7231 also allows an HTTP-date here; float() on
++                        # that raised OUT of the except block and turned a
++                        # retryable 429 into a hard per-course failure.
++                        wait = min(float(ra.get("Retry-After", 0)), 5) if ra else 0
++                    except (TypeError, ValueError):
++                        wait = 0
+                     time.sleep(max(wait, (1.5 ** attempt) + random.uniform(0, 0.5)))
+         raise last_exc  # exhausted retries
+ 
+diff --git a/scraper/adapters/chronogolf.py b/scraper/adapters/chronogolf.py
+index 9479c0d..dd228fd 100644
+--- a/scraper/adapters/chronogolf.py
++++ b/scraper/adapters/chronogolf.py
+@@ -89,6 +89,8 @@ class ChronogolfAdapter(Adapter):
+             # sizes 4 -> 1: a slot's true remaining seats = the largest party
+             # that still fits. Replaces the old hardcoded "4" guess.
+             by_slot: dict = {}
++            first_err: Exception | None = None
++            failed_sizes = 0
+             for n in (4, 3, 2, 1):
+                 params = [("date", date.isoformat()), ("course_id", cid)]
+                 params += [("affiliation_type_ids[]", aff)] * n
+@@ -97,8 +99,10 @@ class ChronogolfAdapter(Adapter):
+                     slots = self.get_json(
+                         f"{BASE}/marketplace/clubs/{disc['club_id']}/teetimes",
+                         params=params)
+-                except Exception:  # noqa: BLE001 — one size failing shouldn't
+-                    slots = []     # kill the whole course
++                except Exception as exc:  # noqa: BLE001 — one size failing
++                    slots = []            # shouldn't kill the whole course
++                    failed_sizes += 1
++                    first_err = first_err or exc
+                 for slot in slots or []:
+                     if slot.get("out_of_capacity"):
+                         continue
+@@ -106,12 +110,24 @@ class ChronogolfAdapter(Adapter):
+                     e = by_slot.setdefault(sid, {"slot": slot, "spots": n})
+                     e["spots"] = max(e["spots"], n)
+ 
++            # ...but ALL FOUR sizes failing is not "empty", it is "unknown".
++            # The blanket swallow used to turn a teetimes endpoint that was
++            # down (while discovery still answered) into a clean [] — the
++            # course landed in courses_empty and sync deactivated its whole
++            # day. Unknown must raise so the error guard shields the rows.
++            if failed_sizes == 4:
++                raise RuntimeError(
++                    f"{course['slug']}: teetimes endpoint failed at every "
++                    f"party size for course_id {cid}") from first_err
++
+             cname = disc["course_names"].get(cid, course["name"])
+             for e in by_slot.values():
+                 slot = e["slot"]
+                 fees = [f.get("green_fee") for f in slot.get("green_fees", [])
+                         if isinstance(f.get("green_fee"), (int, float))]
+                 start = slot.get("start_time", "")
++                if not start:
++                    continue    # no start time -> a malformed "...T:00" row
+                 out.append(self.base_tee_time(
+                     course,
+                     teetime=f"{slot.get('date', date.isoformat())}T{start}"
+diff --git a/scraper/adapters/clubessential.py b/scraper/adapters/clubessential.py
+index 1591347..8419406 100644
+--- a/scraper/adapters/clubessential.py
++++ b/scraper/adapters/clubessential.py
+@@ -100,7 +100,11 @@ class ClubEssentialAdapter(Adapter):
+             holes = [int(holes_val)] if isinstance(holes_val, int) else [18]
+ 
+             out.append(TeeTime(
+-                course_slug=course["slug"], course_name=course["name"],
++                course_slug=course["slug"],
++                # display_name wins, matching base_tee_time(): writing
++                # the raw name here made every scrape INSERT rows that
++                # migrate() then renamed, flapping the card name.
++                course_name=course.get("display_name") or course["name"],
+                 city=course.get("city", ""), platform=self.platform,
+                 teetime=start[:19],
+                 course_label=str(labels.get(str(cid), "")) if multi else "",
+diff --git a/scraper/adapters/clubprophet.py b/scraper/adapters/clubprophet.py
+index 6b3d69c..ceba5ca 100644
+--- a/scraper/adapters/clubprophet.py
++++ b/scraper/adapters/clubprophet.py
+@@ -205,8 +205,16 @@ class ClubProphetAdapter(Adapter):
+         if not course_ids:
+             raise RuntimeError(f"{course['slug']}: could not resolve Club Prophet "
+                                "courseIds (OnlineCourses discovery failed)")
++        if not website_id:
++            # Querying TeeTimes with the zero guid answers 200-with-empty (the
++            # discovery docstring above measured it), so falling through here
++            # used to turn a failed discovery into a clean empty day — which
++            # sync then deactivated. Unknown must raise.
++            raise RuntimeError(f"{course['slug']}: could not resolve Club "
++                               "Prophet websiteId (pin ids.website_id or fix "
++                               "GetAllOptions discovery)")
+ 
+-        headers = self._headers(token, website_id or _ZERO_GUID, base)
++        headers = self._headers(token, website_id, base)
+ 
+         # Register a client-generated transaction id, then query the tee sheet.
+         txid = str(uuid.uuid4())
+diff --git a/scraper/adapters/courseco.py b/scraper/adapters/courseco.py
+index f7d07eb..992f93d 100644
+--- a/scraper/adapters/courseco.py
++++ b/scraper/adapters/courseco.py
+@@ -205,6 +205,15 @@ class CourseCoAdapter(Adapter):
+             payload = self._search(tenant, gateway, "", date)
+             hit = [c for c in (payload.get("Courses") or [])
+                    if str(c.get("CourseValue") or "") not in ("", ANY_COURSE)]
++            if not hit:
++                # No Courses array is "unknown", not "no courses": a 200 with
++                # a changed/garbled shape used to be cached for the whole run
++                # and every venue on the tenant returned a clean empty day —
++                # which sync then deactivated. Unknown must raise, and an
++                # empty answer must never be remembered.
++                raise RuntimeError(
++                    f"courseco: discovery returned no courses for {tenant} — "
++                    "refusing to publish an empty day off it")
+             with _LOCK:
+                 _COURSES[tenant] = hit
+         return [(str(c["CourseValue"]), str(c.get("CourseDisplay") or ""))
+diff --git a/scraper/adapters/ezlinks.py b/scraper/adapters/ezlinks.py
+index fe9cf88..059ce2d 100644
+--- a/scraper/adapters/ezlinks.py
++++ b/scraper/adapters/ezlinks.py
+@@ -30,6 +30,16 @@ _CACHE: dict[tuple[str, str], list[dict]] = {}
+ _LOCK = threading.Lock()
+ 
+ 
++def _ampm(hms, fallback: str) -> str:
++    """'19:30:00' -> '7:30 PM'; anything unparseable -> the fallback."""
++    m = re.match(r"^(\d{1,2}):(\d{2})", str(hms or "").strip())
++    if not m:
++        return fallback
++    h = int(m.group(1))
++    suffix = "PM" if h >= 12 else "AM"
++    return f"{h % 12 or 12}:{m.group(2)} {suffix}"
++
++
+ def _norm(name: str) -> str:
+     """Normalize a course name to its distinctive tokens for matching."""
+     n = name.lower()
+@@ -61,9 +71,13 @@ class EZLinksAdapter(Adapter):
+         if not ids:
+             raise RuntimeError(f"EZLinks {portal}: no course ids from init "
+                                "(Cloudflare challenge or empty portal)")
++        # Ask for the portal's OWN operating window (init publishes it) rather
++        # than a hardcoded 5AM-7PM, which silently dropped twilight slots on
++        # portals that sell past 7 PM.
+         body = {"p01": ids, "p02": date.strftime("%m/%d/%Y"),
+-                "p03": "5:00 AM", "p04": "7:00 PM", "p05": 0, "p06": 2,
+-                "p07": False}
++                "p03": _ampm(init.get("StartTime"), "5:00 AM"),
++                "p04": _ampm(init.get("EndTime"), "7:00 PM"),
++                "p05": 0, "p06": 2, "p07": False}
+         resp = self.post_json(f"{base}/api/search/search", json=body, headers=h)
+         slots = self.raw_to_slots(resp.get("r06") or [])
+         with _LOCK:
+diff --git a/scraper/adapters/resortsuite.py b/scraper/adapters/resortsuite.py
+index db1e3dd..0e98891 100644
+--- a/scraper/adapters/resortsuite.py
++++ b/scraper/adapters/resortsuite.py
+@@ -152,7 +152,11 @@ class ResortSuiteAdapter(Adapter):
+                     holes = 9
+ 
+             out.append(TeeTime(
+-                course_slug=course["slug"], course_name=course["name"],
++                course_slug=course["slug"],
++                # display_name wins, matching base_tee_time(): writing
++                # the raw name here made every scrape INSERT rows that
++                # migrate() then renamed, flapping the card name.
++                course_name=course.get("display_name") or course["name"],
+                 city=course.get("city", ""), platform=self.platform,
+                 teetime=f"{day}T{hh}:{mm}:00", course_label="",
+                 state=course.get("state", ""),
+diff --git a/scraper/adapters/rguest.py b/scraper/adapters/rguest.py
+index fc412bb..54c6c2e 100644
+--- a/scraper/adapters/rguest.py
++++ b/scraper/adapters/rguest.py
+@@ -180,6 +180,15 @@ class RGuestAdapter(Adapter):
+             params={"appName": "golf"})
+         courses = [c for c in ((data or {}).get("availableCourses") or [])
+                    if c.get("id") is not None]
++        if not courses:
++            # "Unknown" is not "no courses". A transient empty/garbled 200
++            # used to be cached for the run, after which every un-pinned venue
++            # on the property returned a clean empty day — which sync then
++            # deactivated. Unknown must raise, and an empty answer must never
++            # be remembered.
++            raise RuntimeError(
++                f"rguest: getAvailableCourses returned nothing for "
++                f"{tenant}/{prop} — refusing to publish an empty day off it")
+         with _LOCK:
+             _COURSES[key] = courses
+         return courses
+diff --git a/scraper/adapters/teeitup.py b/scraper/adapters/teeitup.py
+index 33d03a8..91bcfa8 100644
+--- a/scraper/adapters/teeitup.py
++++ b/scraper/adapters/teeitup.py
+@@ -45,6 +45,7 @@ import zoneinfo
+ from typing import Any
+ 
+ from .base import Adapter
++from ..d1 import FL_CENTRAL_CITIES
+ from ..models import TeeTime
+ 
+ API_BASE = "https://phx-api-be-east-1b.kenna.io"
+@@ -437,6 +438,11 @@ class TeeItUpAdapter(Adapter):
+         meta = self._facility_meta(alias)
+         state = course.get("state", "")
+         state_tz = _STATE_TZ.get(state, _TZ_DEFAULT)
++        # Panhandle Florida is Central, not Eastern; when kenna omits the
++        # facility timeZone the state-level fallback would stamp those slots
++        # an hour late. City carve-out shared with scraper/d1.py.
++        if state == "FL" and course.get("city") in FL_CENTRAL_CITIES:
++            state_tz = "America/Chicago"
+         # Announced once per course, and only when it actually bites: kenna
+         # gave no timeZone AND this state has no entry, so every slot below is
+         # about to be stamped with a coast somebody guessed. A new state's
+diff --git a/scraper/adapters/teequest.py b/scraper/adapters/teequest.py
+index c98e7b7..057b185 100644
+--- a/scraper/adapters/teequest.py
++++ b/scraper/adapters/teequest.py
+@@ -114,6 +114,11 @@ class TeeQuestAdapter(Adapter):
+             raise RuntimeError(f"{course['slug']}: no usable teequest course tag "
+                                f"(rejected {rejected})")
+ 
++        # Label when MORE THAN ONE TAG IS FETCHED — not "when more than one is
++        # pinned". An unpinned multi-course site fetches every offered tag, and
++        # the old pinned-count test left all of them labelled "", collapsing
++        # same-time slots from different courses onto one D1 key.
++        multi = len(tags) > 1
+         out: list[TeeTime] = []
+         for tag in tags:
+             body = {
+@@ -126,15 +131,16 @@ class TeeQuestAdapter(Adapter):
+             r = self.session.post(url, data=body, timeout=TIMEOUT)
+             r.raise_for_status()
+             label = offered.get(tag, "")
+-            out.extend(self._parse_legacy(r.text, course, date, tag, label, url))
++            out.extend(self._parse_legacy(r.text, course, date, tag, label, url,
++                                          multi))
+         return out
+ 
+     def _parse_legacy(self, html: str, course: dict, date: dt.date,
+-                      tag: str, label: str, url: str) -> list[TeeTime]:
++                      tag: str, label: str, url: str,
++                      multi: bool) -> list[TeeTime]:
+         page = _soup(html)
+         # Single-course sites print their one course name in the heading; do
+         # not stamp a label there or every slot gets a redundant sub-course.
+-        multi = len(course["ids"].get("course_tags") or []) > 1
+         out: list[TeeTime] = []
+         for node in page.select(".tee-time"):
+             tnode = node.select_one(".time-container")
+@@ -165,7 +171,11 @@ class TeeQuestAdapter(Adapter):
+             holes = [9] if re.search(r"\b9 holes?\b", text, re.I) else [18]
+ 
+             out.append(TeeTime(
+-                course_slug=course["slug"], course_name=course["name"],
++                course_slug=course["slug"],
++                # display_name wins, matching base_tee_time(): writing
++                # the raw name here made every scrape INSERT rows that
++                # migrate() then renamed, flapping the card name.
++                course_name=course.get("display_name") or course["name"],
+                 city=course.get("city", ""), platform=self.platform,
+                 teetime=teetime,
+                 course_label=label if multi else "",
+@@ -186,8 +196,16 @@ class TeeQuestAdapter(Adapter):
+         shell = self.session.get(home, timeout=TIMEOUT)
+         shell.raise_for_status()
+         page = _soup(shell.text)
+-        offered = {i.get("value") for i in page.find_all("input", {"name": "selectedCourse"})
+-                   if i.get("value")}
++        # value -> visible course name, read off the radio's own <label> so a
++        # multi-course sheet can label its slots (see _parse_v2).
++        offered: dict[str, str] = {}
++        for i in page.find_all("input", {"name": "selectedCourse"}):
++            v = i.get("value")
++            if not v:
++                continue
++            holder = i.find_parent("label") or i.find_next_sibling("label")
++            name = holder.get_text(" ", strip=True) if holder else ""
++            offered[v] = name or v
+         pinned = course["ids"].get("course_tags")
+         # A site with a single course renders no radio group at all; fall back
+         # to the canonical "<site>-1" only in that case.
+@@ -197,12 +215,17 @@ class TeeQuestAdapter(Adapter):
+         if not tags:
+             raise RuntimeError(f"{course['slug']}: no usable teequest course tag")
+ 
++        # Same rule as legacy: label whenever more than one tag is fetched.
++        # The old code hardcoded course_label="" even while iterating several
++        # tags, so two courses' 8:00 slots shared one D1 key and one name.
++        multi = len(tags) > 1
+         out: list[TeeTime] = []
+         for tag in tags:
+             html = self._v2_search(tag, date, players=1)
+             if _SINGLE_BLOCKED_RE.search(html):
+                 html = self._v2_search(tag, date, players=2)
+-            out.extend(self._parse_v2(html, course, date, tag, home))
++            label = offered.get(tag, tag) if multi else ""
++            out.extend(self._parse_v2(html, course, date, tag, home, label))
+         return out
+ 
+     def _v2_search(self, tag: str, date: dt.date, players: int) -> str:
+@@ -214,7 +237,7 @@ class TeeQuestAdapter(Adapter):
+         return r.text
+ 
+     def _parse_v2(self, html: str, course: dict, date: dt.date,
+-                  tag: str, url: str) -> list[TeeTime]:
++                  tag: str, url: str, label: str = "") -> list[TeeTime]:
+         page = _soup(html)
+         out: list[TeeTime] = []
+         for node in page.select(".tee-time"):
+@@ -239,9 +262,13 @@ class TeeQuestAdapter(Adapter):
+             holes = [9] if re.search(r"\b9 holes?\b", text, re.I) else [18]
+ 
+             out.append(TeeTime(
+-                course_slug=course["slug"], course_name=course["name"],
++                course_slug=course["slug"],
++                # display_name wins, matching base_tee_time(): writing
++                # the raw name here made every scrape INSERT rows that
++                # migrate() then renamed, flapping the card name.
++                course_name=course.get("display_name") or course["name"],
+                 city=course.get("city", ""), platform=self.platform,
+-                teetime=teetime, course_label="",
++                teetime=teetime, course_label=label,
+                 state=course.get("state", ""),
+                 venue_id=course.get("venue_id", course["slug"]),
+                 source_role=course.get("source_role", "primary"),
+diff --git a/scraper/adapters/teesnap.py b/scraper/adapters/teesnap.py
+index 9befba3..160187b 100644
+--- a/scraper/adapters/teesnap.py
++++ b/scraper/adapters/teesnap.py
+@@ -206,6 +206,11 @@ class TeesnapAdapter(Adapter):
+             # ("Be right back.") for ids that aren't really courses, and for
+             # genuinely broken sheets; the other ids on the same tenant keep
+             # working. Collect and only raise if EVERY id failed.
++            # KNOWN TENSION: on a partial failure the failed sheet's existing
++            # D1 rows are deactivated by sync (the venue counts as scraped).
++            # Tolerating that is deliberate and covered by
++            # scripts/test_teesnap_adapter.py; the real fix would be
++            # label-granular error records in the doc format.
+             try:
+                 data = self.get_json(
+                     f"https://{sub}.teesnap.net/customer-api/teetimes-day",
+diff --git a/scraper/aggregate.py b/scraper/aggregate.py
+index b412d37..a856e21 100644
+--- a/scraper/aggregate.py
++++ b/scraper/aggregate.py
+@@ -18,10 +18,11 @@ import json
+ import logging
+ import pathlib
+ import sys
++import zoneinfo
+ 
+ from .models import FetchResult
+ from .sharding import apply_shard, set_env_shard_count
+-from .adapters.base import Adapter, make_session
++from .adapters.base import Adapter
+ from .adapters.foreup import ForeUpAdapter
+ from .adapters.teeitup import TeeItUpAdapter
+ from .adapters.chronogolf import ChronogolfAdapter
+@@ -164,7 +165,13 @@ def run(date: dt.date, registry_path: str, out_path: str,
+ 
+ def main(argv: list[str] | None = None) -> int:
+     p = argparse.ArgumentParser(description="Aggregate golf tee times")
+-    p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=2)).isoformat())
++    # Default day: LOCAL today+2, not the runner's (UTC) today — from ~5pm
++    # Mountain onward `dt.date.today()` on a CI runner is already tomorrow,
++    # the exact bug scraper/dates.py documents. Workflows pass --date
++    # explicitly via scraper.dates; this default only protects ad-hoc runs.
++    p.add_argument("--date", default=(
++        dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).date()
++        + dt.timedelta(days=2)).isoformat())
+     p.add_argument("--registry", default="registry.json")
+     p.add_argument("--out", default="output/tee_times.json")
+     p.add_argument("--platforms", help="comma-separated platform filter")
+@@ -179,11 +186,15 @@ def main(argv: list[str] | None = None) -> int:
+ 
+     logging.basicConfig(level=logging.INFO if not a.verbose else logging.DEBUG,
+                         format="%(message)s", stream=sys.stderr)
++    # Whitespace-strip every comma list the way --states always was: a value
++    # like --platforms "foreup, teeitup" silently matched nothing for the
++    # second entry.
++    csv = lambda v: {s.strip() for s in v.split(",") if s.strip()} or None  # noqa: E731
+     run(dt.date.fromisoformat(a.date), a.registry, a.out,
+-        set(a.platforms.split(",")) if a.platforms else None,
+-        set(a.courses.split(",")) if a.courses else None,
++        csv(a.platforms) if a.platforms else None,
++        csv(a.courses) if a.courses else None,
+         a.include_raw, a.workers,
+-        set(a.exclude.split(",")) if a.exclude else None,
++        csv(a.exclude) if a.exclude else None,
+         a.shard,
+         {s.strip().upper() for s in a.states.split(",")} if a.states else None)
+     return 0
+diff --git a/scraper/browser_clubcaddie.py b/scraper/browser_clubcaddie.py
+index 31f58fd..77e23bd 100644
+--- a/scraper/browser_clubcaddie.py
++++ b/scraper/browser_clubcaddie.py
+@@ -129,15 +129,20 @@ def _fetch_course(pw, course: dict, dates: list[dt.date]) -> tuple[dict, str | N
+             if not captured.get("body"):
+                 last = "no TeeTimes POST observed"
+                 raise RuntimeError(last)
+-            per_date: dict[str, list] = {}
++            # A failed replay is recorded as None ("unknown"), NEVER as [] —
++            # an expired session mid-run used to file every remaining date as
++            # a clean empty day, and sync deactivated the course's real rows.
++            per_date: dict[str, list | None] = {}
+             for d in dates:
+                 r = page.evaluate(REPLAY_JS, [captured["body"], d.strftime("%m/%d/%Y")])
+                 if r.get("status") == 200 and (r.get("html") or "").strip()[:1] == "<":
+                     per_date[d.isoformat()] = _parse(course, d, r["html"])
+                 else:
+-                    per_date[d.isoformat()] = []
++                    per_date[d.isoformat()] = None
++                    last = f"replay status {r.get('status')}"
+                 page.wait_for_timeout(400)
+-            return per_date, None
++            return per_date, (last if any(v is None for v in per_date.values())
++                              else None)
+         except Exception as e:  # noqa: BLE001
+             last = last or type(e).__name__
+         finally:
+@@ -164,18 +169,28 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
+     with sync_playwright() as pw:
+         for c in courses:
+             got, err = _fetch_course(pw, c, dates)
+-            total = sum(len(v) for v in got.values())
+-            if err and not total:
++            total = sum(len(v) for v in got.values() if v)
++            if err and not got:
++                # nothing captured at all: every requested date is unknown
+                 for d in dates:
+                     errors[d.isoformat()].append(
+                         {"course": c["slug"], "platform": "clubcaddie",
+                          "error": f"browser {err}"})
+                 log.info("  %-32s ERROR %s", c["slug"], err)
+             else:
++                # per-date: a None marks a failed replay — error that date so
++                # sync shields the course's rows instead of reading "empty".
++                failed = 0
+                 for diso, tts in got.items():
+-                    per_date_times[diso].extend(tts)
+-                log.info("  %-32s %d times (%d dates)", c["slug"], total,
+-                         sum(1 for v in got.values() if v))
++                    if tts is None:
++                        failed += 1
++                        errors[diso].append(
++                            {"course": c["slug"], "platform": "clubcaddie",
++                             "error": f"browser {err or 'replay failed'}"})
++                    else:
++                        per_date_times[diso].extend(tts)
++                log.info("  %-32s %d times (%d dates, %d failed)", c["slug"],
++                         total, sum(1 for v in got.values() if v), failed)
+ 
+     out_paths = {}
+     outp = pathlib.Path(out_dir)
+diff --git a/scraper/browser_cps.py b/scraper/browser_cps.py
+index 5991ae7..7165182 100644
+--- a/scraper/browser_cps.py
++++ b/scraper/browser_cps.py
+@@ -56,7 +56,14 @@ async ([tenant, wid, cids, date]) => {
+     + `&teeOffTimeMin=0&teeOffTimeMax=23&isChangeTeeOffTime=true&teeSheetSearchView=5`
+     + `&classCode=R&defaultOnlineRate=N&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
+   const tt = await fetch(url, {headers:H()});
+-  let content = []; try { content = (await tt.json()).content || []; } catch (e) {}
++  // Report a non-JSON body AS a failure (same fix as browser_golfnow): a WAF
++  // interstitial served with status 200 used to become "0 tee times, success",
++  // skipping the remaining attempts and deactivating the tenant's real rows.
++  const text = await tt.text();
++  let content;
++  try { content = (JSON.parse(text)).content || []; }
++  catch (e) { return {status: tt.status, stage: "teetimes", parse_failed: true,
++                      bytes: text.length}; }
+   return {status: tt.status, stage: "teetimes", content};
+ }
+ """
+@@ -122,8 +129,9 @@ def run(date: dt.date, registry_path: str, out_path: str,
+                               wait_until="domcontentloaded", timeout=35000)
+                     page.wait_for_timeout(6000)  # let the managed challenge clear
+                     r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
+-                    last = f"{r.get('stage')} {r.get('status')}"
+-                    if r.get("status") == 200:
++                    last = f"{r.get('stage')} {r.get('status')}" + (
++                        " parse_failed" if r.get("parse_failed") else "")
++                    if r.get("status") == 200 and not r.get("parse_failed"):
+                         tts = _teetimes(c, r.get("content") or [])
+                         tee_times.extend(tts)
+                         log.info("  %-34s %d times", c["slug"], len(tts))
+diff --git a/scraper/browser_ezlinks.py b/scraper/browser_ezlinks.py
+index 1647ba6..6b8a528 100644
+--- a/scraper/browser_ezlinks.py
++++ b/scraper/browser_ezlinks.py
+@@ -42,11 +42,26 @@ async ([dateMdy]) => {
+   const ids = String(init.AllCourseIDs || "").split(",")
+       .filter(x => x.trim()).map(Number);
+   if (!ids.length) return {stage:"init", error:"no course ids (challenge not cleared)"};
+-  const body = {p01:ids, p02:dateMdy, p03:"5:00 AM", p04:"7:00 PM",
+-                p05:0, p06:2, p07:false};
++  // Ask for the portal's OWN operating window (init publishes it) instead of
++  // a hardcoded 5AM-7PM, which silently dropped summer twilight slots.
++  const ampm = (hms, fb) => {
++    const m = /^(\d{1,2}):(\d{2})/.exec(String(hms || ""));
++    if (!m) return fb;
++    let h = +m[1]; const suf = h >= 12 ? "PM" : "AM";
++    h = h % 12 || 12;
++    return h + ":" + m[2] + " " + suf;
++  };
++  const body = {p01:ids, p02:dateMdy, p03:ampm(init.StartTime, "5:00 AM"),
++                p04:ampm(init.EndTime, "7:00 PM"), p05:0, p06:2, p07:false};
+   const s = await fetch(base + "/api/search/search", {method:"POST",
+     headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+-  let rows = []; try { rows = (await s.json()).r06 || []; } catch (e) {}
++  // A 200 with a non-JSON body (WAF interstitial) is a FAILURE, not an empty
++  // day — the old swallow reported every course on the portal as "0 times".
++  const text = await s.text();
++  let rows;
++  try { rows = (JSON.parse(text)).r06 || []; }
++  catch (e) { return {stage:"search", status:s.status, parse_failed:true,
++                      bytes:text.length}; }
+   return {stage:"search", status:s.status, rows};
+ }
+ """
+@@ -85,8 +100,10 @@ def run(date: dt.date, registry_path: str, out_path: str,
+                               wait_until="domcontentloaded", timeout=45000)
+                     page.wait_for_timeout(7000)  # let Cloudflare's JS auto-clear
+                     r = page.evaluate(FLOW_JS, [date_mdy])
+-                    last = f"{r.get('stage')} {r.get('status') or r.get('error')}"
+-                    if r.get("stage") == "search" and r.get("status") == 200:
++                    last = f"{r.get('stage')} {r.get('status') or r.get('error')}" + (
++                        " parse_failed" if r.get("parse_failed") else "")
++                    if (r.get("stage") == "search" and r.get("status") == 200
++                            and not r.get("parse_failed")):
+                         rows = r.get("rows") or []
+                         break
+                 except Exception as e:  # noqa: BLE001
+diff --git a/scraper/browser_golfnow.py b/scraper/browser_golfnow.py
+index b893d2f..77251ea 100644
+--- a/scraper/browser_golfnow.py
++++ b/scraper/browser_golfnow.py
+@@ -40,42 +40,58 @@ FETCH_JS = r"""
+ async ([bodyStr, dateStr, fid]) => {
+   let body;
+   try { body = JSON.parse(bodyStr); } catch (e) { return {error: "bad body"}; }
+-  body.date = dateStr; body.pageSize = 40; body.teeTimeCount = 40; body.pageNumber = 0;
+-  const r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
+-    {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
+-     body: JSON.stringify(body)});
+-  // Read the text first and report a parse failure AS a failure. The old form
+-  // was `let j = {}; try { j = await r.json(); } catch (e) {}` — a body that
+-  // did not parse became an empty object, an empty object has no ttResults,
+-  // and the course was filed as "0 tee times" under a status the caller had
+-  // already accepted. A missing answer read as a known one, which is the same
+-  // bug that made four live facilities look empty.
+-  const text = await r.text();
+-  let j;
+-  try { j = JSON.parse(text); }
+-  catch (e) {
+-    return {status: r.status, parse_failed: true, bytes: text.length,
+-            content_type: r.headers.get("content-type") || ""};
+-  }
+-  const tt = (j.ttResults && j.ttResults.teeTimes) || [];
++  // Paginate. The old form pinned pageNumber 0 / pageSize 40 with no loop, so
++  // a facility with more than 40 slots for the date published only the 40
++  // earliest — and because the course HAD returned rows, sync deactivated the
++  // real later inventory it had captured on previous runs. Page until the
++  // server hands back a short page, with a hard cap as a runaway guard.
+   const money = (m) => (m && typeof m.value === "number") ? m.value : null;
++  const PAGE = 40, MAX_PAGES = 10;
+   const out = [];
+-  for (const s of tt) {
+-    if (fid && s.facilityId !== fid) continue;
+-    out.push({
+-      date: s.time && s.time.date,
+-      playerRule: s.playerRule,
+-      detailUrl: s.detailUrl,
+-      display: money(s.displayRate),
+-      minRate: money(s.minTeeTimeRate),
+-      maxRate: money(s.maxTeeTimeRate),
+-      rates: (s.teeTimeRates || []).map((x) => ({
+-        holes: x.holeCount,
+-        greens: x.singlePlayerPrice ? money(x.singlePlayerPrice.greensFees) : null,
+-      })),
+-    });
++  let status = 0;
++  for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
++    body.date = dateStr; body.pageSize = PAGE; body.teeTimeCount = PAGE;
++    body.pageNumber = pageNumber;
++    const r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
++      {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
++       body: JSON.stringify(body)});
++    status = r.status;
++    // Read the text first and report a parse failure AS a failure. The old
++    // form was `let j = {}; try { j = await r.json(); } catch (e) {}` — a body
++    // that did not parse became an empty object, an empty object has no
++    // ttResults, and the course was filed as "0 tee times" under a status the
++    // caller had already accepted. A missing answer read as a known one, which
++    // is the same bug that made four live facilities look empty. A later page
++    // failing is reported the same way: partial pagination truncates exactly
++    // like no pagination did.
++    const text = await r.text();
++    let j;
++    try { j = JSON.parse(text); }
++    catch (e) {
++      return {status: r.status, parse_failed: true, bytes: text.length,
++              content_type: r.headers.get("content-type") || ""};
++    }
++    const tt = (j.ttResults && j.ttResults.teeTimes) || [];
++    for (const s of tt) {
++      if (fid && s.facilityId !== fid) continue;
++      out.push({
++        date: s.time && s.time.date,
++        playerRule: s.playerRule,
++        detailUrl: s.detailUrl,
++        display: money(s.displayRate),
++        minRate: money(s.minTeeTimeRate),
++        maxRate: money(s.maxTeeTimeRate),
++        rates: (s.teeTimeRates || []).map((x) => ({
++          holes: x.holeCount,
++          greens: x.singlePlayerPrice ? money(x.singlePlayerPrice.greensFees) : null,
++        })),
++      });
++    }
++    // Termination is judged on the RAW page length, not the filtered count —
++    // a page full of sibling-facility slots must still advance the loop.
++    if (tt.length < PAGE) break;
+   }
+-  return {status: r.status, slots: out};
++  return {status: status, slots: out};
+ }
+ """
+ 
+diff --git a/scraper/browser_teeitup.py b/scraper/browser_teeitup.py
+index 5fc856c..311d773 100644
+--- a/scraper/browser_teeitup.py
++++ b/scraper/browser_teeitup.py
+@@ -148,19 +148,30 @@ def run(date: dt.date, registry_path: str, out_path: str,
+             alias = c["ids"]["alias"]
+             fid = c["ids"].get("facility_id")
+ 
+-            # facilities: once per alias per run (shared aliases reuse it)
++            # facilities: once per alias per run (shared aliases reuse it).
++            # Cache SUCCESSES only — remembering a failed call as [] pinned
++            # "no facilities" on the alias for the whole run (no labels, state
++            # tz fallback, and a pinned course could resolve to zero slots).
+             if alias not in fac_cache:
+                 fr = page.evaluate(FAC_JS, [API_BASE, alias])
+-                fac_cache[alias] = fr.get("facilities") or []
++                got = fr.get("facilities") or []
++                if got or fr.get("status") == 200:
++                    fac_cache[alias] = got
++                else:
++                    log.info("  %-40s facilities fetch failed (%s), not cached",
++                             c["slug"], fr.get("status"))
+                 page.wait_for_timeout(_GAP_MS)
+-            facilities = fac_cache[alias]
++            facilities = fac_cache.get(alias, [])
+ 
+             tr = page.evaluate(TT_JS, [API_BASE, alias,
+                                        str(fid) if fid else "", date.isoformat()])
+             page.wait_for_timeout(_GAP_MS)
+ 
+             status = tr.get("status")
+-            if status != 200:
++            # parse_failed can arrive WITH status 200 — kenna's soft throttle
++            # serves an HTML interstitial on a 200. Gating only on the status
++            # counted those as "served, 0 slots" and deactivated real rows.
++            if status != 200 or tr.get("parse_failed"):
+                 note = ("throttle/parse" if tr.get("parse_failed")
+                         else f"status {status}" + (
+                             f" {tr.get('error')}" if tr.get("error") else ""))
+diff --git a/scraper/browser_totale.py b/scraper/browser_totale.py
+index b24c94c..e67e259 100644
+--- a/scraper/browser_totale.py
++++ b/scraper/browser_totale.py
+@@ -32,7 +32,6 @@ from __future__ import annotations
+ 
+ import argparse
+ import datetime as dt
+-import glob
+ import json
+ import logging
+ import pathlib
+@@ -154,7 +153,13 @@ def run(registry_path: str, out_dir: str) -> dict:
+                 page.wait_for_timeout(2500)     # let the initial sheet render
+                 harvested = page.evaluate(HARVEST_JS)
+             except Exception as e:  # noqa: BLE001
+-                errors.append({"tenant": tenant, "error": f"{type(e).__name__}: {e}"})
++                # One record PER COURSE, keyed "course" like every other
++                # fetcher: d1 sync reads e["course"] to shield an errored
++                # course's rows from deactivation, and a "tenant"-keyed
++                # record made that lookup KeyError the entire push.
++                for c in tcourses:
++                    errors.append({"course": c["slug"], "platform": "totale",
++                                   "error": f"{type(e).__name__}: {e}"})
+                 log.info("  tenant %-22s ERROR %s", tenant, type(e).__name__)
+                 page.close()
+                 continue
+diff --git a/scraper/d1.py b/scraper/d1.py
+index be343e2..77bcb77 100644
+--- a/scraper/d1.py
++++ b/scraper/d1.py
+@@ -269,6 +269,18 @@ _STATE_TZ = {
+     "OR": "America/Los_Angeles", "WA": "America/Los_Angeles",
+     "AK": "America/Anchorage", "HI": "Pacific/Honolulu",
+ }
++# Florida straddles two timezones: the panhandle west of the Apalachicola
++# River is Central. Judging those rows by New_York pruned (and, in the Worker,
++# hid) their next hour of bookable slots ALL DAY — every sync re-activated
++# them and the next prune flipped them off again. City-level carve-out because
++# rows carry city but not county; mirror any edit in worker/index.js
++# FL_CENTRAL_CITIES. (Port St. Joe, Carrabelle and Tallahassee are Eastern.)
++FL_CENTRAL_CITIES = {
++    "Bonifay", "Crestview", "DeFuniak Springs", "Destin", "Fort Walton Beach", "Freeport",
++    "Gulf Breeze", "Hurlburt Field", "Lynn Haven", "Milton", "Miramar Beach",
++    "Navarre", "Niceville", "Pace", "Panama City", "Panama City Beach",
++    "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
++}
+ # Rows with no state yet (legacy inserts) are pruned only once the slot is past
+ # in the LAST US timezone to get there — conservative: never hides a bookable
+ # slot, at the cost of leaving a few stale ones visible a bit longer.
+@@ -384,19 +396,39 @@ def prune_past(db, dry_run: bool = False) -> dict:
+         by_tz.setdefault(tz, []).append(st)
+ 
+     total, per_tz = 0, {}
++    city_marks = ",".join("?" * len(FL_CENTRAL_CITIES))
++    fl_central = sorted(FL_CENTRAL_CITIES)
+     for tz, states in sorted(by_tz.items()):
+         now = _local_now(tz)
+         marks = ",".join("?" * len(states))
+         where = f"active = 1 AND state IN ({marks}) AND teetime < ?"
++        params = [*states, now]
++        if tz == "America/New_York":
++            # Panhandle FL is Central — judged separately below, and it must
++            # NOT be pruned an hour early by the Eastern clock here.
++            where += f" AND NOT (state = 'FL' AND city IN ({city_marks}))"
++            params += fl_central
+         n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+-                       [*states, now])[0]["n"]
++                       params)[0]["n"]
+         if n:
+             if not dry_run:
+                 db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
+-                           [*states, now])
++                           params)
+             per_tz[tz] = n
+             total += n
+ 
++    now = _local_now("America/Chicago")     # panhandle FL, on its own clock
++    where = (f"active = 1 AND state = 'FL' AND city IN ({city_marks}) "
++             "AND teetime < ?")
++    n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
++                   [*fl_central, now])[0]["n"]
++    if n:
++        if not dry_run:
++            db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
++                       [*fl_central, now])
++        per_tz["America/Chicago (FL panhandle)"] = n
++        total += n
++
+     now = _local_now(_FALLBACK_TZ)          # unknown / blank state
+     where = "active = 1 AND (state IS NULL OR state = '') AND teetime < ?"
+     n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+@@ -461,7 +493,8 @@ def sync(db, doc: dict) -> dict:
+         ph = ",".join("?" * len(batch))
+         for r in db.execute(
+                 "SELECT course_slug, teetime, course_label, open_spots, "
+-                f"price_min, price_max, active FROM tee_times "
++                f"price_min, price_max, active, booking_url, platform "
++                f"FROM tee_times "
+                 f"WHERE substr(teetime,1,10) = ? "
+                 f"AND course_slug IN ({ph})", [date, *batch]):
+             existing[(r["course_slug"], r["teetime"],
+@@ -471,9 +504,16 @@ def sync(db, doc: dict) -> dict:
+     to_update = []
+     for k, v in scraped.items():
+         e = existing.get(k)
++        # booking_url/platform are part of the diff: when a course moves
++        # booking engines (or an adapter's link format is fixed), the rows
++        # already in D1 must pick up the new link — the old UPDATE never
++        # refreshed it, so a re-platformed course served dead booking links
++        # for up to 30 days.
+         if e and (e["open_spots"] != v["open_spots"]
+                   or e["price_min"] != v["price_min"]
+                   or e["price_max"] != v["price_max"]
++                  or e.get("booking_url") != v["booking_url"]
++                  or e.get("platform") != v["platform"]
+                   or not e["active"]):
+             to_update.append(v)
+     to_deactivate = [k for k, e in existing.items()
+@@ -491,9 +531,10 @@ def sync(db, doc: dict) -> dict:
+     for row in to_update:
+         db.execute(
+             "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
+-            "active=1, last_seen_at=? "
++            "booking_url=?, platform=?, active=1, last_seen_at=? "
+             "WHERE course_slug=? AND teetime=? AND course_label=?",
+             [row["open_spots"], row["price_min"], row["price_max"],
++             row["booking_url"], row["platform"],
+              now, row["course_slug"], row["teetime"], row["course_label"]])
+ 
+     for slug, teetime, label in to_deactivate:
+diff --git a/scripts/enrich_phones.py b/scripts/enrich_phones.py
+index e8456a4..e982f3c 100644
+--- a/scripts/enrich_phones.py
++++ b/scripts/enrich_phones.py
+@@ -85,6 +85,11 @@ CONTACT_WORDS = ("pro shop", "proshop", "call", "tee time", "tee-time",
+ AREA_CODES = {
+     "CO": {"303", "719", "720", "970", "983"},
+     "AZ": {"480", "520", "602", "623", "928", "820"},
++    "VA": {"276", "434", "540", "571", "703", "757", "804", "826", "948"},
++    "FL": {"239", "305", "321", "324", "352", "386", "407", "448", "561",
++           "645", "656", "689", "727", "754", "772", "786", "813", "850",
++           "863", "904", "941", "954"},
++    "MD": {"227", "240", "301", "410", "443", "667"},
+ }
+ TOLL_FREE = {"800", "888", "877", "866", "855", "844", "833"}
+ 
+diff --git a/scripts/test_teeitup_adapter.py b/scripts/test_teeitup_adapter.py
+index 7c8f337..5b40b0e 100644
+--- a/scripts/test_teeitup_adapter.py
++++ b/scripts/test_teeitup_adapter.py
+@@ -29,11 +29,23 @@ Run: python scripts/test_teeitup_adapter.py
+ from __future__ import annotations
+ 
+ import datetime as dt
++import os
+ import sys
+ 
+ sys.path.insert(0, ".")
+ 
+-from scraper.adapters.teeitup import TeeItUpAdapter  # noqa: E402
++# The adapter has a THIRD cache layer — a 7-day on-disk snapshot
++# (.cache/kenna_facilities.json) shared across processes. Left enabled, the
++# first Fake's successful discovery is written to disk under the REAL alias
++# and every later "discovery is down" scenario silently reads it back, so
++# those checks stop testing anything (and the repo grows an untracked cache
++# file). Disable it before the module reads the env var; the per-instance
++# _META/_FACILITIES resets below only cover the in-memory layers.
++os.environ["KENNA_FACILITIES_CACHE"] = ""
++
++from scraper.adapters.teeitup import TeeItUpAdapter, _disk_reset  # noqa: E402
++
++_disk_reset()  # in case an earlier import already loaded a disk snapshot
+ 
+ DATE = dt.date(2026, 7, 26)
+ 
+diff --git a/worker/index.js b/worker/index.js
+index 145461b..98dc444 100644
+--- a/worker/index.js
++++ b/worker/index.js
+@@ -28,7 +28,11 @@ import DIRECTORY from "./directory.gen.js";
+ const CORS = {
+   "Access-Control-Allow-Origin": "*", // tighten to https://www.oneteeapp.com later
+   "Access-Control-Allow-Methods": "GET, OPTIONS",
+-  "Access-Control-Allow-Headers": "Content-Type",
++  // Authorization MUST be allowed: the signed-in widget attaches a Clerk
++  // bearer token, which makes the browser preflight. Omitting it fails the
++  // preflight with a bare "TypeError: Failed to fetch" that says nothing
++  // about headers (measured — see claude/membership-setup-clerk-stripe.md).
++  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+ };
+ 
+ const json = (data, status = 200) =>
+@@ -70,6 +74,20 @@ const STATE_TZ = {
+   AK: "America/Anchorage", HI: "Pacific/Honolulu",
+ };
+ 
++// Florida straddles two timezones: the panhandle west of the Apalachicola
++// River is Central. Judging those rows by New_York hid (and cron-pruned)
++// their next hour of bookable slots all day. City-level carve-out because
++// rows carry city but not county; mirror any edit in scraper/d1.py
++// FL_CENTRAL_CITIES. (Port St. Joe, Carrabelle and Tallahassee are Eastern.)
++const FL_CENTRAL_CITIES = [
++  "Bonifay", "Crestview", "DeFuniak Springs", "Destin", "Fort Walton Beach", "Freeport",
++  "Gulf Breeze", "Hurlburt Field", "Lynn Haven", "Milton", "Miramar Beach",
++  "Navarre", "Niceville", "Pace", "Panama City", "Panama City Beach",
++  "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
++];
++const FL_CENTRAL_SQL = FL_CENTRAL_CITIES.map((c) => `'${c}'`).join(",");
++const FL_CENTRAL_ARM = `state = 'FL' AND city IN (${FL_CENTRAL_SQL})`;
++
+ // Rows whose state is null/blank are judged by the LAST US zone to reach a
+ // given clock time. Conservative on purpose: it can leave a stale slot up a few
+ // extra hours, but it will never hide one that is still bookable.
+@@ -88,14 +106,23 @@ const tzGroups = () => {
+ // of D1's 100-parameter-per-query ceiling, leaving almost nothing for the
+ // actual filters. Inlining keeps it at 8 binds: one clock per zone.
+ const TZ_ORDER = Object.entries(tzGroups());
+-const PAST_CLAUSE = `teetime >= CASE ${TZ_ORDER
++// The FL-panhandle arm comes FIRST so it wins over FL's Eastern group arm.
++const PAST_CLAUSE = `teetime >= CASE WHEN ${FL_CENTRAL_ARM} THEN ? ${TZ_ORDER
+   .map(([, states]) => `WHEN state IN (${states.map((s) => `'${s}'`).join(",")}) THEN ?`)
+   .join(" ")} ELSE ? END`;
+ const pastFilter = () => ({
+   clause: PAST_CLAUSE,
+-  binds: [...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
++  binds: [localNowISO("America/Chicago"),
++          ...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
+ });
+ 
++// ?include_past=1 disables the past filter; "0"/"false"/"no" must NOT — any
++// non-empty value used to count as "include", so include_past=0 meant "yes".
++const wantsPast = (p) => {
++  const v = (p.get("include_past") || "").toLowerCase();
++  return v !== "" && v !== "0" && v !== "false" && v !== "no";
++};
++
+ // Merge facility name + sub-course label into one display name. If the label
+ // shares a significant word with the facility name it stands alone ("Hyland
+ // Hills Gold Course"); otherwise append it ("Legacy Ridge … · LR Back 9").
+@@ -163,7 +190,7 @@ export default {
+         const p = url.searchParams;
+         const clauses = ["active = 1"];
+         const binds = [];
+-        if (!p.get("include_past")) { clauses.push(pastClause); binds.push(...pastBinds); }
++        if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
+         if (p.get("state")) { clauses.push("state = ?");            binds.push(p.get("state").toUpperCase()); }
+         if (p.get("city"))  { clauses.push("LOWER(city) = LOWER(?)"); binds.push(p.get("city")); }
+         const { results } = await env.DB.prepare(
+@@ -189,7 +216,7 @@ export default {
+         const p = url.searchParams;
+         const clauses = ["active = 1"];
+         const binds = [];
+-        if (!p.get("include_past")) { clauses.push(pastClause); binds.push(...pastBinds); }
++        if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
+         if (p.get("date"))      { clauses.push("substr(teetime,1,10) = ?"); binds.push(p.get("date")); }
+         if (p.get("state"))     { clauses.push("state = ?");                binds.push(p.get("state").toUpperCase()); }
+         if (p.get("city"))      { clauses.push("LOWER(city) = LOWER(?)");   binds.push(p.get("city")); }
+@@ -197,9 +224,23 @@ export default {
+         // hands out as course_slug) or a legacy source slug.
+         if (p.get("course"))    { clauses.push("COALESCE(venue_id, course_slug) = ?"); binds.push(p.get("course")); }
+         if (p.get("platform"))  { clauses.push("platform = ?");             binds.push(p.get("platform")); }
+-        if (p.get("max_price")) { clauses.push("price_min <= ?");           binds.push(Number(p.get("max_price"))); }
+-        if (p.get("min_spots")) { clauses.push("open_spots >= ?");          binds.push(Number(p.get("min_spots"))); }
+-        const limit = Math.min(Number(p.get("limit") || 500), 2000);
++        // Numeric params are validated up front: Number("abc") is NaN, and a
++        // NaN bind makes D1 throw — turning a caller's typo into a 500.
++        const nums = {};
++        for (const key of ["max_price", "min_spots", "limit"]) {
++          const raw = p.get(key);
++          if (raw === null || raw === "") continue;
++          const n = Number(raw);
++          if (!Number.isFinite(n)) {
++            return json({ error: `${key} must be a number, got ${JSON.stringify(raw)}` }, 400);
++          }
++          nums[key] = n;
++        }
++        if (nums.max_price !== undefined) { clauses.push("price_min <= ?"); binds.push(nums.max_price); }
++        if (nums.min_spots !== undefined) { clauses.push("open_spots >= ?"); binds.push(nums.min_spots); }
++        // Clamp to [1, 2000] — SQLite reads a NEGATIVE limit as "no limit",
++        // so ?limit=-1 used to return the entire table in one response.
++        const limit = Math.min(Math.max(Math.trunc(nums.limit ?? 500), 1), 2000);
+ 
+         // Dedupe by (venue, teetime, sub-course): when the native engine and
+         // its GolfNow overflow both list a slot, keep the primary source's row
+@@ -232,7 +273,13 @@ export default {
+           delete r.clabel;
+           delete r.rn;
+         }
+-        return json({ count: results.length, tee_times: results });
++        // `truncated` tells the caller this page hit LIMIT — `count` is the
++        // page's length, NOT the total; without the flag a capped response is
++        // indistinguishable from a complete one (afternoon slots silently
++        // vanish for busy dates).
++        return json({ count: results.length,
++                      truncated: results.length === limit,
++                      tee_times: results });
+       }
+ 
+       return json({ error: "not found",
+@@ -260,16 +307,30 @@ export default {
+   async scheduled(event, env, ctx) {
+     ctx.waitUntil((async () => {
+       const stmts = [];
++      const allStates = Object.keys(STATE_TZ);
+       for (const [tz, states] of Object.entries(tzGroups())) {
+         const marks = states.map(() => "?").join(",");
++        // Panhandle FL is Central — pruned by its own statement below, and it
++        // must NOT be pruned an hour early by the Eastern group here.
++        const carve = tz === "America/New_York"
++          ? ` AND NOT (${FL_CENTRAL_ARM})` : "";
+         stmts.push(env.DB.prepare(
+           `UPDATE tee_times SET active = 0
+-            WHERE active = 1 AND state IN (${marks}) AND teetime < ?`)
++            WHERE active = 1 AND state IN (${marks}) AND teetime < ?${carve}`)
+           .bind(...states, localNowISO(tz)));
+       }
+       stmts.push(env.DB.prepare(
+         `UPDATE tee_times SET active = 0
+-          WHERE active = 1 AND (state IS NULL OR state = '') AND teetime < ?`)
++          WHERE active = 1 AND ${FL_CENTRAL_ARM} AND teetime < ?`)
++        .bind(localNowISO("America/Chicago")));
++      // Fallback covers blank AND unrecognized states (e.g. 'PR', a typo, a
++      // lowercase code): without the NOT IN arm those rows were never pruned
++      // and `active` drifted upward forever.
++      stmts.push(env.DB.prepare(
++        `UPDATE tee_times SET active = 0
++          WHERE active = 1 AND (state IS NULL OR state = ''
++                OR state NOT IN (${allStates.map((s) => `'${s}'`).join(",")}))
++            AND teetime < ?`)
+         .bind(localNowISO(FALLBACK_TZ)));
+       const res = await env.DB.batch(stmts);
+       const n = res.reduce((a, r) => a + (r.meta?.changes || 0), 0);
+-- 
+2.43.0
+
+
+From aa38544bde4993943f55cb71973aa3c6832e0c52 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 3 Aug 2026 05:48:54 +0000
+Subject: [PATCH 2/2] Round 2: label-granular partial-failure shielding,
+ monitor/probe date-frame fixes, alarm baseline
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01ULH6WdxwqVeF13RCzMDXie
+---
+ .github/workflows/scrape-far.yml   | 90 ++++++++++++++++++++----------
+ .github/workflows/state-status.yml | 63 +++++++++++++++++----
+ local/run-onetee-local.ps1         | 13 ++++-
+ scraper/adapters/base.py           | 20 +++++++
+ scraper/adapters/chronogolf.py     | 25 +++++++--
+ scraper/adapters/quick18.py        |  8 ++-
+ scraper/adapters/teequest.py       | 31 ++++++++++
+ scraper/adapters/teesnap.py        | 26 ++++++---
+ scraper/aggregate.py               | 23 +++++++-
+ scraper/browser_totale.py          | 17 ++++--
+ scraper/d1.py                      | 45 ++++++++-------
+ scraper/gen_sample.py              | 16 +++++-
+ scraper/models.py                  |  5 ++
+ scraper/onetee.py                  |  8 ++-
+ scripts/probe_newly_ready.py       | 14 +++--
+ scripts/probe_staleness.py         | 24 +++++++-
+ scripts/state_dashboard.py         |  2 +-
+ scripts/state_regression.py        | 18 +++++-
+ scripts/state_status.py            | 18 ++++--
+ scripts/test_teesnap_adapter.py    | 52 ++++++++++++++++-
+ scripts/verify_directory.py        | 10 +++-
+ worker/index.js                    |  5 +-
+ 22 files changed, 424 insertions(+), 109 deletions(-)
+
+diff --git a/.github/workflows/scrape-far.yml b/.github/workflows/scrape-far.yml
+index e2b551c..053262b 100644
+--- a/.github/workflows/scrape-far.yml
++++ b/.github/workflows/scrape-far.yml
+@@ -6,14 +6,25 @@ name: Scrape far tier (days 8-30, every 2 hours)
+ # so most passes SKIP the dates a course has proven it does not publish, using
+ # probe-results/booking-windows.json.
+ #
+-# Once a day (the 10:xx UTC run, ~4am Denver) the sweep goes FULL — every
+-# course, every far date, windows ignored — and then re-derives the windows
+-# file from its own output and commits it. That is the self-correcting part:
+-# a course that widens its booking window is caught within a day, and the
+-# derivation costs zero extra requests because it reads the sweep's own
+-# output documents. Between full sweeps the file only trims work; scripts/
+-# eligible_courses.py treats unknown courses, unchecked offsets, and a stale
+-# file as "scrape it" — ignorance never reads as absence.
++# Once a day the sweep goes FULL — every course, every far date, windows
++# ignored — and then re-derives the windows file from its own output and
++# commits it. That is the self-correcting part: a course that widens its
++# booking window is caught within a day, and the derivation costs zero extra
++# requests because it reads the sweep's own output documents. Between full
++# sweeps the file only trims work; scripts/eligible_courses.py treats unknown
++# courses, unchecked offsets, and a stale file as "scrape it" — ignorance
++# never reads as absence.
++#
++# "Once a day" is decided ONCE, in the plan job, from the windows file's own
++# as_of stamp: full when the file hasn't been re-derived today and it is past
++# 10:00 UTC. It used to be "does this step happen to execute during UTC hour
++# 10", checked independently in the shards and again in the derive job — but
++# the self-chaining cadence gives no run a guaranteed start hour, so whole
++# days could pass with no full sweep, and a windowed sweep whose derive step
++# drifted into hour 10-11 could commit windowed output as full-sweep evidence
++# (violating the only-shrink-on-full-evidence rule). The as_of rule also
++# retries: if a full sweep's derivation fails, as_of stays stale and the next
++# run goes full again instead of waiting for tomorrow.
+ 
+ on:
+   schedule:
+@@ -33,7 +44,37 @@ concurrency:
+   cancel-in-progress: false
+ 
+ jobs:
++  plan:
++    # ONE mode decision for the whole run — every shard and the derive job
++    # consume this output, so they can never disagree with each other.
++    runs-on: ubuntu-latest
++    timeout-minutes: 5
++    outputs:
++      full: ${{ steps.mode.outputs.full }}
++    steps:
++      - uses: actions/checkout@v4
++      - name: Decide full vs windowed
++        id: mode
++        env:
++          INPUT_FULL: ${{ github.event.inputs.full }}
++        run: |
++          FULL=no
++          W=probe-results/booking-windows.json
++          if [ ! -f "$W" ]; then
++            FULL=yes                       # no windows at all: must derive
++          elif [ "$(date -u +%H)" -ge 10 ]; then
++            # Full once per UTC day, on the first run at/after 10:00 (~4am
++            # Denver), judged by the file's own as_of stamp — start-hour
++            # drift can't skip it, and a failed derivation retries next run.
++            AS_OF=$(python3 -c "import json,sys; print(str(json.load(open('$W')).get('as_of',''))[:10])" 2>/dev/null || echo "")
++            [ "$AS_OF" != "$(date -u +%F)" ] && FULL=yes
++          fi
++          [ "${INPUT_FULL}" = "yes" ] && FULL=yes
++          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
++          echo "far sweep mode: full=${FULL}"
++
+   scrape:
++    needs: plan
+     runs-on: ubuntu-latest
+     timeout-minutes: 110
+     strategy:
+@@ -54,16 +95,6 @@ jobs:
+         # loops without meaningfully slowing the sweep.
+         run: sleep $(( ${{ matrix.shard }} * 90 ))
+ 
+-      - name: Decide full vs windowed
+-        id: mode
+-        run: |
+-          FULL=no
+-          [ "$(date -u +%H)" = "10" ] && FULL=yes
+-          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
+-          [ -f probe-results/booking-windows.json ] || FULL=yes
+-          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+-          echo "far sweep mode: full=${FULL}"
+-
+       - name: Scrape + push shard ${{ matrix.shard }}/4 (days 8-30)
+         env:
+           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+@@ -80,7 +111,7 @@ jobs:
+           # over a few sweeps instead of any single run having to get all 23.
+           for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23 | shuf); do
+             ARGS=""
+-            if [ "${{ steps.mode.outputs.full }}" != "yes" ]; then
++            if [ "${{ needs.plan.outputs.full }}" != "yes" ]; then
+               ELIG=$(python scripts/eligible_courses.py --date "${DATE}")
+               if [ "$ELIG" = "NONE" ]; then
+                 echo "skip ${DATE}: no course's booking window reaches it"
+@@ -109,7 +140,15 @@ jobs:
+     # Only after a FULL sweep, and only once (not per shard): pull all four
+     # shards' outputs back down and measure each course's real booking window
+     # from what the sweep itself saw.
+-    needs: scrape
++    #
++    # The mode comes from the plan job (never recomputed from the clock), and
++    # needs.scrape.result must be success: windows may only SHRINK on a full
++    # sweep's evidence, and a sweep with a dead shard is not full evidence —
++    # deriving from three shards' outputs would shrink the fourth shard's
++    # courses to nothing. Skipping leaves as_of stale, so the next run
++    # automatically retries the full sweep.
++    needs: [plan, scrape]
++    if: needs.plan.outputs.full == 'yes' && needs.scrape.result == 'success'
+     runs-on: ubuntu-latest
+     timeout-minutes: 15
+     steps:
+@@ -117,24 +156,13 @@ jobs:
+       - uses: actions/setup-python@v5
+         with:
+           python-version: "3.12"
+-      - name: Was this a full sweep?
+-        id: mode
+-        run: |
+-          FULL=no
+-          [ "$(date -u +%H)" = "10" ] && FULL=yes
+-          [ "$(date -u +%H)" = "11" ] && FULL=yes   # long sweep crossing the hour
+-          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
+-          [ -f probe-results/booking-windows.json ] || FULL=yes
+-          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+       - name: Download sweep outputs
+-        if: steps.mode.outputs.full == 'yes'
+         uses: actions/download-artifact@v4
+         with:
+           pattern: far-tee-times-${{ github.run_id }}-*
+           path: output
+           merge-multiple: true
+       - name: Derive windows + commit
+-        if: steps.mode.outputs.full == 'yes'
+         run: |
+           python scripts/derive_windows.py \
+             --outputs 'output/tee_times_*.json' \
+diff --git a/.github/workflows/state-status.yml b/.github/workflows/state-status.yml
+index e0d1c3a..45983b7 100644
+--- a/.github/workflows/state-status.yml
++++ b/.github/workflows/state-status.yml
+@@ -11,6 +11,13 @@ name: State coverage status
+ #
+ # The regression gate is deliberately asymmetric: a DROP fails the job, a RISE
+ # is committed silently. Coverage going up never needs a human.
++#
++# The comparison baseline is probe-results/state-status.baseline.json, a
++# tracked file that ONLY advances when the gate passes (or when a dispatch
++# says accept_baseline=yes). The gate used to compare against the previous
++# run's report, which this workflow had already overwritten — so a regression
++# fired exactly once and the next day's run was green against the regressed
++# numbers. An alarm that self-mutes after one firing is not an alarm.
+ 
+ on:
+   schedule:
+@@ -20,6 +27,9 @@ on:
+       tolerance:
+         description: "Allowed drop in live venues per state before failing"
+         default: "3"
++      accept_baseline:
++        description: "yes = adopt today's counts as the new baseline even if lower (acknowledges a real, understood drop)"
++        default: ""
+   push:
+     branches: [main]
+     paths:
+@@ -45,11 +55,17 @@ jobs:
+           python-version: "3.12"
+       - run: pip install -r requirements.txt || pip install requests
+ 
+-      - name: Keep the previous run for comparison
++      - name: Seed the baseline on first run
+         run: |
+           mkdir -p probe-results
+-          cp probe-results/state-status.json probe-results/.previous.json \
+-            2>/dev/null || echo '{"states":[]}' > probe-results/.previous.json
++          # Migration: before the tracked baseline existed the gate compared
++          # against the previous report. Seed from it once; after that the
++          # baseline file only moves when the gate passes.
++          if [ ! -f probe-results/state-status.baseline.json ]; then
++            cp probe-results/state-status.json \
++               probe-results/state-status.baseline.json 2>/dev/null \
++              || echo '{"states":[]}' > probe-results/state-status.baseline.json
++          fi
+ 
+       - name: Build the funnel against live D1 counts
+         env:
+@@ -72,15 +88,41 @@ jobs:
+           sed -n '1,14p' probe-results/state-status.txt >> $GITHUB_STEP_SUMMARY
+           echo '```' >> $GITHUB_STEP_SUMMARY
+ 
++      # Gate BEFORE commit, against the tracked baseline. continue-on-error
++      # lets the fresh report/dashboard still be committed during an incident
++      # (so the dashboard shows the truth); the final step re-raises the
++      # failure so the run stays red every day until coverage recovers or the
++      # drop is explicitly accepted.
++      - name: Check for regression against the baseline
++        id: gate
++        if: always()
++        continue-on-error: true
++        env:
++          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
++        run: |
++          python scripts/state_regression.py \
++            probe-results/state-status.baseline.json \
++            probe-results/state-status.json \
++            --tolerance "${INPUT_TOLERANCE:-3}"
++
+       - name: Commit
+         if: always()
++        env:
++          INPUT_ACCEPT: ${{ github.event.inputs.accept_baseline }}
+         run: |
+           git config user.name "github-actions[bot]"
+           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+-          # .previous.json is untracked and `git add` below is explicit, so it
+-          # never gets committed — and the regression step still needs it.
+           git add probe-results/state-status.json probe-results/state-status.txt \
+                   probe-results/onetee-status.html
++          # The baseline advances ONLY on a passing gate (or an explicit
++          # accept) — committing the regressed report as the next comparison
++          # point is what used to mute the alarm after one firing.
++          if [ "${{ steps.gate.outcome }}" = "success" ] \
++             || [ "${INPUT_ACCEPT}" = "yes" ]; then
++            cp probe-results/state-status.json \
++               probe-results/state-status.baseline.json
++            git add probe-results/state-status.baseline.json
++          fi
+           git commit -m "State coverage status [skip ci]" || exit 0
+           for i in 1 2 3 4 5; do
+             git pull --rebase origin main && git push && exit 0
+@@ -88,11 +130,8 @@ jobs:
+           done
+           echo "could not push state status after 5 attempts"; exit 1
+ 
+-      - name: Fail on regression
+-        if: always()
+-        env:
+-          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
++      - name: Fail if regressed
++        if: always() && steps.gate.outcome == 'failure'
+         run: |
+-          python scripts/state_regression.py \
+-            probe-results/.previous.json probe-results/state-status.json \
+-            --tolerance "${INPUT_TOLERANCE:-3}"
++          echo "state_regression failed against the baseline (see the gate step)"
++          exit 1
+diff --git a/local/run-onetee-local.ps1 b/local/run-onetee-local.ps1
+index b4cdbea..f9e6175 100644
+--- a/local/run-onetee-local.ps1
++++ b/local/run-onetee-local.ps1
+@@ -7,7 +7,11 @@
+ # touches ONLY the platforms listed in $Platforms below and never the ~72
+ # courses GitHub manages.
+ #
+-# Runs today + the next 2 days (UTC, to match the GitHub job's dating).
++# Runs today + the next 2 days, dated by scraper.dates (per-covered-timezone
++# LOCAL days). It used to date in UTC "to match the GitHub job" — but the
++# GitHub jobs moved off UTC dating precisely because from ~18:00 Mountain
++# onward UTC-today is local-tomorrow, so the evening runs skipped the real
++# local today and its slots went stale.
+ 
+ $ErrorActionPreference = "Stop"
+ $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
+@@ -33,8 +37,11 @@ Get-Content $envFile | ForEach-Object {
+ Set-Location $repo
+ New-Item -ItemType Directory -Force -Path "output" | Out-Null
+ 
+-foreach ($offset in 0..2) {
+-    $date = (Get-Date).ToUniversalTime().AddDays($offset).ToString("yyyy-MM-dd")
++$dates = python -m scraper.dates --registry registry.json --days 3
++if ($LASTEXITCODE -ne 0 -or -not $dates) {
++    throw "scraper.dates failed - cannot compute scrape dates"
++}
++foreach ($date in $dates) {
+     $out  = "output\tee_times_local_$date.json"
+     "-- scrape $Platforms for $date" | Tee-Object -FilePath $log -Append
+     python -m scraper.aggregate --platforms $Platforms --date $date --out $out 2>&1 |
+diff --git a/scraper/adapters/base.py b/scraper/adapters/base.py
+index 52de020..a7657fb 100644
+--- a/scraper/adapters/base.py
++++ b/scraper/adapters/base.py
+@@ -24,6 +24,26 @@ USER_AGENT = (
+ TIMEOUT = 20
+ 
+ 
++class PartialFetchError(Exception):
++    """Some of a venue's sub-courses failed while the rest served.
++
++    The all-or-nothing contract (raise = the whole venue is unknown) loses
++    real data both ways on a multi-course venue: swallowing the failure lets
++    sync deactivate the failed sheet's existing rows ("the venue was scraped,
++    those rows didn't come back"), while raising plain throws away the sheets
++    that DID answer. This exception carries both halves: `tee_times` — the
++    slots that fetched — get published, and `failed_labels` become
++    label-carrying error records in the doc, which d1.sync() uses to shield
++    exactly the failed sheets' rows from deactivation.
++    """
++
++    def __init__(self, message: str, tee_times: list,
++                 failed_labels: list[str]):
++        super().__init__(message)
++        self.tee_times = tee_times
++        self.failed_labels = failed_labels
++
++
+ def make_session() -> requests.Session:
+     s = requests.Session()
+     s.headers.update({
+diff --git a/scraper/adapters/chronogolf.py b/scraper/adapters/chronogolf.py
+index dd228fd..2a9ba6b 100644
+--- a/scraper/adapters/chronogolf.py
++++ b/scraper/adapters/chronogolf.py
+@@ -24,7 +24,7 @@ from __future__ import annotations
+ import datetime as dt
+ from typing import Any
+ 
+-from .base import Adapter
++from .base import Adapter, PartialFetchError
+ from ..models import TeeTime
+ 
+ BASE = "https://www.chronogolf.com"
+@@ -83,6 +83,7 @@ class ChronogolfAdapter(Adapter):
+ 
+         multi = len(course_ids) > 1
+         out: list[TeeTime] = []
++        failed_cids: list[tuple] = []       # (cid, first error)
+         for cid in course_ids:
+             # The API has no remaining-spots field — out_of_capacity is relative
+             # to the REQUESTED party size (probe-verified). So ask at party
+@@ -114,11 +115,11 @@ class ChronogolfAdapter(Adapter):
+             # The blanket swallow used to turn a teetimes endpoint that was
+             # down (while discovery still answered) into a clean [] — the
+             # course landed in courses_empty and sync deactivated its whole
+-            # day. Unknown must raise so the error guard shields the rows.
++            # day. Unknown must raise (below, after the sibling cids get
++            # their chance) so the error guard shields the rows.
+             if failed_sizes == 4:
+-                raise RuntimeError(
+-                    f"{course['slug']}: teetimes endpoint failed at every "
+-                    f"party size for course_id {cid}") from first_err
++                failed_cids.append((cid, first_err))
++                continue
+ 
+             cname = disc["course_names"].get(cid, course["name"])
+             for e in by_slot.values():
+@@ -140,4 +141,18 @@ class ChronogolfAdapter(Adapter):
+                     raw={"course_name": cname, **{k: slot.get(k) for k in
+                          ("start_time", "hole", "out_of_capacity")}},
+                 ))
++
++        if failed_cids and len(failed_cids) == len(course_ids):
++            raise RuntimeError(
++                f"{course['slug']}: teetimes endpoint failed at every party "
++                f"size for every course_id") from failed_cids[0][1]
++        if failed_cids:
++            # Partial: publish the sibling courses that served; the failed
++            # cids' labels shield their existing rows from deactivation.
++            raise PartialFetchError(
++                f"{course['slug']}: teetimes endpoint failed for course_id(s) "
++                + ", ".join(str(c) for c, _ in failed_cids),
++                tee_times=out,
++                failed_labels=[disc["course_names"].get(c, course["name"])
++                               if multi else "" for c, _ in failed_cids])
+         return out
+diff --git a/scraper/adapters/quick18.py b/scraper/adapters/quick18.py
+index eb86482..bfc3edd 100644
+--- a/scraper/adapters/quick18.py
++++ b/scraper/adapters/quick18.py
+@@ -128,7 +128,13 @@ class Quick18Adapter(Adapter):
+                 raw={"players": players_txt},
+             ))
+ 
+-        if not out and "searchmatrix" not in html.lower() and "tee" not in html.lower():
++        # Fail-loud guard for a page that is not a tee sheet at all. The old
++        # form also accepted any page containing the word "tee" — which on a
++        # golf platform is every error and maintenance page, so the guard
++        # never fired and an outage read as a clean empty day (deactivating
++        # real rows). "searchmatrix" is the widget's own marker; accept only
++        # that as proof we reached the sheet.
++        if not out and "searchmatrix" not in html.lower():
+             raise RuntimeError(f"{course['slug']}: unexpected Quick18 response "
+                                "(no tee-sheet table found)")
+         return out
+diff --git a/scraper/adapters/teequest.py b/scraper/adapters/teequest.py
+index 057b185..807147d 100644
+--- a/scraper/adapters/teequest.py
++++ b/scraper/adapters/teequest.py
+@@ -135,10 +135,41 @@ class TeeQuestAdapter(Adapter):
+                                           multi))
+         return out
+ 
++    @staticmethod
++    def _legacy_echoed_date(page) -> dt.date | None:
++        """The date the re-rendered search form says it is showing, if legible.
++
++        Positive evidence only: returns None when the select/option/format
++        isn't recognisable, so the guard below can never misfire on a markup
++        change — it only acts when the page NAMES a different day.
++        """
++        sel = page.find("select", {"name": "Search.Date"})
++        if sel is None:
++            return None
++        opt = sel.find("option", selected=True)
++        if opt is None:
++            return None
++        raw = (opt.get("value") or opt.get_text(" ", strip=True) or "")
++        m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
++        if not m:
++            return None
++        try:
++            return dt.date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
++        except ValueError:
++            return None
++
+     def _parse_legacy(self, html: str, course: dict, date: dt.date,
+                       tag: str, label: str, url: str,
+                       multi: bool) -> list[TeeTime]:
+         page = _soup(html)
++        # Wrong-day guard (v2 has one via data-date-time; legacy stamps the
++        # REQUESTED date onto whatever times render). If the re-rendered form
++        # names a different day — the site fell back to its default for an
++        # out-of-window request — those are another day's times: publishing
++        # them would file today's sheet under a future date.
++        echoed = self._legacy_echoed_date(page)
++        if echoed is not None and echoed != date:
++            return []          # out of window: an empty day, not an error
+         # Single-course sites print their one course name in the heading; do
+         # not stamp a label there or every slot gets a redundant sub-course.
+         out: list[TeeTime] = []
+diff --git a/scraper/adapters/teesnap.py b/scraper/adapters/teesnap.py
+index 160187b..6e00e38 100644
+--- a/scraper/adapters/teesnap.py
++++ b/scraper/adapters/teesnap.py
+@@ -47,7 +47,7 @@ import re
+ import threading
+ from typing import Any
+ 
+-from .base import Adapter
++from .base import Adapter, PartialFetchError
+ from ..models import TeeTime
+ 
+ # (There used to be a COURSES_RE non-greedy `window.courses = (\[.*?\]);`
+@@ -201,16 +201,16 @@ class TeesnapAdapter(Adapter):
+         multi = len(course_ids) > 1
+         out: list[TeeTime] = []
+         errors: list[str] = []
++        failed: list[tuple[int, str]] = []   # (cid, error text)
+         for cid in course_ids:
+             # One bad id must not cost us the whole venue. Teesnap answers 500
+             # ("Be right back.") for ids that aren't really courses, and for
+             # genuinely broken sheets; the other ids on the same tenant keep
+-            # working. Collect and only raise if EVERY id failed.
+-            # KNOWN TENSION: on a partial failure the failed sheet's existing
+-            # D1 rows are deactivated by sync (the venue counts as scraped).
+-            # Tolerating that is deliberate and covered by
+-            # scripts/test_teesnap_adapter.py; the real fix would be
+-            # label-granular error records in the doc format.
++            # working. Collect; only a total failure is a plain raise — a
++            # PARTIAL failure raises PartialFetchError, which publishes the
++            # served sheets while its label records shield the failed sheet's
++            # existing D1 rows from deactivation (they used to be erased,
++            # because the venue counted as scraped).
+             try:
+                 data = self.get_json(
+                     f"https://{sub}.teesnap.net/customer-api/teetimes-day",
+@@ -218,6 +218,7 @@ class TeesnapAdapter(Adapter):
+                             "players": 1, "holes": 18, "addons": "off"})
+             except Exception as exc:  # noqa: BLE001
+                 errors.append(f"course {cid}: {type(exc).__name__}: {exc}")
++                failed.append((cid, f"{type(exc).__name__}: {exc}"))
+                 continue
+             block = (data or {}).get("teeTimes", {})
+             for slot in block.get("teeTimes", []):
+@@ -252,4 +253,15 @@ class TeesnapAdapter(Adapter):
+         if errors and len(errors) == len(course_ids):
+             raise RuntimeError(f"{course['slug']}: every Teesnap course id "
+                                f"failed — " + "; ".join(errors))
++        if failed:
++            # Partial: publish `out` (the served sheets) and shield the failed
++            # sheets' rows via their labels. A label can be "" only when the
++            # venue has one id, and one id failing is total failure above —
++            # so every label here names a real sheet.
++            raise PartialFetchError(
++                f"{course['slug']}: {len(failed)} of {len(course_ids)} "
++                "Teesnap course id(s) failed — " + "; ".join(errors),
++                tee_times=out,
++                failed_labels=[(names.get(cid) or "") if multi else ""
++                               for cid, _ in failed])
+         return out
+diff --git a/scraper/aggregate.py b/scraper/aggregate.py
+index a856e21..581e177 100644
+--- a/scraper/aggregate.py
++++ b/scraper/aggregate.py
+@@ -22,7 +22,7 @@ import zoneinfo
+ 
+ from .models import FetchResult
+ from .sharding import apply_shard, set_env_shard_count
+-from .adapters.base import Adapter
++from .adapters.base import Adapter, PartialFetchError
+ from .adapters.foreup import ForeUpAdapter
+ from .adapters.teeitup import TeeItUpAdapter
+ from .adapters.chronogolf import ChronogolfAdapter
+@@ -87,6 +87,13 @@ def fetch_course(course: dict, date: dt.date) -> FetchResult:
+     try:
+         tee_times = adapter_cls().fetch(course, date)
+         return FetchResult(course["slug"], course["platform"], True, tee_times)
++    except PartialFetchError as e:
++        # Some sub-courses served, some failed. Publish what fetched; the
++        # failed labels become label-carrying error records so sync shields
++        # exactly those sheets' rows (see PartialFetchError's docstring).
++        return FetchResult(course["slug"], course["platform"], True,
++                           e.tee_times, error=f"partial: {e}",
++                           failed_labels=list(e.failed_labels))
+     except Exception as e:  # noqa: BLE001 — aggregator must survive any course
+         return FetchResult(course["slug"], course["platform"], False,
+                            error=f"{type(e).__name__}: {e}")
+@@ -147,13 +154,23 @@ def run(date: dt.date, registry_path: str, out_path: str,
+         #      empty is a real sell-out rather than a throttle. If the whole
+         #      platform is empty this run, NONE are deactivated and the last
+         #      good capture survives until a run that truly reads the sheet.
++        #   3. A partially-failed venue (failed_labels) is never a trustworthy
++        #      empty: its served sheets may have returned zero while the
++        #      failed sheet is the one still holding rows — deactivating the
++        #      whole venue off that would erase the failed sheet's inventory.
+         "courses_empty": sorted(
+             r.course_slug for r in results
+-            if r.ok and not r.tee_times
++            if r.ok and not r.tee_times and not r.failed_labels
+             and r.platform in {x.platform for x in results
+                                if x.ok and x.tee_times}),
++        # Course-level records (no course_label) shield the WHOLE course in
++        # sync; label-carrying records shield only that sub-course's rows.
+         "errors": [{"course": r.course_slug, "platform": r.platform,
+-                    "error": r.error} for r in results if not r.ok],
++                    "error": r.error} for r in results if not r.ok]
++                + [{"course": r.course_slug, "platform": r.platform,
++                    "course_label": lbl,
++                    "error": r.error or "sub-course fetch failed"}
++                   for r in results for lbl in r.failed_labels],
+     }
+     out = pathlib.Path(out_path)
+     out.parent.mkdir(parents=True, exist_ok=True)
+diff --git a/scraper/browser_totale.py b/scraper/browser_totale.py
+index e67e259..fe46eb3 100644
+--- a/scraper/browser_totale.py
++++ b/scraper/browser_totale.py
+@@ -85,14 +85,21 @@ async () => {
+       .find(d => norm(d.textContent) === lbl && d.offsetParent);
+     if (!cell) continue;
+     cell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+-    // wait for the sheet to reflect this label's date (or give up after ~6s)
+-    const want = lbl.replace(/^(\d{1,2})\s+([A-Za-z]{3}).*/, "$1 $2");
+-    let ok = false;
++    // Wait for the sheet to reflect this label's date (or give up after ~6s).
++    // The card prints NUMERIC dates ("07/28/2026") while the strip label is
++    // "28 Jul" — the old check looked for the literal month word in the card,
++    // could never match, and burned the full 6s on every day (and a postback
++    // slower than that lost the day entirely). Compare as MM/DD/ instead.
++    const MONTHS = {jan:1, feb:2, mar:3, apr:4, may:5, jun:6,
++                    jul:7, aug:8, sep:9, oct:10, nov:11, dec:12};
++    const parts = lbl.split(/\s+/);
++    const dd = String(+parts[0]).padStart(2, "0");
++    const mm = String(MONTHS[(parts[1] || "").toLowerCase()] || 0)
++      .padStart(2, "0");
+     for (let i = 0; i < 24; i++) {
+       await new Promise(r => setTimeout(r, 250));
+       const b = document.querySelector(".TeeBlock");
+-      if (b && new RegExp("\\b" + want.split(" ")[0] + "\\b").test(norm(b.textContent))
+-          && norm(b.textContent).includes(want.split(" ")[1])) { ok = true; break; }
++      if (b && norm(b.textContent).includes(mm + "/" + dd + "/")) break;
+     }
+     add(parseBlocks());
+   }
+diff --git a/scraper/d1.py b/scraper/d1.py
+index 77bcb77..3be941a 100644
+--- a/scraper/d1.py
++++ b/scraper/d1.py
+@@ -78,7 +78,13 @@ class D1Rest:
+         body = r.json()
+         if not body.get("success"):
+             raise RuntimeError(f"D1 error: {body.get('errors')}")
+-        return body["result"][0].get("results", [])
++        result = body["result"][0]
++        # Rows touched by this statement, for callers that report write
++        # tallies (migrate's rename counter read 0 forever because the
++        # meta was discarded here).
++        self.last_changes = int((result.get("meta") or {}).get("changes")
++                                or 0)
++        return result.get("results", [])
+ 
+     def executescript(self, sql: str) -> None:
+         # D1 accepts multi-statement sql when no params are bound
+@@ -96,6 +102,8 @@ class SqliteLocal:
+     def execute(self, sql: str, params: list | None = None) -> list[dict]:
+         cur = self.conn.execute(sql, params or [])
+         self.conn.commit()
++        # sqlite reports -1 for SELECTs; clamp so it mirrors D1Rest's meta.
++        self.last_changes = max(0, cur.rowcount)
+         return [dict(r) for r in cur.fetchall()]
+ 
+     def executescript(self, sql: str) -> None:
+@@ -213,25 +221,15 @@ def migrate(db, registry_path: str | None = None) -> dict:
+                  c.get("source_role", "primary"), slug])
+             backfilled += 1
+             shown = (c.get("display_name") or "").strip() or c["name"]
+-            r = db.execute(
++            db.execute(
+                 "UPDATE tee_times SET course_name=? "
+                 "WHERE course_slug=? AND course_name<>?",
+                 [shown, slug, shown])
+-            if _changes(r):
++            if getattr(db, "last_changes", 0):
+                 renamed += 1
+     return {"backfilled_courses": backfilled, "courses_renamed": renamed}
+ 
+ 
+-def _changes(result) -> int:
+-    """Rows touched by the last statement, across the shapes D1's HTTP API and
+-    the local sqlite shim return. Best-effort: a 0 here only under-reports the
+-    `courses_renamed` tally, it never changes what was written."""
+-    if isinstance(result, dict):
+-        meta = result.get("meta") or {}
+-        return int(meta.get("changes") or result.get("changes") or 0)
+-    return int(getattr(result, "rowcount", 0) or 0)
+-
+-
+ # --------------------------------------------------------------------------- #
+ # past-slot pruning
+ # --------------------------------------------------------------------------- #
+@@ -406,7 +404,8 @@ def prune_past(db, dry_run: bool = False) -> dict:
+         if tz == "America/New_York":
+             # Panhandle FL is Central — judged separately below, and it must
+             # NOT be pruned an hour early by the Eastern clock here.
+-            where += f" AND NOT (state = 'FL' AND city IN ({city_marks}))"
++            where += (f" AND NOT (state = 'FL' "
++                      f"AND COALESCE(city,'') IN ({city_marks}))")
+             params += fl_central
+         n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+                        params)[0]["n"]
+@@ -418,8 +417,8 @@ def prune_past(db, dry_run: bool = False) -> dict:
+             total += n
+ 
+     now = _local_now("America/Chicago")     # panhandle FL, on its own clock
+-    where = (f"active = 1 AND state = 'FL' AND city IN ({city_marks}) "
+-             "AND teetime < ?")
++    where = (f"active = 1 AND state = 'FL' "
++             f"AND COALESCE(city,'') IN ({city_marks}) AND teetime < ?")
+     n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+                    [*fl_central, now])[0]["n"]
+     if n:
+@@ -469,8 +468,15 @@ def sync(db, doc: dict) -> dict:
+             "active": 1, "first_seen_at": now, "last_seen_at": now,
+         }
+ 
+-    # courses that errored this run must NOT have their rows deactivated
+-    errored = {e["course"] for e in doc.get("errors", [])}
++    # courses that errored this run must NOT have their rows deactivated.
++    # A record WITHOUT course_label shields the whole course; a record WITH
++    # one (a PartialFetchError: one sub-course failed while siblings served)
++    # shields only that sheet's rows, so the venue's served sheets still
++    # reconcile normally.
++    errored = {e["course"] for e in doc.get("errors", [])
++               if not e.get("course_label")}
++    label_errored = {(e["course"], e["course_label"])
++                     for e in doc.get("errors", []) if e.get("course_label")}
+     scraped_courses = {k[0] for k in scraped}
+     # A course that answered cleanly with ZERO rows for this date is evidence,
+     # not ignorance: the day sold out or its booking window closed, and its
+@@ -518,7 +524,8 @@ def sync(db, doc: dict) -> dict:
+             to_update.append(v)
+     to_deactivate = [k for k, e in existing.items()
+                      if e["active"] and k not in scraped
+-                     and k[0] in scraped_courses and k[0] not in errored]
++                     and k[0] in scraped_courses and k[0] not in errored
++                     and (k[0], k[2]) not in label_errored]
+ 
+     for i in range(0, len(to_insert), CHUNK):
+         chunk = to_insert[i:i + CHUNK]
+diff --git a/scraper/gen_sample.py b/scraper/gen_sample.py
+index 5cedac4..dc16367 100644
+--- a/scraper/gen_sample.py
++++ b/scraper/gen_sample.py
+@@ -54,6 +54,15 @@ def generate(date: dt.date, seed: int = 42) -> dict:
+                     "course_slug": course["slug"],
+                     "course_name": course["name"],
+                     "city": course.get("city", ""),
++                    # state/venue_id/course_label/source_role mirror the live
++                    # doc shape. Omitting them minted NULL-state rows if a
++                    # sample was ever pushed at a real DB — the exact "AZ
++                    # ghosts filed under CO" class deactivate_unknown_slugs
++                    # documents.
++                    "state": course.get("state", ""),
++                    "venue_id": course.get("venue_id") or course["slug"],
++                    "source_role": course.get("source_role", "primary"),
++                    "course_label": "",
+                     "platform": course["platform"],
+                     "teetime": t.isoformat(),
+                     "holes": [18] if rng.random() < 0.7 else [9, 18],
+@@ -77,8 +86,13 @@ def generate(date: dt.date, seed: int = 42) -> dict:
+ 
+ 
+ def main() -> None:
++    import zoneinfo
+     p = argparse.ArgumentParser()
+-    p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=2)).isoformat())
++    # Denver-local default, same reasoning as scraper/aggregate.py: a UTC
++    # runner's `date.today()` is already tomorrow from ~5pm Mountain.
++    p.add_argument("--date", default=(
++        dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).date()
++        + dt.timedelta(days=2)).isoformat())
+     p.add_argument("--out", default="output/tee_times.json")
+     a = p.parse_args()
+     doc = generate(dt.date.fromisoformat(a.date))
+diff --git a/scraper/models.py b/scraper/models.py
+index fc8055d..fd81438 100644
+--- a/scraper/models.py
++++ b/scraper/models.py
+@@ -53,3 +53,8 @@ class FetchResult:
+     ok: bool
+     tee_times: list[TeeTime] = field(default_factory=list)
+     error: Optional[str] = None
++    # Sub-courses (course_labels) that failed while the rest served — from a
++    # PartialFetchError. ok stays True (the tee_times are real and publish);
++    # each label becomes a label-carrying error record so sync shields that
++    # sheet's existing rows instead of deactivating them.
++    failed_labels: list[str] = field(default_factory=list)
+diff --git a/scraper/onetee.py b/scraper/onetee.py
+index 89fc5b8..8fead67 100644
+--- a/scraper/onetee.py
++++ b/scraper/onetee.py
+@@ -61,10 +61,16 @@ def post(doc: dict, url: str, api_key: str, dry_run: bool = False) -> int:
+             if r.status_code < 300:
+                 sent += len(payload["tee_times"])
+                 break
+-            if r.status_code in (429, 500, 502, 503) and attempt < 2:
++            if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+                 time.sleep(2 ** attempt)
+                 continue
++            # raise_for_status() is a no-op for 3xx, and falling through it
++            # used to drop the batch silently (loop ran out with no error and
++            # no count). Any non-2xx that reaches here must raise.
+             r.raise_for_status()
++            raise RuntimeError(
++                f"onetee post: unexpected status {r.status_code} for batch "
++                f"{i // BATCH} — batch not accepted")
+     return sent
+ 
+ 
+diff --git a/scripts/probe_newly_ready.py b/scripts/probe_newly_ready.py
+index e153b0f..2e12479 100644
+--- a/scripts/probe_newly_ready.py
++++ b/scripts/probe_newly_ready.py
+@@ -249,16 +249,22 @@ def main() -> int:
+     budget = a.budget_minutes * 60
+     results: list = list(carried)
+     stopped: str | None = None
++    unreached: list = []
+     for i, c in enumerate(targets):
+         if budget and time.monotonic() - started > budget:
+             # A cap is only acceptable if it is said out loud, in the log AND
+             # in the artifact, so nobody reads a partial file as a full sweep.
++            # `i`, not len(results): results also holds the carried answers
++            # from a resumed run, and counting those as "reached this run"
++            # once sliced the unreached list short — an incomplete run could
++            # write complete:true and the next run refused to resume it.
+             stopped = (f"time budget {a.budget_minutes:g} min reached after "
+-                       f"{len(results)} of {len(targets)} targets")
++                       f"{i} of {len(targets)} targets")
+             print(f"\nSTOPPING EARLY: {stopped}", flush=True)
+-            print("  NOT reached: " + ", ".join(t["slug"] for t in targets[i:]),
++            unreached = targets[i:]
++            print("  NOT reached: " + ", ".join(t["slug"] for t in unreached),
+                   flush=True)
+-            flush(results, targets[i:], stopped)
++            flush(results, unreached, stopped)
+             break
+         per_date, errors, total = {}, [], 0
+         for d in dates:
+@@ -304,7 +310,7 @@ def main() -> int:
+ 
+     if stopped:
+         print(f"\nINCOMPLETE: {stopped}")
+-    flush(results, [] if not stopped else targets[len(results):], stopped)
++    flush(results, unreached, stopped)
+     print(f"wrote {a.out}")
+     return 0
+ 
+diff --git a/scripts/probe_staleness.py b/scripts/probe_staleness.py
+index 8f3cd0b..44a31dd 100644
+--- a/scripts/probe_staleness.py
++++ b/scripts/probe_staleness.py
+@@ -60,12 +60,14 @@ import datetime as dt
+ import json
+ import os
+ import sys
++import zoneinfo
+ from collections import Counter
+ 
+ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ 
+ from scraper.aggregate import fetch_course, load_registry  # noqa: E402
+-from scraper.d1 import D1Rest, SqliteLocal, deactivate_courses  # noqa: E402
++from scraper.d1 import (D1Rest, SqliteLocal, deactivate_courses,  # noqa: E402
++                        _STATE_TZ, FL_CENTRAL_CITIES)
+ 
+ # Every platform family has an hourly writer of its own (scrape :17,
+ # clubcaddie :27, cps/supersaas :37, ezlinks :47, golfnow :52), and scrape-fast
+@@ -186,8 +188,24 @@ def main() -> int:
+ 
+         # The dates we are actually serving for this course. Adjudicating on
+         # some other date would answer a question nobody asked.
+-        dates = sorted({t[:10] for t in (c["first_tt"], c["last_tt"]) if t})
+-        today = str(dt.date.today())
++        #
++        # "today" is the COURSE's local today, never the runner's UTC date:
++        # from ~17:00 Phoenix onward UTC-today is local-tomorrow, and the old
++        # `dt.date.today()` filtered the course's real today out of the
++        # adjudication — a quiet course serving real evening slots could
++        # verdict "orphaned" off a fetch of the wrong day and have tonight's
++        # inventory deactivated. Same date-frame bug scraper/dates.py fixed
++        # for the scrape tiers.
++        tz = _STATE_TZ.get((course.get("state") or "").upper(),
++                           "Pacific/Honolulu")  # unknown: earliest date, widest net
++        if course.get("state") == "FL" and course.get("city") in FL_CENTRAL_CITIES:
++            tz = "America/Chicago"
++        today = dt.datetime.now(zoneinfo.ZoneInfo(tz)).date().isoformat()
++        # Local today is adjudicated alongside the served range: an extra
++        # clean-zero only strengthens an "orphaned" verdict, and a course
++        # serving real slots tonight will answer with them.
++        dates = sorted({t[:10] for t in (c["first_tt"], c["last_tt"]) if t}
++                       | {today})
+         dates = [d for d in dates if d >= today][:MAX_DATES] or [today]
+ 
+         per_date, errors, total = {}, [], 0
+diff --git a/scripts/state_dashboard.py b/scripts/state_dashboard.py
+index dc6cc00..990cf7a 100644
+--- a/scripts/state_dashboard.py
++++ b/scripts/state_dashboard.py
+@@ -113,7 +113,7 @@ def render(rep: dict, stamp: str) -> str:
+     gap = addr - live
+     pct = 100.0 * live / addr if addr else 0
+ 
+-    o = [f"<!doctype html><html lang=en><head><meta charset=utf-8>",
++    o = ["<!doctype html><html lang=en><head><meta charset=utf-8>",
+          "<meta name=viewport content='width=device-width,initial-scale=1'>",
+          "<title>OneTee — coverage by state</title>",
+          f"<style>{CSS}</style></head><body><div class=wrap>"]
+diff --git a/scripts/state_regression.py b/scripts/state_regression.py
+index 7e26e52..6ca6fa4 100644
+--- a/scripts/state_regression.py
++++ b/scripts/state_regression.py
+@@ -23,12 +23,15 @@ import json
+ import sys
+ 
+ 
+-def live_by_state(path: str) -> dict[str, int]:
++def load_doc(path: str) -> dict:
+     try:
+         with open(path) as fh:
+-            doc = json.load(fh)
++            return json.load(fh)
+     except (OSError, ValueError):
+         return {}
++
++
++def live_by_state(doc: dict) -> dict[str, int]:
+     return {s["state"]: s["counts"]["live"] for s in doc.get("states", [])}
+ 
+ 
+@@ -40,7 +43,16 @@ def main() -> int:
+                     help="live venues a state may lose without failing")
+     a = ap.parse_args()
+ 
+-    old, new = live_by_state(a.previous), live_by_state(a.current)
++    old_doc, new_doc = load_doc(a.previous), load_doc(a.current)
++    # A report whose D1 query returned nothing is "we couldn't look", not
++    # "coverage is zero". Comparing it (or letting it become the baseline)
++    # would either fire a phantom all-states regression or ratchet the
++    # baseline to zeros, after which every real count reads as a rise.
++    if new_doc and new_doc.get("has_live_data") is False:
++        print("FAIL: current report has no live D1 data (has_live_data=false) "
++              "— cannot judge coverage from it")
++        return 1
++    old, new = live_by_state(old_doc), live_by_state(new_doc)
+     if not old:
+         print("no previous run to compare against — baseline recorded")
+         return 0
+diff --git a/scripts/state_status.py b/scripts/state_status.py
+index d0c5e13..370e15d 100644
+--- a/scripts/state_status.py
++++ b/scripts/state_status.py
+@@ -178,10 +178,15 @@ def build(counts: dict[str, int]) -> dict:
+                 any_booking = any(r["Online Booking"] == "yes" for r in v["rows"])
+                 private = all(r.get("Type", "").strip().lower()
+                               in OUT_OF_SCOPE_TYPES for r in v["rows"])
+-                bucket = ("no_platform" if any_booking
+-                          else "private" if private else "no_booking")
++                # private wins over any_booking: a members-only club that
++                # happens to book online is still out of scope, and counting
++                # it as "no_platform" inflated both the addressable
++                # denominator and the blocker table.
++                bucket = ("private" if private
++                          else "no_platform" if any_booking else "no_booking")
+                 placed[bucket].append({
+-                    "slug": vb, "name": v["name"], "city": v["city"],
++                    "slug": vb, "venue_id": vb,
++                    "name": v["name"], "city": v["city"],
+                     "platform": (v["rows"][0].get("Booking Platform") or ""),
+                     "rows": 0, "why": BUCKET_BLURB[bucket]})
+                 continue
+@@ -204,7 +209,12 @@ def build(counts: dict[str, int]) -> dict:
+                     best, best_src = BUCKETS.index(b), c
+             bucket = BUCKETS[best]
+             placed[bucket].append({
+-                "slug": best_src["slug"], "name": best_src["name"],
++                # slug is the best SOURCE's slug (may be a supplement like
++                # "foo-golfnow"); venue_id is the venue key the directory
++                # joins on — verify_directory's live-vs-tag check needs it.
++                "slug": best_src["slug"],
++                "venue_id": best_src.get("venue_id") or best_src["slug"],
++                "name": best_src["name"],
+                 "city": best_src["city"],
+                 "platform": best_src["platform"],
+                 "sources": len(regs), "rows": live_rows,
+diff --git a/scripts/test_teesnap_adapter.py b/scripts/test_teesnap_adapter.py
+index bb907d2..cda71c8 100644
+--- a/scripts/test_teesnap_adapter.py
++++ b/scripts/test_teesnap_adapter.py
+@@ -28,6 +28,7 @@ from typing import Any
+ 
+ sys.path.insert(0, ".")
+ 
++from scraper.adapters.base import PartialFetchError  # noqa: E402
+ from scraper.adapters.teesnap import TeesnapAdapter  # noqa: E402
+ 
+ DATE = dt.date(2026, 7, 26)
+@@ -145,13 +146,60 @@ def main() -> None:
+     print("\nfetch: a 500 on one id must not cost the venue its real slots")
+     boom = RuntimeError("500 Server Error: Be right back.")
+     a = Fake({1550: sheet(["07:10", "07:20", "07:30"]), 1551: boom})
+-    out = a.fetch(COURSE, DATE)
+-    check("the good id's slots survive", len(out) == 3, f"got {len(out)}")
++    # Partial failure raises PartialFetchError: the served sheets' slots ride
++    # on the exception (the aggregator publishes them) and the failed sheet's
++    # label becomes an error record that shields its existing D1 rows — the
++    # old silent-partial return let sync deactivate the failed sheet's day.
++    try:
++        a.fetch(COURSE, DATE)
++        check("partial failure raises PartialFetchError", False, "returned")
++        out, labels = [], []
++    except PartialFetchError as exc:
++        check("partial failure raises PartialFetchError", True)
++        out, labels = exc.tee_times, exc.failed_labels
++    check("the good id's slots survive (on the exception)",
++          len(out) == 3, f"got {len(out)}")
++    check("the failed sheet is named by label",
++          labels == ["Hollydot Nine"], str(labels))
+     check("no property id was ever requested", 1329 not in a.asked,
+           f"asked {a.asked}")
+     check("no notice id was ever requested", 1517 not in a.asked,
+           f"asked {a.asked}")
+ 
++    print("\nd1 sync: a label-carrying error record shields exactly that sheet")
++    from scraper.d1 import SqliteLocal, migrate, sync
++    db = SqliteLocal(":memory:")
++    migrate(db)
++    day = str(DATE)
++
++    def mk(label, t):
++        return {"course_slug": "hollydot-golf-course", "teetime": f"{day}T{t}",
++                "course_name": "Hollydot", "city": "Colorado City",
++                "state": "CO", "platform": "teesnap", "holes": [18],
++                "booking_url": "u", "course_label": label}
++
++    sync(db, {"generated_at": "x", "date": day, "errors": [],
++              "tee_times": [mk("Hollydot Golf Course", "07:10:00"),
++                            mk("Hollydot Nine", "08:00:00")]})
++    # Next run: the Nine's sheet 500s (label error record), the main course
++    # serves but its 07:10 slot got booked. Expect: 07:10 deactivated (real
++    # reconcile), the Nine's 08:00 row UNTOUCHED despite not being returned.
++    sync(db, {"generated_at": "x", "date": day,
++              "errors": [{"course": "hollydot-golf-course",
++                          "platform": "teesnap",
++                          "course_label": "Hollydot Nine",
++                          "error": "500 Be right back"}],
++              "tee_times": [mk("Hollydot Golf Course", "09:10:00")]})
++    rows = {(r["course_label"], r["teetime"][-8:]): r["active"]
++            for r in db.execute("SELECT course_label, teetime, active "
++                                "FROM tee_times")}
++    check("served sheet reconciles (booked slot deactivated)",
++          rows[("Hollydot Golf Course", "07:10:00")] == 0, str(rows))
++    check("failed sheet's row is shielded, stays active",
++          rows[("Hollydot Nine", "08:00:00")] == 1, str(rows))
++    check("served sheet's new slot inserted",
++          rows[("Hollydot Golf Course", "09:10:00")] == 1, str(rows))
++
+     print("\nfetch: total failure is still an error, not an empty day")
+     a = Fake({1550: boom, 1551: boom})
+     try:
+diff --git a/scripts/verify_directory.py b/scripts/verify_directory.py
+index adeefea..1ae8069 100644
+--- a/scripts/verify_directory.py
++++ b/scripts/verify_directory.py
+@@ -92,8 +92,14 @@ def main() -> int:
+         mislabelled, unjoined = [], []
+         for st in status.get("states", []):
+             for item in st.get("detail", {}).get("live", []):
+-                c = by_id.get(item["slug"]) or by_name.get(
+-                    key(st["state"], item["name"]))
++                # Join on venue_id first: item["slug"] is the best SOURCE's
++                # slug, which for a supplement-live venue is a suffixed slug
++                # ("foo-golfnow") that matches no directory venue_id — the
++                # slug-only join could false-fatal (or, via the name
++                # fallback, silently mask a real venue_id mismatch).
++                c = (by_id.get(item.get("venue_id") or "")
++                     or by_id.get(item["slug"])
++                     or by_name.get(key(st["state"], item["name"])))
+                 if not c:
+                     unjoined.append(f'{st["state"]} {item["name"]}')
+                     continue
+diff --git a/worker/index.js b/worker/index.js
+index 98dc444..e0e4e4e 100644
+--- a/worker/index.js
++++ b/worker/index.js
+@@ -86,7 +86,7 @@ const FL_CENTRAL_CITIES = [
+   "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
+ ];
+ const FL_CENTRAL_SQL = FL_CENTRAL_CITIES.map((c) => `'${c}'`).join(",");
+-const FL_CENTRAL_ARM = `state = 'FL' AND city IN (${FL_CENTRAL_SQL})`;
++const FL_CENTRAL_ARM = `state = 'FL' AND COALESCE(city,'') IN (${FL_CENTRAL_SQL})`;
+ 
+ // Rows whose state is null/blank are judged by the LAST US zone to reach a
+ // given clock time. Conservative on purpose: it can leave a stale slot up a few
+@@ -104,7 +104,8 @@ const tzGroups = () => {
+ // The state lists are inlined as SQL literals rather than bound. They come from
+ // the constant above — never from a request — and binding all 51 would eat 59
+ // of D1's 100-parameter-per-query ceiling, leaving almost nothing for the
+-// actual filters. Inlining keeps it at 8 binds: one clock per zone.
++// actual filters. Inlining keeps it at 9 binds: one clock per zone,
++// plus the FL-panhandle arm's Chicago clock.
+ const TZ_ORDER = Object.entries(tzGroups());
+ // The FL-panhandle arm comes FIRST so it wins over FL's Eastern group arm.
+ const PAST_CLAUSE = `teetime >= CASE WHEN ${FL_CENTRAL_ARM} THEN ? ${TZ_ORDER
+-- 
+2.43.0
+
