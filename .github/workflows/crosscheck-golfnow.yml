@@ -48,9 +48,12 @@ jobs:
 
       - name: Replay
         timeout-minutes: 9
+        env:
+          INPUT_HOST: ${{ github.event.inputs.host }}
         run: |
+          set -o pipefail
           python3 scripts/crosscheck_golfnow.py \
-            --host "${{ github.event.inputs.host || 'cedaredge-golf-club-golfnow' }}" \
+            --host "${INPUT_HOST:-cedaredge-golf-club-golfnow}" \
             2>&1 | tee crosscheck.log
 
       - name: Summary

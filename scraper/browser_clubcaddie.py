@@ -129,15 +129,20 @@ def _fetch_course(pw, course: dict, dates: list[dt.date]) -> tuple[dict, str | N
             if not captured.get("body"):
                 last = "no TeeTimes POST observed"
                 raise RuntimeError(last)
-            per_date: dict[str, list] = {}
+            # A failed replay is recorded as None ("unknown"), NEVER as [] —
+            # an expired session mid-run used to file every remaining date as
+            # a clean empty day, and sync deactivated the course's real rows.
+            per_date: dict[str, list | None] = {}
             for d in dates:
                 r = page.evaluate(REPLAY_JS, [captured["body"], d.strftime("%m/%d/%Y")])
                 if r.get("status") == 200 and (r.get("html") or "").strip()[:1] == "<":
                     per_date[d.isoformat()] = _parse(course, d, r["html"])
                 else:
-                    per_date[d.isoformat()] = []
+                    per_date[d.isoformat()] = None
+                    last = f"replay status {r.get('status')}"
                 page.wait_for_timeout(400)
-            return per_date, None
+            return per_date, (last if any(v is None for v in per_date.values())
+                              else None)
         except Exception as e:  # noqa: BLE001
             last = last or type(e).__name__
         finally:
@@ -164,18 +169,28 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
     with sync_playwright() as pw:
         for c in courses:
             got, err = _fetch_course(pw, c, dates)
-            total = sum(len(v) for v in got.values())
-            if err and not total:
+            total = sum(len(v) for v in got.values() if v)
+            if err and not got:
+                # nothing captured at all: every requested date is unknown
                 for d in dates:
                     errors[d.isoformat()].append(
                         {"course": c["slug"], "platform": "clubcaddie",
                          "error": f"browser {err}"})
                 log.info("  %-32s ERROR %s", c["slug"], err)
             else:
+                # per-date: a None marks a failed replay — error that date so
+                # sync shields the course's rows instead of reading "empty".
+                failed = 0
                 for diso, tts in got.items():
-                    per_date_times[diso].extend(tts)
-                log.info("  %-32s %d times (%d dates)", c["slug"], total,
-                         sum(1 for v in got.values() if v))
+                    if tts is None:
+                        failed += 1
+                        errors[diso].append(
+                            {"course": c["slug"], "platform": "clubcaddie",
+                             "error": f"browser {err or 'replay failed'}"})
+                    else:
+                        per_date_times[diso].extend(tts)
+                log.info("  %-32s %d times (%d dates, %d failed)", c["slug"],
+                         total, sum(1 for v in got.values() if v), failed)
 
     out_paths = {}
     outp = pathlib.Path(out_dir)

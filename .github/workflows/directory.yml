@@ -5,10 +5,11 @@ name: Build + verify the course directory
 #
 # Separate from the state-status workflow on purpose. That one commits with
 # [skip ci], which is right for a report nobody deploys — but the directory
-# lands in worker/directory.gen.js, and a [skip ci] commit there would update
-# the file without ever deploying it, leaving the API serving the previous
-# directory indefinitely. This workflow commits normally so the existing
-# worker/** trigger on deploy-worker picks the change up.
+# lands in worker/directory.gen.js, and a commit there that never deploys
+# would leave the API serving the previous directory indefinitely. Pushes made
+# with GITHUB_TOKEN never trigger other workflows (so deploy-worker's worker/**
+# push trigger cannot fire from here); this workflow therefore dispatches
+# deploy-worker.yml itself after a successful push.
 #
 # The verify step is the one that matters: it fails if a course we are
 # actively selling tee times for is tagged "call the pro shop" or "members
@@ -28,6 +29,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: directory
@@ -105,6 +107,7 @@ jobs:
         run: git checkout -- registry.json
 
       - name: Commit
+        id: commit
         if: steps.verify.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
@@ -113,7 +116,15 @@ jobs:
           git diff --cached --quiet && { echo "directory unchanged"; exit 0; }
           git commit -m "Rebuild course directory from the state CSVs"
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main && git push && exit 0
+            git pull --rebase origin main && git push \
+              && { echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; }
             sleep $((i * 5))
           done
           echo "could not push the directory after 5 attempts"; exit 1
+
+      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"

@@ -45,6 +45,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: enrich-phones
@@ -72,11 +73,17 @@ jobs:
         # with whatever it found. A job-level timeout would cancel the job
         # outright and throw away an hour of deliberately slow crawling.
         timeout-minutes: 90
+        env:
+          INPUT_STATES: ${{ github.event.inputs.states }}
+          INPUT_REFRESH: ${{ github.event.inputs.refresh }}
+          INPUT_DELAY: ${{ github.event.inputs.delay }}
         run: |
-          python3 scripts/enrich_phones.py \
-            ${{ github.event.inputs.states && format('--states {0}', github.event.inputs.states) || '' }} \
-            ${{ github.event.inputs.refresh == 'true' && '--refresh' || '' }} \
-            --delay "${{ github.event.inputs.delay || '1.5' }}" \
+          set -o pipefail
+          EXTRA=()
+          [ -n "$INPUT_STATES" ] && EXTRA+=(--states "$INPUT_STATES")
+          [ "$INPUT_REFRESH" = "true" ] && EXTRA+=(--refresh)
+          python3 scripts/enrich_phones.py "${EXTRA[@]}" \
+            --delay "${INPUT_DELAY:-1.5}" \
             2>&1 | tee phones.log
 
       - name: Rebuild the directory with the numbers folded in
@@ -102,18 +109,29 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Commit
+        id: commit
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # The Worker's bundled copy has to go with it: phones land in
           # directory.json, and committing that alone would leave the API
-          # serving a directory with no numbers in it. No [skip ci] for the
-          # same reason — deploy-worker's worker/** trigger is what ships it.
+          # serving a directory with no numbers in it. GITHUB_TOKEN pushes
+          # never trigger other workflows (deploy-worker's worker/** push
+          # trigger cannot fire from here), so the step below dispatches
+          # deploy-worker.yml itself when a push actually landed.
           git add local/phones.json directory.json worker/directory.gen.js
           git commit -m "Directory phone numbers" || exit 0
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main && git push && exit 0
+            git pull --rebase origin main && git push \
+              && { echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0; }
             sleep $((i * 5))
           done
           echo "could not push phone numbers after 5 attempts"; exit 1
+
+      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
+        if: always() && steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"

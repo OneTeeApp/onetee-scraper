@@ -18,10 +18,11 @@ import json
 import logging
 import pathlib
 import sys
+import zoneinfo
 
 from .models import FetchResult
 from .sharding import apply_shard, set_env_shard_count
-from .adapters.base import Adapter, make_session
+from .adapters.base import Adapter
 from .adapters.foreup import ForeUpAdapter
 from .adapters.teeitup import TeeItUpAdapter
 from .adapters.chronogolf import ChronogolfAdapter
@@ -164,7 +165,13 @@ def run(date: dt.date, registry_path: str, out_path: str,
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Aggregate golf tee times")
-    p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=2)).isoformat())
+    # Default day: LOCAL today+2, not the runner's (UTC) today — from ~5pm
+    # Mountain onward `dt.date.today()` on a CI runner is already tomorrow,
+    # the exact bug scraper/dates.py documents. Workflows pass --date
+    # explicitly via scraper.dates; this default only protects ad-hoc runs.
+    p.add_argument("--date", default=(
+        dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).date()
+        + dt.timedelta(days=2)).isoformat())
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--out", default="output/tee_times.json")
     p.add_argument("--platforms", help="comma-separated platform filter")
@@ -179,11 +186,15 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.INFO if not a.verbose else logging.DEBUG,
                         format="%(message)s", stream=sys.stderr)
+    # Whitespace-strip every comma list the way --states always was: a value
+    # like --platforms "foreup, teeitup" silently matched nothing for the
+    # second entry.
+    csv = lambda v: {s.strip() for s in v.split(",") if s.strip()} or None  # noqa: E731
     run(dt.date.fromisoformat(a.date), a.registry, a.out,
-        set(a.platforms.split(",")) if a.platforms else None,
-        set(a.courses.split(",")) if a.courses else None,
+        csv(a.platforms) if a.platforms else None,
+        csv(a.courses) if a.courses else None,
         a.include_raw, a.workers,
-        set(a.exclude.split(",")) if a.exclude else None,
+        csv(a.exclude) if a.exclude else None,
         a.shard,
         {s.strip().upper() for s in a.states.split(",")} if a.states else None)
     return 0

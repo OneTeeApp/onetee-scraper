@@ -83,11 +83,16 @@ function stateName(code) {
 function fillStateOptions(rows, selectEl) {
   const present = Array.from(new Set(rows.map(stateOf).filter(Boolean))).sort();
   const keep = selectEl.value;
+  // The user's selection stays in the list even when the latest fetch has no
+  // rows for it (empty day, truncated response). Silently falling back to
+  // "All states" rendered every state's results under a filter the golfer
+  // believed was still applied — the AZ/CO-leak symptom class.
+  if (keep && present.indexOf(keep) === -1) present.push(keep) && present.sort();
   selectEl.innerHTML = '<option value="">All states</option>' +
     present.map(function (c) {
       return '<option value="' + c + '">' + stateName(c) + '</option>';
     }).join('');
-  if (keep && present.indexOf(keep) !== -1) selectEl.value = keep;
+  if (keep) selectEl.value = keep;
 }
 
 /* ===========================================================================

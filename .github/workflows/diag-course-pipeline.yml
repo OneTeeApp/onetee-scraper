@@ -75,15 +75,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          INPUT_COURSES: ${{ github.event.inputs.courses }}
+          INPUT_DAYS: ${{ github.event.inputs.days }}
+          INPUT_PUSH: ${{ github.event.inputs.push }}
         run: |
           mkdir -p probe-results
           PUSH=""
-          if [ "${{ github.event.inputs.push || 'true' }}" = "true" ]; then
+          if [ "${INPUT_PUSH:-true}" = "true" ]; then
             PUSH="--push"
           fi
           python3 scripts/diag_course_pipeline.py \
-            --courses "${{ github.event.inputs.courses || 'trinidad-golf-course,vail-golf-club,golf-granby-ranch' }}" \
-            --days "${{ github.event.inputs.days || '3' }}" \
+            --courses "${INPUT_COURSES:-trinidad-golf-course,vail-golf-club,golf-granby-ranch}" \
+            --days "${INPUT_DAYS:-3}" \
             $PUSH 2>&1 | tee diag.log
 
       - name: Summary

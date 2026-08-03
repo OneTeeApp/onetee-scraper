@@ -413,7 +413,8 @@ EXTRA_IDS = {
     "green valley ranch golf club":{"website_id": "e6b92812-d6c4-4f86-7eea-08d9fadf154d", "course_ids": [1, 2, 3, 4]},
     "haymaker golf course":        {"website_id": "b74c91b6-8f7d-4db2-3fd0-08d9f56b5de1", "course_ids": [1, 2, 4]},
     "indian tree golf course":     {"website_id": "e6d9cd59-8d46-4334-8601-08dad3012d25", "course_ids": [1]},
-    "mariana butte golf course":   {"website_id": "e0496558-918b-4f2d-44dc-08dbf84ad30b", "course_ids": [3]},
+    # (mariana butte is pinned once, above with the discover3 batch — a second
+    #  copy here once shadowed it as a duplicate dict key)
     "red hawk ridge golf course":  {"website_id": "1ca33515-0bb5-4f13-3ebb-08d9d9c521b3", "course_ids": [1, 2]},
     "the olde course at loveland": {"website_id": "e1be30d2-b87c-40ec-44dd-08dbf84ad30b", "course_ids": [2]},
     # The Arizona Biltmore's two rows share one Chronogolf club (18077), whose

@@ -33,7 +33,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Rebuild registry.json
-        run: python3 build_registry.py | tee registry.log
+        run: |
+          set -o pipefail
+          python3 build_registry.py | tee registry.log
       - name: Summary
         if: always()
         run: |

@@ -30,13 +30,17 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Multi-date confirmation of flagged CO courses
         run: |
+          set -o pipefail
           mkdir -p probe-results output
           python scripts/co_verify_empties.py 2>&1 | tee probe-results/co_empties.txt
       - name: Commit report
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main || true
           git add probe-results/co_empties.txt
           git commit -m "CO empties confirmation [skip ci]" || exit 0
-          git push
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the report after 5 attempts"; exit 1

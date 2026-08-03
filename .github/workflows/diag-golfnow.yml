@@ -52,10 +52,14 @@ jobs:
         # Step-level so a hang still reaches the commit below with partial
         # findings, which are worth more than a cancelled job's nothing.
         timeout-minutes: 14
+        env:
+          INPUT_SLUGS: ${{ github.event.inputs.slugs }}
+          INPUT_OFFSETS: ${{ github.event.inputs.offsets }}
         run: |
-          python3 scripts/diag_golfnow.py \
-            ${{ github.event.inputs.slugs && format('--slugs {0}', github.event.inputs.slugs) || '' }} \
-            --offsets "${{ github.event.inputs.offsets || '0,1,3' }}" \
+          EXTRA=()
+          [ -n "$INPUT_SLUGS" ] && EXTRA+=(--slugs "$INPUT_SLUGS")
+          python3 scripts/diag_golfnow.py "${EXTRA[@]}" \
+            --offsets "${INPUT_OFFSETS:-0,1,3}" \
             2>&1 | tee golfnow-diag.log
 
       - name: Summary

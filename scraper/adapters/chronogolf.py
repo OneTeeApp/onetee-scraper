@@ -89,6 +89,8 @@ class ChronogolfAdapter(Adapter):
             # sizes 4 -> 1: a slot's true remaining seats = the largest party
             # that still fits. Replaces the old hardcoded "4" guess.
             by_slot: dict = {}
+            first_err: Exception | None = None
+            failed_sizes = 0
             for n in (4, 3, 2, 1):
                 params = [("date", date.isoformat()), ("course_id", cid)]
                 params += [("affiliation_type_ids[]", aff)] * n
@@ -97,8 +99,10 @@ class ChronogolfAdapter(Adapter):
                     slots = self.get_json(
                         f"{BASE}/marketplace/clubs/{disc['club_id']}/teetimes",
                         params=params)
-                except Exception:  # noqa: BLE001 — one size failing shouldn't
-                    slots = []     # kill the whole course
+                except Exception as exc:  # noqa: BLE001 — one size failing
+                    slots = []            # shouldn't kill the whole course
+                    failed_sizes += 1
+                    first_err = first_err or exc
                 for slot in slots or []:
                     if slot.get("out_of_capacity"):
                         continue
@@ -106,12 +110,24 @@ class ChronogolfAdapter(Adapter):
                     e = by_slot.setdefault(sid, {"slot": slot, "spots": n})
                     e["spots"] = max(e["spots"], n)
 
+            # ...but ALL FOUR sizes failing is not "empty", it is "unknown".
+            # The blanket swallow used to turn a teetimes endpoint that was
+            # down (while discovery still answered) into a clean [] — the
+            # course landed in courses_empty and sync deactivated its whole
+            # day. Unknown must raise so the error guard shields the rows.
+            if failed_sizes == 4:
+                raise RuntimeError(
+                    f"{course['slug']}: teetimes endpoint failed at every "
+                    f"party size for course_id {cid}") from first_err
+
             cname = disc["course_names"].get(cid, course["name"])
             for e in by_slot.values():
                 slot = e["slot"]
                 fees = [f.get("green_fee") for f in slot.get("green_fees", [])
                         if isinstance(f.get("green_fee"), (int, float))]
                 start = slot.get("start_time", "")
+                if not start:
+                    continue    # no start time -> a malformed "...T:00" row
                 out.append(self.base_tee_time(
                     course,
                     teetime=f"{slot.get('date', date.isoformat())}T{start}"

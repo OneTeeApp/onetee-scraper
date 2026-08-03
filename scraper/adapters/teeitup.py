@@ -45,6 +45,7 @@ import zoneinfo
 from typing import Any
 
 from .base import Adapter
+from ..d1 import FL_CENTRAL_CITIES
 from ..models import TeeTime
 
 API_BASE = "https://phx-api-be-east-1b.kenna.io"
@@ -437,6 +438,11 @@ class TeeItUpAdapter(Adapter):
         meta = self._facility_meta(alias)
         state = course.get("state", "")
         state_tz = _STATE_TZ.get(state, _TZ_DEFAULT)
+        # Panhandle Florida is Central, not Eastern; when kenna omits the
+        # facility timeZone the state-level fallback would stamp those slots
+        # an hour late. City carve-out shared with scraper/d1.py.
+        if state == "FL" and course.get("city") in FL_CENTRAL_CITIES:
+            state_tz = "America/Chicago"
         # Announced once per course, and only when it actually bites: kenna
         # gave no timeZone AND this state has no entry, so every slot below is
         # about to be stamped with a coast somebody guessed. A new state's

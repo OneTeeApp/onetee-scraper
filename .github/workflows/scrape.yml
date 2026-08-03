@@ -94,12 +94,17 @@ jobs:
           for DATE in $(python -m scraper.dates --registry registry.json --start ${START} --days ${DAYS} | shuf); do
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::scrape+push ${DATE} shard ${{ matrix.shard }}"
+            # A date only counts as done if BOTH the aggregate and the push
+            # succeeded — the `|| OK=no` keeps a failed date from killing the
+            # loop (same semantics `|| true` had) without letting it claim
+            # coverage it never delivered.
+            OK=yes
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/4" \
               --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,totale \
-              --out "${OUT}" || true
-            python -m scraper.d1 push --data "${OUT}" || true
-            echo "${DATE}" >> output/.dates_done
+              --out "${OUT}" || OK=no
+            python -m scraper.d1 push --data "${OUT}" || OK=no
+            [ "$OK" = "yes" ] && echo "${DATE}" >> output/.dates_done
             echo "::endgroup::"
           done
 

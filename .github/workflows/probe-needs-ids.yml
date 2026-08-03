@@ -54,10 +54,14 @@ jobs:
         # with whatever it managed to answer. A job-level cap would cancel the
         # job and throw the partial finding away.
         timeout-minutes: 15
+        env:
+          INPUT_PLATFORMS: ${{ github.event.inputs.platforms }}
+          INPUT_DELAY: ${{ github.event.inputs.delay }}
         run: |
+          set -o pipefail
           python3 scripts/probe_needs_ids.py \
-            --platforms "${{ github.event.inputs.platforms || 'chronogolf,foreup' }}" \
-            --delay "${{ github.event.inputs.delay || '1.0' }}" \
+            --platforms "${INPUT_PLATFORMS:-chronogolf,foreup}" \
+            --delay "${INPUT_DELAY:-1.0}" \
             2>&1 | tee probe.log
 
       - name: Summary

@@ -206,6 +206,11 @@ class TeesnapAdapter(Adapter):
             # ("Be right back.") for ids that aren't really courses, and for
             # genuinely broken sheets; the other ids on the same tenant keep
             # working. Collect and only raise if EVERY id failed.
+            # KNOWN TENSION: on a partial failure the failed sheet's existing
+            # D1 rows are deactivated by sync (the venue counts as scraped).
+            # Tolerating that is deliberate and covered by
+            # scripts/test_teesnap_adapter.py; the real fix would be
+            # label-granular error records in the doc format.
             try:
                 data = self.get_json(
                     f"https://{sub}.teesnap.net/customer-api/teetimes-day",

@@ -40,42 +40,58 @@ FETCH_JS = r"""
 async ([bodyStr, dateStr, fid]) => {
   let body;
   try { body = JSON.parse(bodyStr); } catch (e) { return {error: "bad body"}; }
-  body.date = dateStr; body.pageSize = 40; body.teeTimeCount = 40; body.pageNumber = 0;
-  const r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
-    {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
-     body: JSON.stringify(body)});
-  // Read the text first and report a parse failure AS a failure. The old form
-  // was `let j = {}; try { j = await r.json(); } catch (e) {}` — a body that
-  // did not parse became an empty object, an empty object has no ttResults,
-  // and the course was filed as "0 tee times" under a status the caller had
-  // already accepted. A missing answer read as a known one, which is the same
-  // bug that made four live facilities look empty.
-  const text = await r.text();
-  let j;
-  try { j = JSON.parse(text); }
-  catch (e) {
-    return {status: r.status, parse_failed: true, bytes: text.length,
-            content_type: r.headers.get("content-type") || ""};
-  }
-  const tt = (j.ttResults && j.ttResults.teeTimes) || [];
+  // Paginate. The old form pinned pageNumber 0 / pageSize 40 with no loop, so
+  // a facility with more than 40 slots for the date published only the 40
+  // earliest — and because the course HAD returned rows, sync deactivated the
+  // real later inventory it had captured on previous runs. Page until the
+  // server hands back a short page, with a hard cap as a runaway guard.
   const money = (m) => (m && typeof m.value === "number") ? m.value : null;
+  const PAGE = 40, MAX_PAGES = 10;
   const out = [];
-  for (const s of tt) {
-    if (fid && s.facilityId !== fid) continue;
-    out.push({
-      date: s.time && s.time.date,
-      playerRule: s.playerRule,
-      detailUrl: s.detailUrl,
-      display: money(s.displayRate),
-      minRate: money(s.minTeeTimeRate),
-      maxRate: money(s.maxTeeTimeRate),
-      rates: (s.teeTimeRates || []).map((x) => ({
-        holes: x.holeCount,
-        greens: x.singlePlayerPrice ? money(x.singlePlayerPrice.greensFees) : null,
-      })),
-    });
+  let status = 0;
+  for (let pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
+    body.date = dateStr; body.pageSize = PAGE; body.teeTimeCount = PAGE;
+    body.pageNumber = pageNumber;
+    const r = await fetch(location.origin + "/api/tee-times/tee-time-search-results",
+      {method:"POST", headers:{"Content-Type":"application/json","Accept":"application/json"},
+       body: JSON.stringify(body)});
+    status = r.status;
+    // Read the text first and report a parse failure AS a failure. The old
+    // form was `let j = {}; try { j = await r.json(); } catch (e) {}` — a body
+    // that did not parse became an empty object, an empty object has no
+    // ttResults, and the course was filed as "0 tee times" under a status the
+    // caller had already accepted. A missing answer read as a known one, which
+    // is the same bug that made four live facilities look empty. A later page
+    // failing is reported the same way: partial pagination truncates exactly
+    // like no pagination did.
+    const text = await r.text();
+    let j;
+    try { j = JSON.parse(text); }
+    catch (e) {
+      return {status: r.status, parse_failed: true, bytes: text.length,
+              content_type: r.headers.get("content-type") || ""};
+    }
+    const tt = (j.ttResults && j.ttResults.teeTimes) || [];
+    for (const s of tt) {
+      if (fid && s.facilityId !== fid) continue;
+      out.push({
+        date: s.time && s.time.date,
+        playerRule: s.playerRule,
+        detailUrl: s.detailUrl,
+        display: money(s.displayRate),
+        minRate: money(s.minTeeTimeRate),
+        maxRate: money(s.maxTeeTimeRate),
+        rates: (s.teeTimeRates || []).map((x) => ({
+          holes: x.holeCount,
+          greens: x.singlePlayerPrice ? money(x.singlePlayerPrice.greensFees) : null,
+        })),
+      });
+    }
+    // Termination is judged on the RAW page length, not the filtered count —
+    // a page full of sibling-facility slots must still advance the loop.
+    if (tt.length < PAGE) break;
   }
-  return {status: r.status, slots: out};
+  return {status: status, slots: out};
 }
 """
 

@@ -114,6 +114,11 @@ class TeeQuestAdapter(Adapter):
             raise RuntimeError(f"{course['slug']}: no usable teequest course tag "
                                f"(rejected {rejected})")
 
+        # Label when MORE THAN ONE TAG IS FETCHED — not "when more than one is
+        # pinned". An unpinned multi-course site fetches every offered tag, and
+        # the old pinned-count test left all of them labelled "", collapsing
+        # same-time slots from different courses onto one D1 key.
+        multi = len(tags) > 1
         out: list[TeeTime] = []
         for tag in tags:
             body = {
@@ -126,15 +131,16 @@ class TeeQuestAdapter(Adapter):
             r = self.session.post(url, data=body, timeout=TIMEOUT)
             r.raise_for_status()
             label = offered.get(tag, "")
-            out.extend(self._parse_legacy(r.text, course, date, tag, label, url))
+            out.extend(self._parse_legacy(r.text, course, date, tag, label, url,
+                                          multi))
         return out
 
     def _parse_legacy(self, html: str, course: dict, date: dt.date,
-                      tag: str, label: str, url: str) -> list[TeeTime]:
+                      tag: str, label: str, url: str,
+                      multi: bool) -> list[TeeTime]:
         page = _soup(html)
         # Single-course sites print their one course name in the heading; do
         # not stamp a label there or every slot gets a redundant sub-course.
-        multi = len(course["ids"].get("course_tags") or []) > 1
         out: list[TeeTime] = []
         for node in page.select(".tee-time"):
             tnode = node.select_one(".time-container")
@@ -165,7 +171,11 @@ class TeeQuestAdapter(Adapter):
             holes = [9] if re.search(r"\b9 holes?\b", text, re.I) else [18]
 
             out.append(TeeTime(
-                course_slug=course["slug"], course_name=course["name"],
+                course_slug=course["slug"],
+                # display_name wins, matching base_tee_time(): writing
+                # the raw name here made every scrape INSERT rows that
+                # migrate() then renamed, flapping the card name.
+                course_name=course.get("display_name") or course["name"],
                 city=course.get("city", ""), platform=self.platform,
                 teetime=teetime,
                 course_label=label if multi else "",
@@ -186,8 +196,16 @@ class TeeQuestAdapter(Adapter):
         shell = self.session.get(home, timeout=TIMEOUT)
         shell.raise_for_status()
         page = _soup(shell.text)
-        offered = {i.get("value") for i in page.find_all("input", {"name": "selectedCourse"})
-                   if i.get("value")}
+        # value -> visible course name, read off the radio's own <label> so a
+        # multi-course sheet can label its slots (see _parse_v2).
+        offered: dict[str, str] = {}
+        for i in page.find_all("input", {"name": "selectedCourse"}):
+            v = i.get("value")
+            if not v:
+                continue
+            holder = i.find_parent("label") or i.find_next_sibling("label")
+            name = holder.get_text(" ", strip=True) if holder else ""
+            offered[v] = name or v
         pinned = course["ids"].get("course_tags")
         # A site with a single course renders no radio group at all; fall back
         # to the canonical "<site>-1" only in that case.
@@ -197,12 +215,17 @@ class TeeQuestAdapter(Adapter):
         if not tags:
             raise RuntimeError(f"{course['slug']}: no usable teequest course tag")
 
+        # Same rule as legacy: label whenever more than one tag is fetched.
+        # The old code hardcoded course_label="" even while iterating several
+        # tags, so two courses' 8:00 slots shared one D1 key and one name.
+        multi = len(tags) > 1
         out: list[TeeTime] = []
         for tag in tags:
             html = self._v2_search(tag, date, players=1)
             if _SINGLE_BLOCKED_RE.search(html):
                 html = self._v2_search(tag, date, players=2)
-            out.extend(self._parse_v2(html, course, date, tag, home))
+            label = offered.get(tag, tag) if multi else ""
+            out.extend(self._parse_v2(html, course, date, tag, home, label))
         return out
 
     def _v2_search(self, tag: str, date: dt.date, players: int) -> str:
@@ -214,7 +237,7 @@ class TeeQuestAdapter(Adapter):
         return r.text
 
     def _parse_v2(self, html: str, course: dict, date: dt.date,
-                  tag: str, url: str) -> list[TeeTime]:
+                  tag: str, url: str, label: str = "") -> list[TeeTime]:
         page = _soup(html)
         out: list[TeeTime] = []
         for node in page.select(".tee-time"):
@@ -239,9 +262,13 @@ class TeeQuestAdapter(Adapter):
             holes = [9] if re.search(r"\b9 holes?\b", text, re.I) else [18]
 
             out.append(TeeTime(
-                course_slug=course["slug"], course_name=course["name"],
+                course_slug=course["slug"],
+                # display_name wins, matching base_tee_time(): writing
+                # the raw name here made every scrape INSERT rows that
+                # migrate() then renamed, flapping the card name.
+                course_name=course.get("display_name") or course["name"],
                 city=course.get("city", ""), platform=self.platform,
-                teetime=teetime, course_label="",
+                teetime=teetime, course_label=label,
                 state=course.get("state", ""),
                 venue_id=course.get("venue_id", course["slug"]),
                 source_role=course.get("source_role", "primary"),

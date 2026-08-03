@@ -142,9 +142,15 @@
     inflight = fetch(API_BASE + "/api/directory")
       .then(function (r) { return r.json(); })
       .then(function (d) { cache = (d && d.courses) || []; return cache; })
-      .catch(function () { cache = []; return cache; });   // stay silent: the
-    return inflight;                                       // live list is fine
-  }                                                        // without us
+      .catch(function () {
+        // Stay silent (the live list is fine without us) but do NOT cache
+        // the failure: caching [] here meant one blip on first paint hid the
+        // directory for the whole session. Next render() retries.
+        inflight = null;
+        return [];
+      });
+    return inflight;
+  }
 
   function norm(s) {
     return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -212,9 +218,22 @@
       var q = (opts.query || "").toLowerCase();
       var seen = shownKeys(opts.teeTimes);
 
+      // Directory cities can be qualified — "Laveen (Phoenix)",
+      // "Cornville/Cottonwood" — while the tee-time feed says "Phoenix".
+      // Exact equality excluded those venues from precisely the city views
+      // they belong to; match any of the qualified segments too.
+      function cityMatches(raw, want) {
+        var s = String(raw || "").toLowerCase();
+        if (s === want) return true;
+        var inParens = s.match(/\(([^)]+)\)/);
+        if (inParens && inParens[1].trim() === want) return true;
+        return s.split("/").some(function (part) {
+          return part.replace(/\([^)]*\)/g, "").trim() === want;
+        });
+      }
       var rest = all.filter(function (c) {
         if (st && c.state !== st) return false;
-        if (city && String(c.city || "").toLowerCase() !== city) return false;
+        if (city && !cityMatches(c.city, city)) return false;
         if (q && String(c.name || "").toLowerCase().indexOf(q) === -1) return false;
         if (seen["id:" + c.venue_id]) return false;
         if (seen["nm:" + c.state + norm(c.name)]) return false;

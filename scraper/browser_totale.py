@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import glob
 import json
 import logging
 import pathlib
@@ -154,7 +153,13 @@ def run(registry_path: str, out_dir: str) -> dict:
                 page.wait_for_timeout(2500)     # let the initial sheet render
                 harvested = page.evaluate(HARVEST_JS)
             except Exception as e:  # noqa: BLE001
-                errors.append({"tenant": tenant, "error": f"{type(e).__name__}: {e}"})
+                # One record PER COURSE, keyed "course" like every other
+                # fetcher: d1 sync reads e["course"] to shield an errored
+                # course's rows from deactivation, and a "tenant"-keyed
+                # record made that lookup KeyError the entire push.
+                for c in tcourses:
+                    errors.append({"course": c["slug"], "platform": "totale",
+                                   "error": f"{type(e).__name__}: {e}"})
                 log.info("  tenant %-22s ERROR %s", tenant, type(e).__name__)
                 page.close()
                 continue

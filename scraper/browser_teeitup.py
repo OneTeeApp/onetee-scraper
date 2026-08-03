@@ -148,19 +148,30 @@ def run(date: dt.date, registry_path: str, out_path: str,
             alias = c["ids"]["alias"]
             fid = c["ids"].get("facility_id")
 
-            # facilities: once per alias per run (shared aliases reuse it)
+            # facilities: once per alias per run (shared aliases reuse it).
+            # Cache SUCCESSES only — remembering a failed call as [] pinned
+            # "no facilities" on the alias for the whole run (no labels, state
+            # tz fallback, and a pinned course could resolve to zero slots).
             if alias not in fac_cache:
                 fr = page.evaluate(FAC_JS, [API_BASE, alias])
-                fac_cache[alias] = fr.get("facilities") or []
+                got = fr.get("facilities") or []
+                if got or fr.get("status") == 200:
+                    fac_cache[alias] = got
+                else:
+                    log.info("  %-40s facilities fetch failed (%s), not cached",
+                             c["slug"], fr.get("status"))
                 page.wait_for_timeout(_GAP_MS)
-            facilities = fac_cache[alias]
+            facilities = fac_cache.get(alias, [])
 
             tr = page.evaluate(TT_JS, [API_BASE, alias,
                                        str(fid) if fid else "", date.isoformat()])
             page.wait_for_timeout(_GAP_MS)
 
             status = tr.get("status")
-            if status != 200:
+            # parse_failed can arrive WITH status 200 — kenna's soft throttle
+            # serves an HTML interstitial on a 200. Gating only on the status
+            # counted those as "served, 0 slots" and deactivated real rows.
+            if status != 200 or tr.get("parse_failed"):
                 note = ("throttle/parse" if tr.get("parse_failed")
                         else f"status {status}" + (
                             f" {tr.get('error')}" if tr.get("error") else ""))

@@ -52,10 +52,14 @@ jobs:
 
       - name: Alternate and time
         timeout-minutes: 14
+        env:
+          INPUT_GOOD: ${{ github.event.inputs.good }}
+          INPUT_BAD: ${{ github.event.inputs.bad }}
         run: |
+          set -o pipefail
           python3 scripts/flap_golfnow.py \
-            --good "${{ github.event.inputs.good || 'cedaredge-golf-club-golfnow' }}" \
-            --bad  "${{ github.event.inputs.bad  || 'clubcorp-at-black-bear-golf-club' }}" \
+            --good "${INPUT_GOOD:-cedaredge-golf-club-golfnow}" \
+            --bad  "${INPUT_BAD:-clubcorp-at-black-bear-golf-club}" \
             2>&1 | tee flap.log
 
       - name: Summary

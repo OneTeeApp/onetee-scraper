@@ -74,7 +74,13 @@ class Adapter(abc.ABC):
                     # short backoff w/ jitter; respect Retry-After but cap it so
                     # one slow host can't blow the workflow time budget
                     ra = getattr(getattr(e, "response", None), "headers", {})
-                    wait = min(float(ra.get("Retry-After", 0)), 5) if ra else 0
+                    try:
+                        # RFC 7231 also allows an HTTP-date here; float() on
+                        # that raised OUT of the except block and turned a
+                        # retryable 429 into a hard per-course failure.
+                        wait = min(float(ra.get("Retry-After", 0)), 5) if ra else 0
+                    except (TypeError, ValueError):
+                        wait = 0
                     time.sleep(max(wait, (1.5 ** attempt) + random.uniform(0, 0.5)))
         raise last_exc  # exhausted retries
 

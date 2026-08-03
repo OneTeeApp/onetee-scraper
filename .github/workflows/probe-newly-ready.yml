@@ -49,10 +49,13 @@ jobs:
         # with whatever it managed to answer. A job-level cap would cancel the
         # job and throw the partial finding away.
         timeout-minutes: 25
+        env:
+          INPUT_DAYS: ${{ github.event.inputs.days }}
         run: |
+          set -o pipefail
           mkdir -p probe-results
           python3 scripts/probe_newly_ready.py \
-            --days "${{ github.event.inputs.days || '1,4,9' }}" \
+            --days "${INPUT_DAYS:-1,4,9}" \
             2>&1 | tee probe.log
 
       - name: Summary

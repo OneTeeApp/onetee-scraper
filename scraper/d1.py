@@ -269,6 +269,18 @@ _STATE_TZ = {
     "OR": "America/Los_Angeles", "WA": "America/Los_Angeles",
     "AK": "America/Anchorage", "HI": "Pacific/Honolulu",
 }
+# Florida straddles two timezones: the panhandle west of the Apalachicola
+# River is Central. Judging those rows by New_York pruned (and, in the Worker,
+# hid) their next hour of bookable slots ALL DAY — every sync re-activated
+# them and the next prune flipped them off again. City-level carve-out because
+# rows carry city but not county; mirror any edit in worker/index.js
+# FL_CENTRAL_CITIES. (Port St. Joe, Carrabelle and Tallahassee are Eastern.)
+FL_CENTRAL_CITIES = {
+    "Bonifay", "Crestview", "DeFuniak Springs", "Destin", "Fort Walton Beach", "Freeport",
+    "Gulf Breeze", "Hurlburt Field", "Lynn Haven", "Milton", "Miramar Beach",
+    "Navarre", "Niceville", "Pace", "Panama City", "Panama City Beach",
+    "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
+}
 # Rows with no state yet (legacy inserts) are pruned only once the slot is past
 # in the LAST US timezone to get there — conservative: never hides a bookable
 # slot, at the cost of leaving a few stale ones visible a bit longer.
@@ -384,18 +396,38 @@ def prune_past(db, dry_run: bool = False) -> dict:
         by_tz.setdefault(tz, []).append(st)
 
     total, per_tz = 0, {}
+    city_marks = ",".join("?" * len(FL_CENTRAL_CITIES))
+    fl_central = sorted(FL_CENTRAL_CITIES)
     for tz, states in sorted(by_tz.items()):
         now = _local_now(tz)
         marks = ",".join("?" * len(states))
         where = f"active = 1 AND state IN ({marks}) AND teetime < ?"
+        params = [*states, now]
+        if tz == "America/New_York":
+            # Panhandle FL is Central — judged separately below, and it must
+            # NOT be pruned an hour early by the Eastern clock here.
+            where += f" AND NOT (state = 'FL' AND city IN ({city_marks}))"
+            params += fl_central
         n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
-                       [*states, now])[0]["n"]
+                       params)[0]["n"]
         if n:
             if not dry_run:
                 db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
-                           [*states, now])
+                           params)
             per_tz[tz] = n
             total += n
+
+    now = _local_now("America/Chicago")     # panhandle FL, on its own clock
+    where = (f"active = 1 AND state = 'FL' AND city IN ({city_marks}) "
+             "AND teetime < ?")
+    n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
+                   [*fl_central, now])[0]["n"]
+    if n:
+        if not dry_run:
+            db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
+                       [*fl_central, now])
+        per_tz["America/Chicago (FL panhandle)"] = n
+        total += n
 
     now = _local_now(_FALLBACK_TZ)          # unknown / blank state
     where = "active = 1 AND (state IS NULL OR state = '') AND teetime < ?"
@@ -461,7 +493,8 @@ def sync(db, doc: dict) -> dict:
         ph = ",".join("?" * len(batch))
         for r in db.execute(
                 "SELECT course_slug, teetime, course_label, open_spots, "
-                f"price_min, price_max, active FROM tee_times "
+                f"price_min, price_max, active, booking_url, platform "
+                f"FROM tee_times "
                 f"WHERE substr(teetime,1,10) = ? "
                 f"AND course_slug IN ({ph})", [date, *batch]):
             existing[(r["course_slug"], r["teetime"],
@@ -471,9 +504,16 @@ def sync(db, doc: dict) -> dict:
     to_update = []
     for k, v in scraped.items():
         e = existing.get(k)
+        # booking_url/platform are part of the diff: when a course moves
+        # booking engines (or an adapter's link format is fixed), the rows
+        # already in D1 must pick up the new link — the old UPDATE never
+        # refreshed it, so a re-platformed course served dead booking links
+        # for up to 30 days.
         if e and (e["open_spots"] != v["open_spots"]
                   or e["price_min"] != v["price_min"]
                   or e["price_max"] != v["price_max"]
+                  or e.get("booking_url") != v["booking_url"]
+                  or e.get("platform") != v["platform"]
                   or not e["active"]):
             to_update.append(v)
     to_deactivate = [k for k, e in existing.items()
@@ -491,9 +531,10 @@ def sync(db, doc: dict) -> dict:
     for row in to_update:
         db.execute(
             "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
-            "active=1, last_seen_at=? "
+            "booking_url=?, platform=?, active=1, last_seen_at=? "
             "WHERE course_slug=? AND teetime=? AND course_label=?",
             [row["open_spots"], row["price_min"], row["price_max"],
+             row["booking_url"], row["platform"],
              now, row["course_slug"], row["teetime"], row["course_label"]])
 
     for slug, teetime, label in to_deactivate:

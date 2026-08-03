@@ -152,7 +152,11 @@ class ResortSuiteAdapter(Adapter):
                     holes = 9
 
             out.append(TeeTime(
-                course_slug=course["slug"], course_name=course["name"],
+                course_slug=course["slug"],
+                # display_name wins, matching base_tee_time(): writing
+                # the raw name here made every scrape INSERT rows that
+                # migrate() then renamed, flapping the card name.
+                course_name=course.get("display_name") or course["name"],
                 city=course.get("city", ""), platform=self.platform,
                 teetime=f"{day}T{hh}:{mm}:00", course_label="",
                 state=course.get("state", ""),

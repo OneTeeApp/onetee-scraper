@@ -43,6 +43,7 @@ jobs:
           MS_SCAN_LO: ${{ github.event.inputs.lo || '4000' }}
           MS_SCAN_HI: ${{ github.event.inputs.hi || '4600' }}
         run: |
+          set -o pipefail
           mkdir -p probe-results
           python scripts/ms_club_scan.py 2>&1 | tee probe-results/msscan2.txt
           # Second band, below the one msscan.txt already covered. Meadows Golf

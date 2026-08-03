@@ -57,6 +57,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
+          set -o pipefail
           python scripts/state_status.py --d1 \
             --json probe-results/state-status.json \
             2>&1 | tee probe-results/state-status.txt
@@ -89,7 +90,9 @@ jobs:
 
       - name: Fail on regression
         if: always()
+        env:
+          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
         run: |
           python scripts/state_regression.py \
             probe-results/.previous.json probe-results/state-status.json \
-            --tolerance "${{ github.event.inputs.tolerance || 3 }}"
+            --tolerance "${INPUT_TOLERANCE:-3}"

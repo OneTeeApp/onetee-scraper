@@ -42,11 +42,26 @@ async ([dateMdy]) => {
   const ids = String(init.AllCourseIDs || "").split(",")
       .filter(x => x.trim()).map(Number);
   if (!ids.length) return {stage:"init", error:"no course ids (challenge not cleared)"};
-  const body = {p01:ids, p02:dateMdy, p03:"5:00 AM", p04:"7:00 PM",
-                p05:0, p06:2, p07:false};
+  // Ask for the portal's OWN operating window (init publishes it) instead of
+  // a hardcoded 5AM-7PM, which silently dropped summer twilight slots.
+  const ampm = (hms, fb) => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(hms || ""));
+    if (!m) return fb;
+    let h = +m[1]; const suf = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + ":" + m[2] + " " + suf;
+  };
+  const body = {p01:ids, p02:dateMdy, p03:ampm(init.StartTime, "5:00 AM"),
+                p04:ampm(init.EndTime, "7:00 PM"), p05:0, p06:2, p07:false};
   const s = await fetch(base + "/api/search/search", {method:"POST",
     headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
-  let rows = []; try { rows = (await s.json()).r06 || []; } catch (e) {}
+  // A 200 with a non-JSON body (WAF interstitial) is a FAILURE, not an empty
+  // day — the old swallow reported every course on the portal as "0 times".
+  const text = await s.text();
+  let rows;
+  try { rows = (JSON.parse(text)).r06 || []; }
+  catch (e) { return {stage:"search", status:s.status, parse_failed:true,
+                      bytes:text.length}; }
   return {stage:"search", status:s.status, rows};
 }
 """
@@ -85,8 +100,10 @@ def run(date: dt.date, registry_path: str, out_path: str,
                               wait_until="domcontentloaded", timeout=45000)
                     page.wait_for_timeout(7000)  # let Cloudflare's JS auto-clear
                     r = page.evaluate(FLOW_JS, [date_mdy])
-                    last = f"{r.get('stage')} {r.get('status') or r.get('error')}"
-                    if r.get("stage") == "search" and r.get("status") == 200:
+                    last = f"{r.get('stage')} {r.get('status') or r.get('error')}" + (
+                        " parse_failed" if r.get("parse_failed") else "")
+                    if (r.get("stage") == "search" and r.get("status") == 200
+                            and not r.get("parse_failed")):
                         rows = r.get("rows") or []
                         break
                 except Exception as e:  # noqa: BLE001

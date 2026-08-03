@@ -28,7 +28,11 @@ import DIRECTORY from "./directory.gen.js";
 const CORS = {
   "Access-Control-Allow-Origin": "*", // tighten to https://www.oneteeapp.com later
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  // Authorization MUST be allowed: the signed-in widget attaches a Clerk
+  // bearer token, which makes the browser preflight. Omitting it fails the
+  // preflight with a bare "TypeError: Failed to fetch" that says nothing
+  // about headers (measured — see claude/membership-setup-clerk-stripe.md).
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 const json = (data, status = 200) =>
@@ -70,6 +74,20 @@ const STATE_TZ = {
   AK: "America/Anchorage", HI: "Pacific/Honolulu",
 };
 
+// Florida straddles two timezones: the panhandle west of the Apalachicola
+// River is Central. Judging those rows by New_York hid (and cron-pruned)
+// their next hour of bookable slots all day. City-level carve-out because
+// rows carry city but not county; mirror any edit in scraper/d1.py
+// FL_CENTRAL_CITIES. (Port St. Joe, Carrabelle and Tallahassee are Eastern.)
+const FL_CENTRAL_CITIES = [
+  "Bonifay", "Crestview", "DeFuniak Springs", "Destin", "Fort Walton Beach", "Freeport",
+  "Gulf Breeze", "Hurlburt Field", "Lynn Haven", "Milton", "Miramar Beach",
+  "Navarre", "Niceville", "Pace", "Panama City", "Panama City Beach",
+  "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
+];
+const FL_CENTRAL_SQL = FL_CENTRAL_CITIES.map((c) => `'${c}'`).join(",");
+const FL_CENTRAL_ARM = `state = 'FL' AND city IN (${FL_CENTRAL_SQL})`;
+
 // Rows whose state is null/blank are judged by the LAST US zone to reach a
 // given clock time. Conservative on purpose: it can leave a stale slot up a few
 // extra hours, but it will never hide one that is still bookable.
@@ -88,13 +106,22 @@ const tzGroups = () => {
 // of D1's 100-parameter-per-query ceiling, leaving almost nothing for the
 // actual filters. Inlining keeps it at 8 binds: one clock per zone.
 const TZ_ORDER = Object.entries(tzGroups());
-const PAST_CLAUSE = `teetime >= CASE ${TZ_ORDER
+// The FL-panhandle arm comes FIRST so it wins over FL's Eastern group arm.
+const PAST_CLAUSE = `teetime >= CASE WHEN ${FL_CENTRAL_ARM} THEN ? ${TZ_ORDER
   .map(([, states]) => `WHEN state IN (${states.map((s) => `'${s}'`).join(",")}) THEN ?`)
   .join(" ")} ELSE ? END`;
 const pastFilter = () => ({
   clause: PAST_CLAUSE,
-  binds: [...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
+  binds: [localNowISO("America/Chicago"),
+          ...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
 });
+
+// ?include_past=1 disables the past filter; "0"/"false"/"no" must NOT — any
+// non-empty value used to count as "include", so include_past=0 meant "yes".
+const wantsPast = (p) => {
+  const v = (p.get("include_past") || "").toLowerCase();
+  return v !== "" && v !== "0" && v !== "false" && v !== "no";
+};
 
 // Merge facility name + sub-course label into one display name. If the label
 // shares a significant word with the facility name it stands alone ("Hyland
@@ -163,7 +190,7 @@ export default {
         const p = url.searchParams;
         const clauses = ["active = 1"];
         const binds = [];
-        if (!p.get("include_past")) { clauses.push(pastClause); binds.push(...pastBinds); }
+        if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
         if (p.get("state")) { clauses.push("state = ?");            binds.push(p.get("state").toUpperCase()); }
         if (p.get("city"))  { clauses.push("LOWER(city) = LOWER(?)"); binds.push(p.get("city")); }
         const { results } = await env.DB.prepare(
@@ -189,7 +216,7 @@ export default {
         const p = url.searchParams;
         const clauses = ["active = 1"];
         const binds = [];
-        if (!p.get("include_past")) { clauses.push(pastClause); binds.push(...pastBinds); }
+        if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
         if (p.get("date"))      { clauses.push("substr(teetime,1,10) = ?"); binds.push(p.get("date")); }
         if (p.get("state"))     { clauses.push("state = ?");                binds.push(p.get("state").toUpperCase()); }
         if (p.get("city"))      { clauses.push("LOWER(city) = LOWER(?)");   binds.push(p.get("city")); }
@@ -197,9 +224,23 @@ export default {
         // hands out as course_slug) or a legacy source slug.
         if (p.get("course"))    { clauses.push("COALESCE(venue_id, course_slug) = ?"); binds.push(p.get("course")); }
         if (p.get("platform"))  { clauses.push("platform = ?");             binds.push(p.get("platform")); }
-        if (p.get("max_price")) { clauses.push("price_min <= ?");           binds.push(Number(p.get("max_price"))); }
-        if (p.get("min_spots")) { clauses.push("open_spots >= ?");          binds.push(Number(p.get("min_spots"))); }
-        const limit = Math.min(Number(p.get("limit") || 500), 2000);
+        // Numeric params are validated up front: Number("abc") is NaN, and a
+        // NaN bind makes D1 throw — turning a caller's typo into a 500.
+        const nums = {};
+        for (const key of ["max_price", "min_spots", "limit"]) {
+          const raw = p.get(key);
+          if (raw === null || raw === "") continue;
+          const n = Number(raw);
+          if (!Number.isFinite(n)) {
+            return json({ error: `${key} must be a number, got ${JSON.stringify(raw)}` }, 400);
+          }
+          nums[key] = n;
+        }
+        if (nums.max_price !== undefined) { clauses.push("price_min <= ?"); binds.push(nums.max_price); }
+        if (nums.min_spots !== undefined) { clauses.push("open_spots >= ?"); binds.push(nums.min_spots); }
+        // Clamp to [1, 2000] — SQLite reads a NEGATIVE limit as "no limit",
+        // so ?limit=-1 used to return the entire table in one response.
+        const limit = Math.min(Math.max(Math.trunc(nums.limit ?? 500), 1), 2000);
 
         // Dedupe by (venue, teetime, sub-course): when the native engine and
         // its GolfNow overflow both list a slot, keep the primary source's row
@@ -232,7 +273,13 @@ export default {
           delete r.clabel;
           delete r.rn;
         }
-        return json({ count: results.length, tee_times: results });
+        // `truncated` tells the caller this page hit LIMIT — `count` is the
+        // page's length, NOT the total; without the flag a capped response is
+        // indistinguishable from a complete one (afternoon slots silently
+        // vanish for busy dates).
+        return json({ count: results.length,
+                      truncated: results.length === limit,
+                      tee_times: results });
       }
 
       return json({ error: "not found",
@@ -260,16 +307,30 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       const stmts = [];
+      const allStates = Object.keys(STATE_TZ);
       for (const [tz, states] of Object.entries(tzGroups())) {
         const marks = states.map(() => "?").join(",");
+        // Panhandle FL is Central — pruned by its own statement below, and it
+        // must NOT be pruned an hour early by the Eastern group here.
+        const carve = tz === "America/New_York"
+          ? ` AND NOT (${FL_CENTRAL_ARM})` : "";
         stmts.push(env.DB.prepare(
           `UPDATE tee_times SET active = 0
-            WHERE active = 1 AND state IN (${marks}) AND teetime < ?`)
+            WHERE active = 1 AND state IN (${marks}) AND teetime < ?${carve}`)
           .bind(...states, localNowISO(tz)));
       }
       stmts.push(env.DB.prepare(
         `UPDATE tee_times SET active = 0
-          WHERE active = 1 AND (state IS NULL OR state = '') AND teetime < ?`)
+          WHERE active = 1 AND ${FL_CENTRAL_ARM} AND teetime < ?`)
+        .bind(localNowISO("America/Chicago")));
+      // Fallback covers blank AND unrecognized states (e.g. 'PR', a typo, a
+      // lowercase code): without the NOT IN arm those rows were never pruned
+      // and `active` drifted upward forever.
+      stmts.push(env.DB.prepare(
+        `UPDATE tee_times SET active = 0
+          WHERE active = 1 AND (state IS NULL OR state = ''
+                OR state NOT IN (${allStates.map((s) => `'${s}'`).join(",")}))
+            AND teetime < ?`)
         .bind(localNowISO(FALLBACK_TZ)));
       const res = await env.DB.batch(stmts);
       const n = res.reduce((a, r) => a + (r.meta?.changes || 0), 0);

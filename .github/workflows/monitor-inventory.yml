@@ -49,10 +49,13 @@ jobs:
 
       - name: Sample
         timeout-minutes: 10
+        env:
+          INPUT_STATES: ${{ github.event.inputs.states }}
         run: |
+          set -o pipefail
           mkdir -p probe-results
           python3 scripts/monitor_inventory.py \
-            --states "${{ github.event.inputs.states || 'CO,AZ' }}" \
+            --states "${INPUT_STATES:-CO,AZ}" \
             2>&1 | tee monitor.log
 
       - name: Summary

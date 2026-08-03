@@ -72,14 +72,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          INPUT_MAX_AGE_HOURS: ${{ github.event.inputs.max_age_hours }}
+          INPUT_DEACTIVATE: ${{ github.event.inputs.deactivate }}
         run: |
+          set -o pipefail
           mkdir -p probe-results
           DEACTIVATE=""
-          if [ "${{ github.event.inputs.deactivate || 'true' }}" = "true" ]; then
+          if [ "${INPUT_DEACTIVATE:-true}" = "true" ]; then
             DEACTIVATE="--deactivate"
           fi
           python3 scripts/probe_staleness.py \
-            --max-age-hours "${{ github.event.inputs.max_age_hours || '6' }}" \
+            --max-age-hours "${INPUT_MAX_AGE_HOURS:-6}" \
             --also "$MANUAL_ORPHANS" \
             $DEACTIVATE \
             2>&1 | tee probe.log

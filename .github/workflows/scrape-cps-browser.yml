@@ -59,8 +59,10 @@ jobs:
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=6
           [ "$DEEP" = "yes" ] && LAST=30
-          for OFFSET in $(seq 0 $LAST); do
-            DATE=$(date -u -d "+${OFFSET} days" +%F)
+          # Dates from scraper.dates (union of local todays across covered
+          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
+          # already tomorrow and a UTC "today" skips the real one.
+          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
             echo "::group::cps browser ${DATE}"
             python -m scraper.browser_cps --date "${DATE}" \
               --out "output/cps_${DATE}.json" || true

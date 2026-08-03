@@ -205,6 +205,15 @@ class CourseCoAdapter(Adapter):
             payload = self._search(tenant, gateway, "", date)
             hit = [c for c in (payload.get("Courses") or [])
                    if str(c.get("CourseValue") or "") not in ("", ANY_COURSE)]
+            if not hit:
+                # No Courses array is "unknown", not "no courses": a 200 with
+                # a changed/garbled shape used to be cached for the whole run
+                # and every venue on the tenant returned a clean empty day —
+                # which sync then deactivated. Unknown must raise, and an
+                # empty answer must never be remembered.
+                raise RuntimeError(
+                    f"courseco: discovery returned no courses for {tenant} — "
+                    "refusing to publish an empty day off it")
             with _LOCK:
                 _COURSES[tenant] = hit
         return [(str(c["CourseValue"]), str(c.get("CourseDisplay") or ""))

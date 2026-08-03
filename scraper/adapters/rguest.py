@@ -180,6 +180,15 @@ class RGuestAdapter(Adapter):
             params={"appName": "golf"})
         courses = [c for c in ((data or {}).get("availableCourses") or [])
                    if c.get("id") is not None]
+        if not courses:
+            # "Unknown" is not "no courses". A transient empty/garbled 200
+            # used to be cached for the run, after which every un-pinned venue
+            # on the property returned a clean empty day — which sync then
+            # deactivated. Unknown must raise, and an empty answer must never
+            # be remembered.
+            raise RuntimeError(
+                f"rguest: getAvailableCourses returned nothing for "
+                f"{tenant}/{prop} — refusing to publish an empty day off it")
         with _LOCK:
             _COURSES[key] = courses
         return courses

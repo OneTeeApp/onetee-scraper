@@ -205,8 +205,16 @@ class ClubProphetAdapter(Adapter):
         if not course_ids:
             raise RuntimeError(f"{course['slug']}: could not resolve Club Prophet "
                                "courseIds (OnlineCourses discovery failed)")
+        if not website_id:
+            # Querying TeeTimes with the zero guid answers 200-with-empty (the
+            # discovery docstring above measured it), so falling through here
+            # used to turn a failed discovery into a clean empty day — which
+            # sync then deactivated. Unknown must raise.
+            raise RuntimeError(f"{course['slug']}: could not resolve Club "
+                               "Prophet websiteId (pin ids.website_id or fix "
+                               "GetAllOptions discovery)")
 
-        headers = self._headers(token, website_id or _ZERO_GUID, base)
+        headers = self._headers(token, website_id, base)
 
         # Register a client-generated transaction id, then query the tee sheet.
         txid = str(uuid.uuid4())

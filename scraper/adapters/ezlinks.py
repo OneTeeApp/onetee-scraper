@@ -30,6 +30,16 @@ _CACHE: dict[tuple[str, str], list[dict]] = {}
 _LOCK = threading.Lock()
 
 
+def _ampm(hms, fallback: str) -> str:
+    """'19:30:00' -> '7:30 PM'; anything unparseable -> the fallback."""
+    m = re.match(r"^(\d{1,2}):(\d{2})", str(hms or "").strip())
+    if not m:
+        return fallback
+    h = int(m.group(1))
+    suffix = "PM" if h >= 12 else "AM"
+    return f"{h % 12 or 12}:{m.group(2)} {suffix}"
+
+
 def _norm(name: str) -> str:
     """Normalize a course name to its distinctive tokens for matching."""
     n = name.lower()
@@ -61,9 +71,13 @@ class EZLinksAdapter(Adapter):
         if not ids:
             raise RuntimeError(f"EZLinks {portal}: no course ids from init "
                                "(Cloudflare challenge or empty portal)")
+        # Ask for the portal's OWN operating window (init publishes it) rather
+        # than a hardcoded 5AM-7PM, which silently dropped twilight slots on
+        # portals that sell past 7 PM.
         body = {"p01": ids, "p02": date.strftime("%m/%d/%Y"),
-                "p03": "5:00 AM", "p04": "7:00 PM", "p05": 0, "p06": 2,
-                "p07": False}
+                "p03": _ampm(init.get("StartTime"), "5:00 AM"),
+                "p04": _ampm(init.get("EndTime"), "7:00 PM"),
+                "p05": 0, "p06": 2, "p07": False}
         resp = self.post_json(f"{base}/api/search/search", json=body, headers=h)
         slots = self.raw_to_slots(resp.get("r06") or [])
         with _LOCK:

@@ -159,7 +159,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main || true
-          git add probe-results/
+          git add probe-results/liveapi.txt probe-results/runstatus.txt
           git commit -m "probe: verify deployed worker [skip ci]" || exit 0
-          git push
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push probe results after 5 attempts"; exit 1

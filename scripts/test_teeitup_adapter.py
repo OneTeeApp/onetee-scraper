@@ -29,11 +29,23 @@ Run: python scripts/test_teeitup_adapter.py
 from __future__ import annotations
 
 import datetime as dt
+import os
 import sys
 
 sys.path.insert(0, ".")
 
-from scraper.adapters.teeitup import TeeItUpAdapter  # noqa: E402
+# The adapter has a THIRD cache layer — a 7-day on-disk snapshot
+# (.cache/kenna_facilities.json) shared across processes. Left enabled, the
+# first Fake's successful discovery is written to disk under the REAL alias
+# and every later "discovery is down" scenario silently reads it back, so
+# those checks stop testing anything (and the repo grows an untracked cache
+# file). Disable it before the module reads the env var; the per-instance
+# _META/_FACILITIES resets below only cover the in-memory layers.
+os.environ["KENNA_FACILITIES_CACHE"] = ""
+
+from scraper.adapters.teeitup import TeeItUpAdapter, _disk_reset  # noqa: E402
+
+_disk_reset()  # in case an earlier import already loaded a disk snapshot
 
 DATE = dt.date(2026, 7, 26)
 

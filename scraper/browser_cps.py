@@ -56,7 +56,14 @@ async ([tenant, wid, cids, date]) => {
     + `&teeOffTimeMin=0&teeOffTimeMax=23&isChangeTeeOffTime=true&teeSheetSearchView=5`
     + `&classCode=R&defaultOnlineRate=N&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
   const tt = await fetch(url, {headers:H()});
-  let content = []; try { content = (await tt.json()).content || []; } catch (e) {}
+  // Report a non-JSON body AS a failure (same fix as browser_golfnow): a WAF
+  // interstitial served with status 200 used to become "0 tee times, success",
+  // skipping the remaining attempts and deactivating the tenant's real rows.
+  const text = await tt.text();
+  let content;
+  try { content = (JSON.parse(text)).content || []; }
+  catch (e) { return {status: tt.status, stage: "teetimes", parse_failed: true,
+                      bytes: text.length}; }
   return {status: tt.status, stage: "teetimes", content};
 }
 """
@@ -122,8 +129,9 @@ def run(date: dt.date, registry_path: str, out_path: str,
                               wait_until="domcontentloaded", timeout=35000)
                     page.wait_for_timeout(6000)  # let the managed challenge clear
                     r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
-                    last = f"{r.get('stage')} {r.get('status')}"
-                    if r.get("status") == 200:
+                    last = f"{r.get('stage')} {r.get('status')}" + (
+                        " parse_failed" if r.get("parse_failed") else "")
+                    if r.get("status") == 200 and not r.get("parse_failed"):
                         tts = _teetimes(c, r.get("content") or [])
                         tee_times.extend(tts)
                         log.info("  %-34s %d times", c["slug"], len(tts))
