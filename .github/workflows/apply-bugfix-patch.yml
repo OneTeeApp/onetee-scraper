@@ -1,0 +1,38 @@
+name: Apply bugfix patch (one-shot bootstrap)
+
+# One-shot: applies onetee-bugfixes-complete-2026-08-03.patch (the 2026-08-03
+# audit's two commits) to main and pushes. Exists because the Cowork sandbox
+# holds no GitHub credential; committing this workflow + the patch via the web
+# editor is 2 files instead of 62. Manual dispatch only; delete this file and
+# the patch after the run goes green.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-bugfix-patch
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply the patch and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git am -3 onetee-bugfixes-complete-2026-08-03.patch
+          git log --oneline -3
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            git pull --rebase origin main
+            sleep $((i * 5))
+          done
+          echo "could not push after 5 attempts"; exit 1
