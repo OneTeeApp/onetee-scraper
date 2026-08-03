@@ -11,6 +11,13 @@ name: State coverage status
 #
 # The regression gate is deliberately asymmetric: a DROP fails the job, a RISE
 # is committed silently. Coverage going up never needs a human.
+#
+# The comparison baseline is probe-results/state-status.baseline.json, a
+# tracked file that ONLY advances when the gate passes (or when a dispatch
+# says accept_baseline=yes). The gate used to compare against the previous
+# run's report, which this workflow had already overwritten — so a regression
+# fired exactly once and the next day's run was green against the regressed
+# numbers. An alarm that self-mutes after one firing is not an alarm.
 
 on:
   schedule:
@@ -20,6 +27,9 @@ on:
       tolerance:
         description: "Allowed drop in live venues per state before failing"
         default: "3"
+      accept_baseline:
+        description: "yes = adopt today's counts as the new baseline even if lower (acknowledges a real, understood drop)"
+        default: ""
   push:
     branches: [main]
     paths:
@@ -45,11 +55,17 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt || pip install requests
 
-      - name: Keep the previous run for comparison
+      - name: Seed the baseline on first run
         run: |
           mkdir -p probe-results
-          cp probe-results/state-status.json probe-results/.previous.json \
-            2>/dev/null || echo '{"states":[]}' > probe-results/.previous.json
+          # Migration: before the tracked baseline existed the gate compared
+          # against the previous report. Seed from it once; after that the
+          # baseline file only moves when the gate passes.
+          if [ ! -f probe-results/state-status.baseline.json ]; then
+            cp probe-results/state-status.json \
+               probe-results/state-status.baseline.json 2>/dev/null \
+              || echo '{"states":[]}' > probe-results/state-status.baseline.json
+          fi
 
       - name: Build the funnel against live D1 counts
         env:
@@ -72,15 +88,41 @@ jobs:
           sed -n '1,14p' probe-results/state-status.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
+      # Gate BEFORE commit, against the tracked baseline. continue-on-error
+      # lets the fresh report/dashboard still be committed during an incident
+      # (so the dashboard shows the truth); the final step re-raises the
+      # failure so the run stays red every day until coverage recovers or the
+      # drop is explicitly accepted.
+      - name: Check for regression against the baseline
+        id: gate
+        if: always()
+        continue-on-error: true
+        env:
+          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
+        run: |
+          python scripts/state_regression.py \
+            probe-results/state-status.baseline.json \
+            probe-results/state-status.json \
+            --tolerance "${INPUT_TOLERANCE:-3}"
+
       - name: Commit
         if: always()
+        env:
+          INPUT_ACCEPT: ${{ github.event.inputs.accept_baseline }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # .previous.json is untracked and `git add` below is explicit, so it
-          # never gets committed — and the regression step still needs it.
           git add probe-results/state-status.json probe-results/state-status.txt \
                   probe-results/onetee-status.html
+          # The baseline advances ONLY on a passing gate (or an explicit
+          # accept) — committing the regressed report as the next comparison
+          # point is what used to mute the alarm after one firing.
+          if [ "${{ steps.gate.outcome }}" = "success" ] \
+             || [ "${INPUT_ACCEPT}" = "yes" ]; then
+            cp probe-results/state-status.json \
+               probe-results/state-status.baseline.json
+            git add probe-results/state-status.baseline.json
+          fi
           git commit -m "State coverage status [skip ci]" || exit 0
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push && exit 0
@@ -88,11 +130,8 @@ jobs:
           done
           echo "could not push state status after 5 attempts"; exit 1
 
-      - name: Fail on regression
-        if: always()
-        env:
-          INPUT_TOLERANCE: ${{ github.event.inputs.tolerance }}
+      - name: Fail if regressed
+        if: always() && steps.gate.outcome == 'failure'
         run: |
-          python scripts/state_regression.py \
-            probe-results/.previous.json probe-results/state-status.json \
-            --tolerance "${INPUT_TOLERANCE:-3}"
+          echo "state_regression failed against the baseline (see the gate step)"
+          exit 1

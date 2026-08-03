@@ -86,7 +86,7 @@ const FL_CENTRAL_CITIES = [
   "Pensacola", "Shalimar", "Sunny Hills", "Watersound",
 ];
 const FL_CENTRAL_SQL = FL_CENTRAL_CITIES.map((c) => `'${c}'`).join(",");
-const FL_CENTRAL_ARM = `state = 'FL' AND city IN (${FL_CENTRAL_SQL})`;
+const FL_CENTRAL_ARM = `state = 'FL' AND COALESCE(city,'') IN (${FL_CENTRAL_SQL})`;
 
 // Rows whose state is null/blank are judged by the LAST US zone to reach a
 // given clock time. Conservative on purpose: it can leave a stale slot up a few
@@ -104,7 +104,8 @@ const tzGroups = () => {
 // The state lists are inlined as SQL literals rather than bound. They come from
 // the constant above — never from a request — and binding all 51 would eat 59
 // of D1's 100-parameter-per-query ceiling, leaving almost nothing for the
-// actual filters. Inlining keeps it at 8 binds: one clock per zone.
+// actual filters. Inlining keeps it at 9 binds: one clock per zone,
+// plus the FL-panhandle arm's Chicago clock.
 const TZ_ORDER = Object.entries(tzGroups());
 // The FL-panhandle arm comes FIRST so it wins over FL's Eastern group arm.
 const PAST_CLAUSE = `teetime >= CASE WHEN ${FL_CENTRAL_ARM} THEN ? ${TZ_ORDER

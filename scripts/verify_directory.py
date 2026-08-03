@@ -92,8 +92,14 @@ def main() -> int:
         mislabelled, unjoined = [], []
         for st in status.get("states", []):
             for item in st.get("detail", {}).get("live", []):
-                c = by_id.get(item["slug"]) or by_name.get(
-                    key(st["state"], item["name"]))
+                # Join on venue_id first: item["slug"] is the best SOURCE's
+                # slug, which for a supplement-live venue is a suffixed slug
+                # ("foo-golfnow") that matches no directory venue_id — the
+                # slug-only join could false-fatal (or, via the name
+                # fallback, silently mask a real venue_id mismatch).
+                c = (by_id.get(item.get("venue_id") or "")
+                     or by_id.get(item["slug"])
+                     or by_name.get(key(st["state"], item["name"])))
                 if not c:
                     unjoined.append(f'{st["state"]} {item["name"]}')
                     continue

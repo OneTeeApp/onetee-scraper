@@ -7,7 +7,11 @@
 # touches ONLY the platforms listed in $Platforms below and never the ~72
 # courses GitHub manages.
 #
-# Runs today + the next 2 days (UTC, to match the GitHub job's dating).
+# Runs today + the next 2 days, dated by scraper.dates (per-covered-timezone
+# LOCAL days). It used to date in UTC "to match the GitHub job" — but the
+# GitHub jobs moved off UTC dating precisely because from ~18:00 Mountain
+# onward UTC-today is local-tomorrow, so the evening runs skipped the real
+# local today and its slots went stale.
 
 $ErrorActionPreference = "Stop"
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -33,8 +37,11 @@ Get-Content $envFile | ForEach-Object {
 Set-Location $repo
 New-Item -ItemType Directory -Force -Path "output" | Out-Null
 
-foreach ($offset in 0..2) {
-    $date = (Get-Date).ToUniversalTime().AddDays($offset).ToString("yyyy-MM-dd")
+$dates = python -m scraper.dates --registry registry.json --days 3
+if ($LASTEXITCODE -ne 0 -or -not $dates) {
+    throw "scraper.dates failed - cannot compute scrape dates"
+}
+foreach ($date in $dates) {
     $out  = "output\tee_times_local_$date.json"
     "-- scrape $Platforms for $date" | Tee-Object -FilePath $log -Append
     python -m scraper.aggregate --platforms $Platforms --date $date --out $out 2>&1 |

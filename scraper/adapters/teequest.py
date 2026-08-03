@@ -135,10 +135,41 @@ class TeeQuestAdapter(Adapter):
                                           multi))
         return out
 
+    @staticmethod
+    def _legacy_echoed_date(page) -> dt.date | None:
+        """The date the re-rendered search form says it is showing, if legible.
+
+        Positive evidence only: returns None when the select/option/format
+        isn't recognisable, so the guard below can never misfire on a markup
+        change — it only acts when the page NAMES a different day.
+        """
+        sel = page.find("select", {"name": "Search.Date"})
+        if sel is None:
+            return None
+        opt = sel.find("option", selected=True)
+        if opt is None:
+            return None
+        raw = (opt.get("value") or opt.get_text(" ", strip=True) or "")
+        m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+        if not m:
+            return None
+        try:
+            return dt.date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            return None
+
     def _parse_legacy(self, html: str, course: dict, date: dt.date,
                       tag: str, label: str, url: str,
                       multi: bool) -> list[TeeTime]:
         page = _soup(html)
+        # Wrong-day guard (v2 has one via data-date-time; legacy stamps the
+        # REQUESTED date onto whatever times render). If the re-rendered form
+        # names a different day — the site fell back to its default for an
+        # out-of-window request — those are another day's times: publishing
+        # them would file today's sheet under a future date.
+        echoed = self._legacy_echoed_date(page)
+        if echoed is not None and echoed != date:
+            return []          # out of window: an empty day, not an error
         # Single-course sites print their one course name in the heading; do
         # not stamp a label there or every slot gets a redundant sub-course.
         out: list[TeeTime] = []

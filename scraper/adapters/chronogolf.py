@@ -24,7 +24,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from .base import Adapter
+from .base import Adapter, PartialFetchError
 from ..models import TeeTime
 
 BASE = "https://www.chronogolf.com"
@@ -83,6 +83,7 @@ class ChronogolfAdapter(Adapter):
 
         multi = len(course_ids) > 1
         out: list[TeeTime] = []
+        failed_cids: list[tuple] = []       # (cid, first error)
         for cid in course_ids:
             # The API has no remaining-spots field — out_of_capacity is relative
             # to the REQUESTED party size (probe-verified). So ask at party
@@ -114,11 +115,11 @@ class ChronogolfAdapter(Adapter):
             # The blanket swallow used to turn a teetimes endpoint that was
             # down (while discovery still answered) into a clean [] — the
             # course landed in courses_empty and sync deactivated its whole
-            # day. Unknown must raise so the error guard shields the rows.
+            # day. Unknown must raise (below, after the sibling cids get
+            # their chance) so the error guard shields the rows.
             if failed_sizes == 4:
-                raise RuntimeError(
-                    f"{course['slug']}: teetimes endpoint failed at every "
-                    f"party size for course_id {cid}") from first_err
+                failed_cids.append((cid, first_err))
+                continue
 
             cname = disc["course_names"].get(cid, course["name"])
             for e in by_slot.values():
@@ -140,4 +141,18 @@ class ChronogolfAdapter(Adapter):
                     raw={"course_name": cname, **{k: slot.get(k) for k in
                          ("start_time", "hole", "out_of_capacity")}},
                 ))
+
+        if failed_cids and len(failed_cids) == len(course_ids):
+            raise RuntimeError(
+                f"{course['slug']}: teetimes endpoint failed at every party "
+                f"size for every course_id") from failed_cids[0][1]
+        if failed_cids:
+            # Partial: publish the sibling courses that served; the failed
+            # cids' labels shield their existing rows from deactivation.
+            raise PartialFetchError(
+                f"{course['slug']}: teetimes endpoint failed for course_id(s) "
+                + ", ".join(str(c) for c, _ in failed_cids),
+                tee_times=out,
+                failed_labels=[disc["course_names"].get(c, course["name"])
+                               if multi else "" for c, _ in failed_cids])
         return out

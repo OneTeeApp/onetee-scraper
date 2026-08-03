@@ -78,7 +78,13 @@ class D1Rest:
         body = r.json()
         if not body.get("success"):
             raise RuntimeError(f"D1 error: {body.get('errors')}")
-        return body["result"][0].get("results", [])
+        result = body["result"][0]
+        # Rows touched by this statement, for callers that report write
+        # tallies (migrate's rename counter read 0 forever because the
+        # meta was discarded here).
+        self.last_changes = int((result.get("meta") or {}).get("changes")
+                                or 0)
+        return result.get("results", [])
 
     def executescript(self, sql: str) -> None:
         # D1 accepts multi-statement sql when no params are bound
@@ -96,6 +102,8 @@ class SqliteLocal:
     def execute(self, sql: str, params: list | None = None) -> list[dict]:
         cur = self.conn.execute(sql, params or [])
         self.conn.commit()
+        # sqlite reports -1 for SELECTs; clamp so it mirrors D1Rest's meta.
+        self.last_changes = max(0, cur.rowcount)
         return [dict(r) for r in cur.fetchall()]
 
     def executescript(self, sql: str) -> None:
@@ -213,23 +221,13 @@ def migrate(db, registry_path: str | None = None) -> dict:
                  c.get("source_role", "primary"), slug])
             backfilled += 1
             shown = (c.get("display_name") or "").strip() or c["name"]
-            r = db.execute(
+            db.execute(
                 "UPDATE tee_times SET course_name=? "
                 "WHERE course_slug=? AND course_name<>?",
                 [shown, slug, shown])
-            if _changes(r):
+            if getattr(db, "last_changes", 0):
                 renamed += 1
     return {"backfilled_courses": backfilled, "courses_renamed": renamed}
-
-
-def _changes(result) -> int:
-    """Rows touched by the last statement, across the shapes D1's HTTP API and
-    the local sqlite shim return. Best-effort: a 0 here only under-reports the
-    `courses_renamed` tally, it never changes what was written."""
-    if isinstance(result, dict):
-        meta = result.get("meta") or {}
-        return int(meta.get("changes") or result.get("changes") or 0)
-    return int(getattr(result, "rowcount", 0) or 0)
 
 
 # --------------------------------------------------------------------------- #
@@ -406,7 +404,8 @@ def prune_past(db, dry_run: bool = False) -> dict:
         if tz == "America/New_York":
             # Panhandle FL is Central — judged separately below, and it must
             # NOT be pruned an hour early by the Eastern clock here.
-            where += f" AND NOT (state = 'FL' AND city IN ({city_marks}))"
+            where += (f" AND NOT (state = 'FL' "
+                      f"AND COALESCE(city,'') IN ({city_marks}))")
             params += fl_central
         n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
                        params)[0]["n"]
@@ -418,8 +417,8 @@ def prune_past(db, dry_run: bool = False) -> dict:
             total += n
 
     now = _local_now("America/Chicago")     # panhandle FL, on its own clock
-    where = (f"active = 1 AND state = 'FL' AND city IN ({city_marks}) "
-             "AND teetime < ?")
+    where = (f"active = 1 AND state = 'FL' "
+             f"AND COALESCE(city,'') IN ({city_marks}) AND teetime < ?")
     n = db.execute(f"SELECT COUNT(*) AS n FROM tee_times WHERE {where}",
                    [*fl_central, now])[0]["n"]
     if n:
@@ -469,8 +468,15 @@ def sync(db, doc: dict) -> dict:
             "active": 1, "first_seen_at": now, "last_seen_at": now,
         }
 
-    # courses that errored this run must NOT have their rows deactivated
-    errored = {e["course"] for e in doc.get("errors", [])}
+    # courses that errored this run must NOT have their rows deactivated.
+    # A record WITHOUT course_label shields the whole course; a record WITH
+    # one (a PartialFetchError: one sub-course failed while siblings served)
+    # shields only that sheet's rows, so the venue's served sheets still
+    # reconcile normally.
+    errored = {e["course"] for e in doc.get("errors", [])
+               if not e.get("course_label")}
+    label_errored = {(e["course"], e["course_label"])
+                     for e in doc.get("errors", []) if e.get("course_label")}
     scraped_courses = {k[0] for k in scraped}
     # A course that answered cleanly with ZERO rows for this date is evidence,
     # not ignorance: the day sold out or its booking window closed, and its
@@ -518,7 +524,8 @@ def sync(db, doc: dict) -> dict:
             to_update.append(v)
     to_deactivate = [k for k, e in existing.items()
                      if e["active"] and k not in scraped
-                     and k[0] in scraped_courses and k[0] not in errored]
+                     and k[0] in scraped_courses and k[0] not in errored
+                     and (k[0], k[2]) not in label_errored]
 
     for i in range(0, len(to_insert), CHUNK):
         chunk = to_insert[i:i + CHUNK]

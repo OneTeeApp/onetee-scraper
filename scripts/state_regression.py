@@ -23,12 +23,15 @@ import json
 import sys
 
 
-def live_by_state(path: str) -> dict[str, int]:
+def load_doc(path: str) -> dict:
     try:
         with open(path) as fh:
-            doc = json.load(fh)
+            return json.load(fh)
     except (OSError, ValueError):
         return {}
+
+
+def live_by_state(doc: dict) -> dict[str, int]:
     return {s["state"]: s["counts"]["live"] for s in doc.get("states", [])}
 
 
@@ -40,7 +43,16 @@ def main() -> int:
                     help="live venues a state may lose without failing")
     a = ap.parse_args()
 
-    old, new = live_by_state(a.previous), live_by_state(a.current)
+    old_doc, new_doc = load_doc(a.previous), load_doc(a.current)
+    # A report whose D1 query returned nothing is "we couldn't look", not
+    # "coverage is zero". Comparing it (or letting it become the baseline)
+    # would either fire a phantom all-states regression or ratchet the
+    # baseline to zeros, after which every real count reads as a rise.
+    if new_doc and new_doc.get("has_live_data") is False:
+        print("FAIL: current report has no live D1 data (has_live_data=false) "
+              "— cannot judge coverage from it")
+        return 1
+    old, new = live_by_state(old_doc), live_by_state(new_doc)
     if not old:
         print("no previous run to compare against — baseline recorded")
         return 0

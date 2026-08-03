@@ -6,14 +6,25 @@ name: Scrape far tier (days 8-30, every 2 hours)
 # so most passes SKIP the dates a course has proven it does not publish, using
 # probe-results/booking-windows.json.
 #
-# Once a day (the 10:xx UTC run, ~4am Denver) the sweep goes FULL — every
-# course, every far date, windows ignored — and then re-derives the windows
-# file from its own output and commits it. That is the self-correcting part:
-# a course that widens its booking window is caught within a day, and the
-# derivation costs zero extra requests because it reads the sweep's own
-# output documents. Between full sweeps the file only trims work; scripts/
-# eligible_courses.py treats unknown courses, unchecked offsets, and a stale
-# file as "scrape it" — ignorance never reads as absence.
+# Once a day the sweep goes FULL — every course, every far date, windows
+# ignored — and then re-derives the windows file from its own output and
+# commits it. That is the self-correcting part: a course that widens its
+# booking window is caught within a day, and the derivation costs zero extra
+# requests because it reads the sweep's own output documents. Between full
+# sweeps the file only trims work; scripts/eligible_courses.py treats unknown
+# courses, unchecked offsets, and a stale file as "scrape it" — ignorance
+# never reads as absence.
+#
+# "Once a day" is decided ONCE, in the plan job, from the windows file's own
+# as_of stamp: full when the file hasn't been re-derived today and it is past
+# 10:00 UTC. It used to be "does this step happen to execute during UTC hour
+# 10", checked independently in the shards and again in the derive job — but
+# the self-chaining cadence gives no run a guaranteed start hour, so whole
+# days could pass with no full sweep, and a windowed sweep whose derive step
+# drifted into hour 10-11 could commit windowed output as full-sweep evidence
+# (violating the only-shrink-on-full-evidence rule). The as_of rule also
+# retries: if a full sweep's derivation fails, as_of stays stale and the next
+# run goes full again instead of waiting for tomorrow.
 
 on:
   schedule:
@@ -33,7 +44,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    # ONE mode decision for the whole run — every shard and the derive job
+    # consume this output, so they can never disagree with each other.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.mode.outputs.full }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decide full vs windowed
+        id: mode
+        env:
+          INPUT_FULL: ${{ github.event.inputs.full }}
+        run: |
+          FULL=no
+          W=probe-results/booking-windows.json
+          if [ ! -f "$W" ]; then
+            FULL=yes                       # no windows at all: must derive
+          elif [ "$(date -u +%H)" -ge 10 ]; then
+            # Full once per UTC day, on the first run at/after 10:00 (~4am
+            # Denver), judged by the file's own as_of stamp — start-hour
+            # drift can't skip it, and a failed derivation retries next run.
+            AS_OF=$(python3 -c "import json,sys; print(str(json.load(open('$W')).get('as_of',''))[:10])" 2>/dev/null || echo "")
+            [ "$AS_OF" != "$(date -u +%F)" ] && FULL=yes
+          fi
+          [ "${INPUT_FULL}" = "yes" ] && FULL=yes
+          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+          echo "far sweep mode: full=${FULL}"
+
   scrape:
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 110
     strategy:
@@ -54,16 +95,6 @@ jobs:
         # loops without meaningfully slowing the sweep.
         run: sleep $(( ${{ matrix.shard }} * 90 ))
 
-      - name: Decide full vs windowed
-        id: mode
-        run: |
-          FULL=no
-          [ "$(date -u +%H)" = "10" ] && FULL=yes
-          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
-          [ -f probe-results/booking-windows.json ] || FULL=yes
-          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
-          echo "far sweep mode: full=${FULL}"
-
       - name: Scrape + push shard ${{ matrix.shard }}/4 (days 8-30)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -80,7 +111,7 @@ jobs:
           # over a few sweeps instead of any single run having to get all 23.
           for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23 | shuf); do
             ARGS=""
-            if [ "${{ steps.mode.outputs.full }}" != "yes" ]; then
+            if [ "${{ needs.plan.outputs.full }}" != "yes" ]; then
               ELIG=$(python scripts/eligible_courses.py --date "${DATE}")
               if [ "$ELIG" = "NONE" ]; then
                 echo "skip ${DATE}: no course's booking window reaches it"
@@ -109,7 +140,15 @@ jobs:
     # Only after a FULL sweep, and only once (not per shard): pull all four
     # shards' outputs back down and measure each course's real booking window
     # from what the sweep itself saw.
-    needs: scrape
+    #
+    # The mode comes from the plan job (never recomputed from the clock), and
+    # needs.scrape.result must be success: windows may only SHRINK on a full
+    # sweep's evidence, and a sweep with a dead shard is not full evidence —
+    # deriving from three shards' outputs would shrink the fourth shard's
+    # courses to nothing. Skipping leaves as_of stale, so the next run
+    # automatically retries the full sweep.
+    needs: [plan, scrape]
+    if: needs.plan.outputs.full == 'yes' && needs.scrape.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -117,24 +156,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Was this a full sweep?
-        id: mode
-        run: |
-          FULL=no
-          [ "$(date -u +%H)" = "10" ] && FULL=yes
-          [ "$(date -u +%H)" = "11" ] && FULL=yes   # long sweep crossing the hour
-          [ "${{ github.event.inputs.full }}" = "yes" ] && FULL=yes
-          [ -f probe-results/booking-windows.json ] || FULL=yes
-          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
       - name: Download sweep outputs
-        if: steps.mode.outputs.full == 'yes'
         uses: actions/download-artifact@v4
         with:
           pattern: far-tee-times-${{ github.run_id }}-*
           path: output
           merge-multiple: true
       - name: Derive windows + commit
-        if: steps.mode.outputs.full == 'yes'
         run: |
           python scripts/derive_windows.py \
             --outputs 'output/tee_times_*.json' \

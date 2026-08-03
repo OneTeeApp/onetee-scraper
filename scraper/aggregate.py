@@ -22,7 +22,7 @@ import zoneinfo
 
 from .models import FetchResult
 from .sharding import apply_shard, set_env_shard_count
-from .adapters.base import Adapter
+from .adapters.base import Adapter, PartialFetchError
 from .adapters.foreup import ForeUpAdapter
 from .adapters.teeitup import TeeItUpAdapter
 from .adapters.chronogolf import ChronogolfAdapter
@@ -87,6 +87,13 @@ def fetch_course(course: dict, date: dt.date) -> FetchResult:
     try:
         tee_times = adapter_cls().fetch(course, date)
         return FetchResult(course["slug"], course["platform"], True, tee_times)
+    except PartialFetchError as e:
+        # Some sub-courses served, some failed. Publish what fetched; the
+        # failed labels become label-carrying error records so sync shields
+        # exactly those sheets' rows (see PartialFetchError's docstring).
+        return FetchResult(course["slug"], course["platform"], True,
+                           e.tee_times, error=f"partial: {e}",
+                           failed_labels=list(e.failed_labels))
     except Exception as e:  # noqa: BLE001 — aggregator must survive any course
         return FetchResult(course["slug"], course["platform"], False,
                            error=f"{type(e).__name__}: {e}")
@@ -147,13 +154,23 @@ def run(date: dt.date, registry_path: str, out_path: str,
         #      empty is a real sell-out rather than a throttle. If the whole
         #      platform is empty this run, NONE are deactivated and the last
         #      good capture survives until a run that truly reads the sheet.
+        #   3. A partially-failed venue (failed_labels) is never a trustworthy
+        #      empty: its served sheets may have returned zero while the
+        #      failed sheet is the one still holding rows — deactivating the
+        #      whole venue off that would erase the failed sheet's inventory.
         "courses_empty": sorted(
             r.course_slug for r in results
-            if r.ok and not r.tee_times
+            if r.ok and not r.tee_times and not r.failed_labels
             and r.platform in {x.platform for x in results
                                if x.ok and x.tee_times}),
+        # Course-level records (no course_label) shield the WHOLE course in
+        # sync; label-carrying records shield only that sub-course's rows.
         "errors": [{"course": r.course_slug, "platform": r.platform,
-                    "error": r.error} for r in results if not r.ok],
+                    "error": r.error} for r in results if not r.ok]
+                + [{"course": r.course_slug, "platform": r.platform,
+                    "course_label": lbl,
+                    "error": r.error or "sub-course fetch failed"}
+                   for r in results for lbl in r.failed_labels],
     }
     out = pathlib.Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)

@@ -47,7 +47,7 @@ import re
 import threading
 from typing import Any
 
-from .base import Adapter
+from .base import Adapter, PartialFetchError
 from ..models import TeeTime
 
 # (There used to be a COURSES_RE non-greedy `window.courses = (\[.*?\]);`
@@ -201,16 +201,16 @@ class TeesnapAdapter(Adapter):
         multi = len(course_ids) > 1
         out: list[TeeTime] = []
         errors: list[str] = []
+        failed: list[tuple[int, str]] = []   # (cid, error text)
         for cid in course_ids:
             # One bad id must not cost us the whole venue. Teesnap answers 500
             # ("Be right back.") for ids that aren't really courses, and for
             # genuinely broken sheets; the other ids on the same tenant keep
-            # working. Collect and only raise if EVERY id failed.
-            # KNOWN TENSION: on a partial failure the failed sheet's existing
-            # D1 rows are deactivated by sync (the venue counts as scraped).
-            # Tolerating that is deliberate and covered by
-            # scripts/test_teesnap_adapter.py; the real fix would be
-            # label-granular error records in the doc format.
+            # working. Collect; only a total failure is a plain raise — a
+            # PARTIAL failure raises PartialFetchError, which publishes the
+            # served sheets while its label records shield the failed sheet's
+            # existing D1 rows from deactivation (they used to be erased,
+            # because the venue counted as scraped).
             try:
                 data = self.get_json(
                     f"https://{sub}.teesnap.net/customer-api/teetimes-day",
@@ -218,6 +218,7 @@ class TeesnapAdapter(Adapter):
                             "players": 1, "holes": 18, "addons": "off"})
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"course {cid}: {type(exc).__name__}: {exc}")
+                failed.append((cid, f"{type(exc).__name__}: {exc}"))
                 continue
             block = (data or {}).get("teeTimes", {})
             for slot in block.get("teeTimes", []):
@@ -252,4 +253,15 @@ class TeesnapAdapter(Adapter):
         if errors and len(errors) == len(course_ids):
             raise RuntimeError(f"{course['slug']}: every Teesnap course id "
                                f"failed — " + "; ".join(errors))
+        if failed:
+            # Partial: publish `out` (the served sheets) and shield the failed
+            # sheets' rows via their labels. A label can be "" only when the
+            # venue has one id, and one id failing is total failure above —
+            # so every label here names a real sheet.
+            raise PartialFetchError(
+                f"{course['slug']}: {len(failed)} of {len(course_ids)} "
+                "Teesnap course id(s) failed — " + "; ".join(errors),
+                tee_times=out,
+                failed_labels=[(names.get(cid) or "") if multi else ""
+                               for cid, _ in failed])
         return out

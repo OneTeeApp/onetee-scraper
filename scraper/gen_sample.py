@@ -54,6 +54,15 @@ def generate(date: dt.date, seed: int = 42) -> dict:
                     "course_slug": course["slug"],
                     "course_name": course["name"],
                     "city": course.get("city", ""),
+                    # state/venue_id/course_label/source_role mirror the live
+                    # doc shape. Omitting them minted NULL-state rows if a
+                    # sample was ever pushed at a real DB — the exact "AZ
+                    # ghosts filed under CO" class deactivate_unknown_slugs
+                    # documents.
+                    "state": course.get("state", ""),
+                    "venue_id": course.get("venue_id") or course["slug"],
+                    "source_role": course.get("source_role", "primary"),
+                    "course_label": "",
                     "platform": course["platform"],
                     "teetime": t.isoformat(),
                     "holes": [18] if rng.random() < 0.7 else [9, 18],
@@ -77,8 +86,13 @@ def generate(date: dt.date, seed: int = 42) -> dict:
 
 
 def main() -> None:
+    import zoneinfo
     p = argparse.ArgumentParser()
-    p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=2)).isoformat())
+    # Denver-local default, same reasoning as scraper/aggregate.py: a UTC
+    # runner's `date.today()` is already tomorrow from ~5pm Mountain.
+    p.add_argument("--date", default=(
+        dt.datetime.now(zoneinfo.ZoneInfo("America/Denver")).date()
+        + dt.timedelta(days=2)).isoformat())
     p.add_argument("--out", default="output/tee_times.json")
     a = p.parse_args()
     doc = generate(dt.date.fromisoformat(a.date))

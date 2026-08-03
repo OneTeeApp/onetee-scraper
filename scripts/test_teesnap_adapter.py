@@ -28,6 +28,7 @@ from typing import Any
 
 sys.path.insert(0, ".")
 
+from scraper.adapters.base import PartialFetchError  # noqa: E402
 from scraper.adapters.teesnap import TeesnapAdapter  # noqa: E402
 
 DATE = dt.date(2026, 7, 26)
@@ -145,12 +146,59 @@ def main() -> None:
     print("\nfetch: a 500 on one id must not cost the venue its real slots")
     boom = RuntimeError("500 Server Error: Be right back.")
     a = Fake({1550: sheet(["07:10", "07:20", "07:30"]), 1551: boom})
-    out = a.fetch(COURSE, DATE)
-    check("the good id's slots survive", len(out) == 3, f"got {len(out)}")
+    # Partial failure raises PartialFetchError: the served sheets' slots ride
+    # on the exception (the aggregator publishes them) and the failed sheet's
+    # label becomes an error record that shields its existing D1 rows — the
+    # old silent-partial return let sync deactivate the failed sheet's day.
+    try:
+        a.fetch(COURSE, DATE)
+        check("partial failure raises PartialFetchError", False, "returned")
+        out, labels = [], []
+    except PartialFetchError as exc:
+        check("partial failure raises PartialFetchError", True)
+        out, labels = exc.tee_times, exc.failed_labels
+    check("the good id's slots survive (on the exception)",
+          len(out) == 3, f"got {len(out)}")
+    check("the failed sheet is named by label",
+          labels == ["Hollydot Nine"], str(labels))
     check("no property id was ever requested", 1329 not in a.asked,
           f"asked {a.asked}")
     check("no notice id was ever requested", 1517 not in a.asked,
           f"asked {a.asked}")
+
+    print("\nd1 sync: a label-carrying error record shields exactly that sheet")
+    from scraper.d1 import SqliteLocal, migrate, sync
+    db = SqliteLocal(":memory:")
+    migrate(db)
+    day = str(DATE)
+
+    def mk(label, t):
+        return {"course_slug": "hollydot-golf-course", "teetime": f"{day}T{t}",
+                "course_name": "Hollydot", "city": "Colorado City",
+                "state": "CO", "platform": "teesnap", "holes": [18],
+                "booking_url": "u", "course_label": label}
+
+    sync(db, {"generated_at": "x", "date": day, "errors": [],
+              "tee_times": [mk("Hollydot Golf Course", "07:10:00"),
+                            mk("Hollydot Nine", "08:00:00")]})
+    # Next run: the Nine's sheet 500s (label error record), the main course
+    # serves but its 07:10 slot got booked. Expect: 07:10 deactivated (real
+    # reconcile), the Nine's 08:00 row UNTOUCHED despite not being returned.
+    sync(db, {"generated_at": "x", "date": day,
+              "errors": [{"course": "hollydot-golf-course",
+                          "platform": "teesnap",
+                          "course_label": "Hollydot Nine",
+                          "error": "500 Be right back"}],
+              "tee_times": [mk("Hollydot Golf Course", "09:10:00")]})
+    rows = {(r["course_label"], r["teetime"][-8:]): r["active"]
+            for r in db.execute("SELECT course_label, teetime, active "
+                                "FROM tee_times")}
+    check("served sheet reconciles (booked slot deactivated)",
+          rows[("Hollydot Golf Course", "07:10:00")] == 0, str(rows))
+    check("failed sheet's row is shielded, stays active",
+          rows[("Hollydot Nine", "08:00:00")] == 1, str(rows))
+    check("served sheet's new slot inserted",
+          rows[("Hollydot Golf Course", "09:10:00")] == 1, str(rows))
 
     print("\nfetch: total failure is still an error, not an empty day")
     a = Fake({1550: boom, 1551: boom})

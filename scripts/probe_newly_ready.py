@@ -249,16 +249,22 @@ def main() -> int:
     budget = a.budget_minutes * 60
     results: list = list(carried)
     stopped: str | None = None
+    unreached: list = []
     for i, c in enumerate(targets):
         if budget and time.monotonic() - started > budget:
             # A cap is only acceptable if it is said out loud, in the log AND
             # in the artifact, so nobody reads a partial file as a full sweep.
+            # `i`, not len(results): results also holds the carried answers
+            # from a resumed run, and counting those as "reached this run"
+            # once sliced the unreached list short — an incomplete run could
+            # write complete:true and the next run refused to resume it.
             stopped = (f"time budget {a.budget_minutes:g} min reached after "
-                       f"{len(results)} of {len(targets)} targets")
+                       f"{i} of {len(targets)} targets")
             print(f"\nSTOPPING EARLY: {stopped}", flush=True)
-            print("  NOT reached: " + ", ".join(t["slug"] for t in targets[i:]),
+            unreached = targets[i:]
+            print("  NOT reached: " + ", ".join(t["slug"] for t in unreached),
                   flush=True)
-            flush(results, targets[i:], stopped)
+            flush(results, unreached, stopped)
             break
         per_date, errors, total = {}, [], 0
         for d in dates:
@@ -304,7 +310,7 @@ def main() -> int:
 
     if stopped:
         print(f"\nINCOMPLETE: {stopped}")
-    flush(results, [] if not stopped else targets[len(results):], stopped)
+    flush(results, unreached, stopped)
     print(f"wrote {a.out}")
     return 0
 

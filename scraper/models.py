@@ -53,3 +53,8 @@ class FetchResult:
     ok: bool
     tee_times: list[TeeTime] = field(default_factory=list)
     error: Optional[str] = None
+    # Sub-courses (course_labels) that failed while the rest served — from a
+    # PartialFetchError. ok stays True (the tee_times are real and publish);
+    # each label becomes a label-carrying error record so sync shields that
+    # sheet's existing rows instead of deactivating them.
+    failed_labels: list[str] = field(default_factory=list)

@@ -178,10 +178,15 @@ def build(counts: dict[str, int]) -> dict:
                 any_booking = any(r["Online Booking"] == "yes" for r in v["rows"])
                 private = all(r.get("Type", "").strip().lower()
                               in OUT_OF_SCOPE_TYPES for r in v["rows"])
-                bucket = ("no_platform" if any_booking
-                          else "private" if private else "no_booking")
+                # private wins over any_booking: a members-only club that
+                # happens to book online is still out of scope, and counting
+                # it as "no_platform" inflated both the addressable
+                # denominator and the blocker table.
+                bucket = ("private" if private
+                          else "no_platform" if any_booking else "no_booking")
                 placed[bucket].append({
-                    "slug": vb, "name": v["name"], "city": v["city"],
+                    "slug": vb, "venue_id": vb,
+                    "name": v["name"], "city": v["city"],
                     "platform": (v["rows"][0].get("Booking Platform") or ""),
                     "rows": 0, "why": BUCKET_BLURB[bucket]})
                 continue
@@ -204,7 +209,12 @@ def build(counts: dict[str, int]) -> dict:
                     best, best_src = BUCKETS.index(b), c
             bucket = BUCKETS[best]
             placed[bucket].append({
-                "slug": best_src["slug"], "name": best_src["name"],
+                # slug is the best SOURCE's slug (may be a supplement like
+                # "foo-golfnow"); venue_id is the venue key the directory
+                # joins on — verify_directory's live-vs-tag check needs it.
+                "slug": best_src["slug"],
+                "venue_id": best_src.get("venue_id") or best_src["slug"],
+                "name": best_src["name"],
                 "city": best_src["city"],
                 "platform": best_src["platform"],
                 "sources": len(regs), "rows": live_rows,

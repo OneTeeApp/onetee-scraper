@@ -60,12 +60,14 @@ import datetime as dt
 import json
 import os
 import sys
+import zoneinfo
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.aggregate import fetch_course, load_registry  # noqa: E402
-from scraper.d1 import D1Rest, SqliteLocal, deactivate_courses  # noqa: E402
+from scraper.d1 import (D1Rest, SqliteLocal, deactivate_courses,  # noqa: E402
+                        _STATE_TZ, FL_CENTRAL_CITIES)
 
 # Every platform family has an hourly writer of its own (scrape :17,
 # clubcaddie :27, cps/supersaas :37, ezlinks :47, golfnow :52), and scrape-fast
@@ -186,8 +188,24 @@ def main() -> int:
 
         # The dates we are actually serving for this course. Adjudicating on
         # some other date would answer a question nobody asked.
-        dates = sorted({t[:10] for t in (c["first_tt"], c["last_tt"]) if t})
-        today = str(dt.date.today())
+        #
+        # "today" is the COURSE's local today, never the runner's UTC date:
+        # from ~17:00 Phoenix onward UTC-today is local-tomorrow, and the old
+        # `dt.date.today()` filtered the course's real today out of the
+        # adjudication — a quiet course serving real evening slots could
+        # verdict "orphaned" off a fetch of the wrong day and have tonight's
+        # inventory deactivated. Same date-frame bug scraper/dates.py fixed
+        # for the scrape tiers.
+        tz = _STATE_TZ.get((course.get("state") or "").upper(),
+                           "Pacific/Honolulu")  # unknown: earliest date, widest net
+        if course.get("state") == "FL" and course.get("city") in FL_CENTRAL_CITIES:
+            tz = "America/Chicago"
+        today = dt.datetime.now(zoneinfo.ZoneInfo(tz)).date().isoformat()
+        # Local today is adjudicated alongside the served range: an extra
+        # clean-zero only strengthens an "orphaned" verdict, and a course
+        # serving real slots tonight will answer with them.
+        dates = sorted({t[:10] for t in (c["first_tt"], c["last_tt"]) if t}
+                       | {today})
         dates = [d for d in dates if d >= today][:MAX_DATES] or [today]
 
         per_date, errors, total = {}, [], 0

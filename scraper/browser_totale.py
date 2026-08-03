@@ -85,14 +85,21 @@ async () => {
       .find(d => norm(d.textContent) === lbl && d.offsetParent);
     if (!cell) continue;
     cell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    // wait for the sheet to reflect this label's date (or give up after ~6s)
-    const want = lbl.replace(/^(\d{1,2})\s+([A-Za-z]{3}).*/, "$1 $2");
-    let ok = false;
+    // Wait for the sheet to reflect this label's date (or give up after ~6s).
+    // The card prints NUMERIC dates ("07/28/2026") while the strip label is
+    // "28 Jul" — the old check looked for the literal month word in the card,
+    // could never match, and burned the full 6s on every day (and a postback
+    // slower than that lost the day entirely). Compare as MM/DD/ instead.
+    const MONTHS = {jan:1, feb:2, mar:3, apr:4, may:5, jun:6,
+                    jul:7, aug:8, sep:9, oct:10, nov:11, dec:12};
+    const parts = lbl.split(/\s+/);
+    const dd = String(+parts[0]).padStart(2, "0");
+    const mm = String(MONTHS[(parts[1] || "").toLowerCase()] || 0)
+      .padStart(2, "0");
     for (let i = 0; i < 24; i++) {
       await new Promise(r => setTimeout(r, 250));
       const b = document.querySelector(".TeeBlock");
-      if (b && new RegExp("\\b" + want.split(" ")[0] + "\\b").test(norm(b.textContent))
-          && norm(b.textContent).includes(want.split(" ")[1])) { ok = true; break; }
+      if (b && norm(b.textContent).includes(mm + "/" + dd + "/")) break;
     }
     add(parseBlocks());
   }

@@ -113,7 +113,7 @@ def render(rep: dict, stamp: str) -> str:
     gap = addr - live
     pct = 100.0 * live / addr if addr else 0
 
-    o = [f"<!doctype html><html lang=en><head><meta charset=utf-8>",
+    o = ["<!doctype html><html lang=en><head><meta charset=utf-8>",
          "<meta name=viewport content='width=device-width,initial-scale=1'>",
          "<title>OneTee — coverage by state</title>",
          f"<style>{CSS}</style></head><body><div class=wrap>"]

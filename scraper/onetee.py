@@ -61,10 +61,16 @@ def post(doc: dict, url: str, api_key: str, dry_run: bool = False) -> int:
             if r.status_code < 300:
                 sent += len(payload["tee_times"])
                 break
-            if r.status_code in (429, 500, 502, 503) and attempt < 2:
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
                 time.sleep(2 ** attempt)
                 continue
+            # raise_for_status() is a no-op for 3xx, and falling through it
+            # used to drop the batch silently (loop ran out with no error and
+            # no count). Any non-2xx that reaches here must raise.
             r.raise_for_status()
+            raise RuntimeError(
+                f"onetee post: unexpected status {r.status_code} for batch "
+                f"{i // BATCH} — batch not accepted")
     return sent
 
 

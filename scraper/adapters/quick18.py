@@ -128,7 +128,13 @@ class Quick18Adapter(Adapter):
                 raw={"players": players_txt},
             ))
 
-        if not out and "searchmatrix" not in html.lower() and "tee" not in html.lower():
+        # Fail-loud guard for a page that is not a tee sheet at all. The old
+        # form also accepted any page containing the word "tee" — which on a
+        # golf platform is every error and maintenance page, so the guard
+        # never fired and an outage read as a clean empty day (deactivating
+        # real rows). "searchmatrix" is the widget's own marker; accept only
+        # that as proof we reached the sheet.
+        if not out and "searchmatrix" not in html.lower():
             raise RuntimeError(f"{course['slug']}: unexpected Quick18 response "
                                "(no tee-sheet table found)")
         return out

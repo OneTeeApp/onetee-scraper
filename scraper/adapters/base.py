@@ -24,6 +24,26 @@ USER_AGENT = (
 TIMEOUT = 20
 
 
+class PartialFetchError(Exception):
+    """Some of a venue's sub-courses failed while the rest served.
+
+    The all-or-nothing contract (raise = the whole venue is unknown) loses
+    real data both ways on a multi-course venue: swallowing the failure lets
+    sync deactivate the failed sheet's existing rows ("the venue was scraped,
+    those rows didn't come back"), while raising plain throws away the sheets
+    that DID answer. This exception carries both halves: `tee_times` — the
+    slots that fetched — get published, and `failed_labels` become
+    label-carrying error records in the doc, which d1.sync() uses to shield
+    exactly the failed sheets' rows from deactivation.
+    """
+
+    def __init__(self, message: str, tee_times: list,
+                 failed_labels: list[str]):
+        super().__init__(message)
+        self.tee_times = tee_times
+        self.failed_labels = failed_labels
+
+
 def make_session() -> requests.Session:
     s = requests.Session()
     s.headers.update({
