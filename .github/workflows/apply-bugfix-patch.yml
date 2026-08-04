@@ -1,10 +1,10 @@
 name: Apply bugfix patch (one-shot bootstrap)
 
 # One-shot: applies onetee-bugfixes-complete-2026-08-03.patch (the 2026-08-03
-# audit's two commits) to main and pushes. Exists because the Cowork sandbox
-# holds no GitHub credential; committing this workflow + the patch via the web
-# editor is 2 files instead of 62. Manual dispatch only; delete this file and
-# the patch after the run goes green.
+# audit's two commits) to main and pushes. Uses WORKFLOW_PAT because the patch
+# edits ~20 files under .github/workflows/, which the default GITHUB_TOKEN is
+# not permitted to push. Manual dispatch only; delete this file, the patch
+# (patches/ and root copy), and the WORKFLOW_PAT secret after the run is green.
 
 on:
   workflow_dispatch:
@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.WORKFLOW_PAT }}
       - name: Apply the patch and push
         run: |
           set -euo pipefail
