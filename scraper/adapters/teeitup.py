@@ -198,8 +198,17 @@ def _disk_put(alias: str, facilities: list) -> None:
 # gap to GAP*S so the aggregate cadence is constant no matter how many shards
 # run (SHARD_COUNT is published by scraper.sharding). This is what lets TeeItUp
 # scale to thousands of courses without one shard's pace multiplying by S.
-_KENNA_SEM = threading.Semaphore(2)      # <=2 concurrent kenna.io reqs per shard
-_KENNA_BASE_GAP = 0.7                     # global min seconds between requests
+_KENNA_SEM = threading.Semaphore(1)      # 1 concurrent kenna.io req per shard
+_KENNA_BASE_GAP = 1.2                     # global min seconds between requests
+# 2026-08-04: gentled from (sem=2, gap=0.7). Moving teeitup off the browser
+# transport onto the fast plain-HTTP loop exposed that kenna rate-limits the
+# WHOLE fleet by request rate (not TLS fingerprint — probe-kenna-impersonate
+# proved plain==curl_cffi per-call). At full-fleet fast cadence the old pacing
+# tripped sustained 429 walls that MAX_RETRIES=2 could not ride out, so courses
+# with no prior D1 row (e.g. raccoon-creek) flickered to 0. Single-flight +
+# 1.2s*shards gap keeps the aggregate kenna cadence under its burst limit;
+# passes run longer but every course lands within the 90-min freshness window,
+# and a 429 error never wipes a course's prior rows.
 _KENNA_LOCK = threading.Lock()
 _KENNA_LAST = [0.0]
 
