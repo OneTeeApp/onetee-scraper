@@ -22,12 +22,49 @@ a representative rate; open capacity is read from out_of_capacity.
 from __future__ import annotations
 
 import datetime as dt
+import json
+import pathlib
+import threading
 from typing import Any
 
 from .base import Adapter, PartialFetchError
 from ..models import TeeTime
 
 BASE = "https://www.chronogolf.com"
+
+# discover() resolves club_id / affiliation_type_id / course_ids — all STABLE
+# per course — but it ran two /private_api calls on EVERY fetch (per course, per
+# date, per pass). At the near tier's cadence that is a lot of load on
+# chronogolf's API, and when discovery flaked the whole course errored and its
+# near-date rows went stale and hid (measured 2026-08-04: city-park-nine /
+# south-suburban near flicker). Cache the first successful discovery (memory +
+# runner disk) and reuse it for the rest of the run — the per-date teetimes call
+# still runs live, but the two discovery calls collapse to one per course/run.
+_DISC_CACHE_PATH = pathlib.Path(".cache/chronogolf_discovery.json")
+_DISC_MEM: dict[str, dict] = {}
+_DISC_LOADED = [False]
+_DISC_LOCK = threading.Lock()
+
+
+def _disc_cache_get(key: str) -> dict | None:
+    with _DISC_LOCK:
+        if not _DISC_LOADED[0]:
+            try:
+                _DISC_MEM.update(json.loads(_DISC_CACHE_PATH.read_text()))
+            except Exception:  # noqa: BLE001 — cold cache is fine
+                pass
+            _DISC_LOADED[0] = True
+        return _DISC_MEM.get(str(key))
+
+
+def _disc_cache_put(key: str, disc: dict) -> None:
+    with _DISC_LOCK:
+        _DISC_MEM[str(key)] = disc
+        try:
+            _DISC_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _DISC_CACHE_PATH.write_text(json.dumps(_DISC_MEM))
+        except Exception:  # noqa: BLE001 — best-effort persistence
+            pass
 
 
 class ChronogolfAdapter(Adapter):
@@ -43,13 +80,30 @@ class ChronogolfAdapter(Adapter):
         return data if isinstance(data, list) else data.get("courses", [])
 
     def discover(self, slug_or_id: str) -> dict:
-        """Resolve everything the fetch needs from a slug or numeric club id."""
+        """Resolve everything the fetch needs from a slug or numeric club id.
+
+        Cache-first (memory + runner disk): the result is stable per course, so
+        after the first successful discovery in a run the two /private_api calls
+        are skipped entirely for the rest of the run.
+        """
+        cached = _disc_cache_get(slug_or_id)
+        if cached and cached.get("club_id") is not None:
+            cn = cached.get("course_names") or {}
+            # JSON turns the int course-id keys into strings; restore them so
+            # the fetch's `course_names.get(cid)` (cid is an int) still hits.
+            fixed = {}
+            for k, v in cn.items():
+                try:
+                    fixed[int(k)] = v
+                except (TypeError, ValueError):
+                    fixed[k] = v
+            return {**cached, "course_names": fixed}
         club = self._club(slug_or_id)
         club_id = club["id"]
         aff = (club.get("settings") or {}).get("default_affiliation_type_id")
         courses = [c for c in self._courses(club_id)
                    if c.get("online_booking_enabled")]
-        return {"club_id": club_id, "affiliation_type_id": aff,
+        disc = {"club_id": club_id, "affiliation_type_id": aff,
                 # CLUB-level flag: an unclaimed Chronogolf *directory listing*
                 # has online_booking_enabled=False (and no seller) even though
                 # its course rows can still show online_booking_enabled=True.
@@ -59,6 +113,8 @@ class ChronogolfAdapter(Adapter):
                 "club_bookable": bool(club.get("online_booking_enabled")),
                 "course_ids": [c["id"] for c in courses],
                 "course_names": {c["id"]: c.get("name", "") for c in courses}}
+        _disc_cache_put(slug_or_id, disc)
+        return disc
 
     # -- fetch ---------------------------------------------------------------
 
