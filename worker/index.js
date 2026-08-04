@@ -149,12 +149,26 @@ const displayName = (name, label) => {
 // re-confirmed (grace must be >= the slowest healthy re-scrape interval for the
 // tier, or the guard hides real slots):
 //   days 0-2  (near tier, ~5-min plain + hourly browser): 90 min
-//   days 3-7  (mid tier, hourly plain but kenna-throttle-prone): 6 h
+//   days 3-7  (mid tier): 18 h
 //   days 8-30 (far tier, residential browser refreshes DAILY): 30 h
 // Missing freshness row = never scraped since this shipped = shown (cold-start
 // safe; we only hide on PROVEN staleness, never on absence of data).
+//
+// 2026-08-04: mid raised 6h -> 18h. The 6h assumed "hourly plain" re-confirms,
+// but the mid tier's real re-scrape interval for a given (course,date) is much
+// longer: teeitup rides its OWN browser job over days 3-30 SHUFFLED (28 dates),
+// so any one date is re-confirmed only every ~5-6 h on average and longer in a
+// bad stretch; cps/ezlinks/etc. browser jobs cover days 0-6 but take ~15 min a
+// date. So a (course,date) legitimately scraped, with unchanged 3-7-day-out
+// availability, routinely aged past 6 h and got HIDDEN — measured as scattered
+// per-date holes across CO days 3-7 (twin-peaks day6, ute-creek days3-4,
+// olde-loveland days6-7, riverdale-dunes days3-4, ...). Per this guard's own
+// rule (grace >= slowest healthy re-scrape interval) 6 h was simply too low.
+// 18 h covers the real cadence while still hiding a scraper that has been dead
+// most of a day; 3-7-day-out availability is stable enough that 18-h-old data
+// is safe to show.
 const FRESH_TIGHT_DAYS = 2, FRESH_TIGHT_MIN = 90;
-const FRESH_MID_DAYS = 7,   FRESH_MID_MIN = 360;
+const FRESH_MID_DAYS = 7,   FRESH_MID_MIN = 18 * 60;
 const FRESH_FAR_MIN = 30 * 60;
 const utc19 = (ms) => new Date(ms).toISOString().slice(0, 19);
 function freshnessFilter() {
