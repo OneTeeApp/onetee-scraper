@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime as dt
 import json
 import logging
@@ -155,10 +156,56 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
     return kwargs
 
 
-def run(date: dt.date, registry_path: str, out_path: str,
-        shard: str | None = None) -> dict:
+def _scrape_one_course(course: dict, date_str: str) -> dict:
+    """Scrape ONE cps tenant end-to-end in its OWN Playwright instance.
+
+    This is the unit of the thread pool in run(). A sync_playwright object is not
+    shareable across threads, so each worker opens its own here (one driver per
+    course, reused across the ≤3 attempts). Returns a result dict the caller
+    aggregates: {"slug", "ok", and "tts" on success or "error" on failure}.
+
+    Fresh browser per attempt: Cloudflare's managed JS challenge is issued per
+    browsing context and auto-clears in ~6s; a clean context that waits it out
+    clears the tenant WAF far more reliably than a reused page (2/16 -> 13/13 in
+    testing) — the same legit auto-clear used for EZLinks, no challenge-solving.
+    Sticky proxy session per course+attempt pins ONE residential IP for the whole
+    token->register->TeeTimes flow (keeps Cloudflare's IP-bound clearance cookie
+    valid), with a fresh IP on each retry.
+    """
     from playwright.sync_api import sync_playwright
 
+    ids = course["ids"]
+    tenant = ids["tenant"]
+    wid = ids.get("website_id") or ""
+    cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
+    last = None
+    with sync_playwright() as pw:
+        for attempt in range(3):
+            sid = f"{course['slug']}-{attempt}"
+            browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
+            try:
+                page = browser.new_page(user_agent=USER_AGENT)
+                page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
+                          wait_until="domcontentloaded", timeout=35000)
+                page.wait_for_timeout(6000)  # let the managed challenge clear
+                r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
+                last = f"{r.get('stage')} {r.get('status')}" + (
+                    " parse_failed" if r.get("parse_failed") else "")
+                if r.get("status") == 200 and not r.get("parse_failed"):
+                    tts = _teetimes(course, r.get("content") or [])
+                    return {"slug": course["slug"], "ok": True, "tts": tts}
+            except Exception as e:  # noqa: BLE001
+                # Include the message, not just the type: ocean-city's two tenants
+                # fail with a bare "AttributeError" whose cause the type name hides.
+                last = f"{type(e).__name__}: {e}"[:120]
+            finally:
+                browser.close()
+            time.sleep(2 * (attempt + 1))    # brief backoff before a fresh try
+    return {"slug": course["slug"], "ok": False, "error": f"browser {last}"}
+
+
+def run(date: dt.date, registry_path: str, out_path: str,
+        shard: str | None = None) -> dict:
     registry = load_registry(registry_path)
     set_env_shard_count(shard)
     # course_ids is NO LONGER required — FLOW_JS discovers wid+cids in-browser
@@ -168,63 +215,33 @@ def run(date: dt.date, registry_path: str, out_path: str,
                if c["platform"] == "clubprophet" and c["ids"].get("tenant")]
     courses = apply_shard(courses, shard)
     date_str = date.strftime("%a %b %d %Y")
-    log.info("browser-fetching %d cps tenants for %s", len(courses), date)
+
+    # CONCURRENCY. The old loop launched one browser at a time and waited ~6s per
+    # tenant for the managed challenge, so 27 tenants x 3 near dates ran ~30-50
+    # min. Each tenant is an independent flow against its own cps.golf host, so we
+    # fan out over a thread pool — each worker owns its own sync_playwright (see
+    # _scrape_one_course). Wall time drops to ~ceil(n / CPS_CONCURRENCY) waves.
+    # The work is almost all network + the 6s challenge wait, so the 2-core runner
+    # is not the bottleneck. Default 6; tune via env without a code change.
+    conc = max(1, int(os.environ.get("CPS_CONCURRENCY", "6")))
+    log.info("browser-fetching %d cps tenants for %s (%d concurrent)",
+             len(courses), date, conc)
 
     # Residential proxy so cps.golf's Cloudflare managed challenge clears from a
-    # data-center IP (measured 2026-08-04: indian-tree 0/17, indian-peaks 1/3,
-    # emerald-greens 0 from the runner while all full from a residential browser).
-    # Same TEEITUP_PROXY secret as browser_teeitup; unset = direct (unchanged).
-    # The launch kwargs are (re)built per attempt below with a per-course sticky
-    # session id — see _proxy_launch_kwargs — so each flow keeps ONE IP.
-
+    # data-center IP; same TEEITUP_PROXY secret as browser_teeitup, unset = direct.
+    # Sticky per-course session id is applied inside _proxy_launch_kwargs.
     tee_times, errors = [], []
-    with sync_playwright() as pw:
-        for c in courses:
-            ids = c["ids"]
-            tenant = ids["tenant"]
-            wid = ids.get("website_id") or ""
-            cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
-            last = None
-            got = False
-            for attempt in range(3):
-                # Fresh browser per attempt. Cloudflare's managed JS challenge
-                # is issued per browsing context and takes ~6s to auto-clear; a
-                # clean context that waits it out clears the tenant WAF far more
-                # reliably than a reused page with a short settle (2/16 -> 13/13
-                # tenants in testing). This is the same legit managed-challenge
-                # auto-clear used for EZLinks — no stealth, no challenge-solving.
-                # Sticky proxy session per course+attempt: one IP for this whole
-                # token->register->TeeTimes flow (keeps Cloudflare's IP-bound
-                # clearance cookie valid), a fresh IP on each retry.
-                sid = f"{c['slug']}-{attempt}"
-                browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
-                try:
-                    page = browser.new_page(user_agent=USER_AGENT)
-                    page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
-                              wait_until="domcontentloaded", timeout=35000)
-                    page.wait_for_timeout(6000)  # let the managed challenge clear
-                    r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
-                    last = f"{r.get('stage')} {r.get('status')}" + (
-                        " parse_failed" if r.get("parse_failed") else "")
-                    if r.get("status") == 200 and not r.get("parse_failed"):
-                        tts = _teetimes(c, r.get("content") or [])
-                        tee_times.extend(tts)
-                        log.info("  %-34s %d times", c["slug"], len(tts))
-                        got = True
-                except Exception as e:  # noqa: BLE001
-                    # Include the message, not just the type: ocean-city's two
-                    # tenants fail with a bare "AttributeError" whose cause the
-                    # type name alone hides. Truncated so the log stays readable.
-                    last = f"{type(e).__name__}: {e}"[:120]
-                finally:
-                    browser.close()
-                if got:
-                    break
-                time.sleep(2 * (attempt + 1))    # brief backoff before a fresh try
-            if not got:
-                errors.append({"course": c["slug"], "platform": "clubprophet",
-                               "error": f"browser {last}"})
-                log.info("  %-34s ERROR %s", c["slug"], last)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=conc) as ex:
+        futs = [ex.submit(_scrape_one_course, c, date_str) for c in courses]
+        for fut in concurrent.futures.as_completed(futs):
+            res = fut.result()
+            if res["ok"]:
+                tee_times.extend(res["tts"])
+                log.info("  %-34s %d times", res["slug"], len(res["tts"]))
+            else:
+                errors.append({"course": res["slug"], "platform": "clubprophet",
+                               "error": res["error"]})
+                log.info("  %-34s ERROR %s", res["slug"], res["error"])
 
     doc = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
