@@ -309,9 +309,14 @@ export default {
         if (nums.min_spots !== undefined) { clauses.push("open_spots >= ?"); binds.push(nums.min_spots); }
         // Freshness guard: hide slots from a stalled scraper (see freshnessFilter).
         { const f = freshnessFilter(); clauses.push(f.clause); binds.push(...f.binds); }
-        // Clamp to [1, 2000] — SQLite reads a NEGATIVE limit as "no limit",
-        // so ?limit=-1 used to return the entire table in one response.
-        const limit = Math.min(Math.max(Math.trunc(nums.limit ?? 500), 1), 2000);
+        // Clamp to [1, 25000]. The ceiling stops ?limit=-1 (SQLite reads a
+        // negative limit as "no limit") from dumping the whole table, but is
+        // high enough that a dense platform's full day (teeitup across all 5
+        // covered states ~10k rows) is returned complete instead of being cut
+        // off mid-morning — the frontend was silently losing every afternoon
+        // slot at the old 2000 cap. Actual rows returned is still min(matching,
+        // limit), so a scoped query stays small.
+        const limit = Math.min(Math.max(Math.trunc(nums.limit ?? 500), 1), 25000);
 
         // Dedupe by (venue, teetime, sub-course): when the native engine and
         // its GolfNow overflow both list a slot, keep the primary source's row
