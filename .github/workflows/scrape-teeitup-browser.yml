@@ -8,17 +8,18 @@ name: Scrape TeeItUp via browser (days 3-30, every 2 hours)
 # 89 (+21), zero errors. No residential proxy needed (though browser_teeitup
 # honours HTTPS_PROXY if kenna ever tightens).
 #
-# OWNERSHIP. This job owns the MID+FAR window (days 3-30) for teeitup.
-# scrape-far.yml AND scrape.yml (the mid tier) both EXCLUDE teeitup, so no two
-# jobs ever write the same course_slug+date and clobber each other in D1. Only
-# the near tier (scrape-near.yml, days 0-2) still scrapes teeitup with the plain
-# adapter — kenna serves near dates fine there, and a browser at that cadence
-# would be wasteful. kenna soft-throttles the data-center plain scraper from day
-# 3 onward at full-fleet scale (this is what hid CommonGround's weekend-afternoon
-# 18-hole slots at the mid horizon), so the browser now owns everything from day
-# 3 out. Unlike the windowed plain tiers this sweeps every date every run; the
-# platform-liveness guard in aggregate.py + D1's per-date reconciliation mean a
-# throttled-empty read never wipes a good prior capture.
+# OWNERSHIP. This job owns the MID+FAR window (days 3-30) for teeitup;
+# scrape-teeitup-browser-near.yml owns the NEAR window (days 0-2). scrape-far.yml,
+# scrape.yml (mid) AND scrape-near.yml all EXCLUDE teeitup, so no plain tier ever
+# writes the same course_slug+date as a browser job and clobbers it in D1.
+# teeitup is now FULLY browser-owned (0-30): kenna soft-throttles the data-center
+# plain scraper at every horizon, not just far — measured 2026-08-04, the plain
+# NEAR tier served stale phantom slots for commonground while kenna's live sheet
+# (and this browser transport) was correct. Split into two jobs only for cadence:
+# near needs a 30-min refresh, far is fine every 2h. Unlike the windowed plain
+# tiers this sweeps every date every run; the platform-liveness guard in
+# aggregate.py + D1's per-date reconciliation mean a throttled-empty read never
+# wipes a good prior capture.
 
 on:
   schedule:
