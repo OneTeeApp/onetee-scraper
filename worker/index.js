@@ -279,7 +279,15 @@ export default {
         const binds = [];
         if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
         if (p.get("date"))      { clauses.push("substr(teetime,1,10) = ?"); binds.push(p.get("date")); }
-        if (p.get("state"))     { clauses.push("state = ?");                binds.push(p.get("state").toUpperCase()); }
+        // state accepts one ("CO") or a comma list ("CO,WY,KS"): the site scopes
+        // its per-platform query to the user's nearby states so a dense platform
+        // (teeitup = 364 courses) can't overflow the row cap and drop afternoon
+        // slots. Single-state stays an exact-equality (indexed) lookup.
+        if (p.get("state")) {
+          const _st = p.get("state").toUpperCase().split(",").map((s) => s.trim()).filter(Boolean);
+          if (_st.length === 1) { clauses.push("state = ?"); binds.push(_st[0]); }
+          else if (_st.length) { clauses.push("state IN (" + _st.map(() => "?").join(",") + ")"); binds.push(..._st); }
+        }
         if (p.get("city"))      { clauses.push("LOWER(city) = LOWER(?)");   binds.push(p.get("city")); }
         // course filter is venue-aware: accepts a venue_id (what this API now
         // hands out as course_slug) or a legacy source slug.
