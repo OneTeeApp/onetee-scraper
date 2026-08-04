@@ -136,12 +136,63 @@ const displayName = (name, label) => {
   return shares ? label : `${name} · ${label}`;
 };
 
+// --- Freshness guard -------------------------------------------------------
+// Show a slot only if we RECENTLY re-confirmed its course's sheet for its date
+// (sheet_freshness.last_ok_at, stamped by the scraper on every clean scrape).
+// When a scraper stalls — CPS behind Cloudflare, kenna throttling — its rows
+// stay in the table (active, shielded from wrongful deletion) but drop OFF the
+// live site until a scrape re-confirms them, so a booked slot can't sit as a
+// phantom for hours. This is the systemic fix for "the site showed a tee time
+// that wasn't really available".
+//
+// Grace is date-aware: browser platforms refresh days 7-30 only DAILY, so a
+// flat tight window would wrongly hide healthy far-horizon slots. Days 0-6 are
+// scraped at least hourly by every tier, so they get a tight 90-min window;
+// days 7+ get 30h (above the daily far cadence). Missing freshness row = never
+// scraped since this shipped = shown (cold-start safe; we only hide on PROVEN
+// staleness, never on absence of data).
+const FRESH_NEAR_DAYS = 6;
+const FRESH_NEAR_MIN = 90;
+const FRESH_FAR_HOURS = 30;
+const utc19 = (ms) => new Date(ms).toISOString().slice(0, 19);
+function freshnessFilter() {
+  const now = Date.now();
+  const denverToday = new Date()
+    .toLocaleString("sv-SE", { timeZone: "America/Denver" }).slice(0, 10);
+  const b = new Date(denverToday + "T00:00:00Z");
+  b.setUTCDate(b.getUTCDate() + FRESH_NEAR_DAYS);
+  const nearBoundary = b.toISOString().slice(0, 10);
+  const tightCut = utc19(now - FRESH_NEAR_MIN * 60000);
+  const looseCut = utc19(now - FRESH_FAR_HOURS * 3600000);
+  // Hide the row iff a freshness record exists AND is stale for its date-tier.
+  const clause =
+    "NOT EXISTS (SELECT 1 FROM sheet_freshness sf " +
+    "WHERE sf.course_slug = tee_times.course_slug " +
+    "AND sf.date = substr(tee_times.teetime,1,10) " +
+    "AND substr(sf.last_ok_at,1,19) < " +
+    "CASE WHEN substr(tee_times.teetime,1,10) <= ? THEN ? ELSE ? END)";
+  return { clause, binds: [nearBoundary, tightCut, looseCut] };
+}
+let freshnessReady = false;
+async function ensureFreshnessTable(env) {
+  if (freshnessReady) return;
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS sheet_freshness (course_slug TEXT NOT NULL, " +
+    "date TEXT NOT NULL, last_ok_at TEXT NOT NULL, " +
+    "PRIMARY KEY (course_slug, date))").run();
+  freshnessReady = true;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(request.url);
 
     const { clause: pastClause, binds: pastBinds } = pastFilter();
+    // Guarantee the freshness table exists before any read references it
+    // (once per isolate). Removes any deploy-ordering dependency on the
+    // scraper having created it first.
+    try { await ensureFreshnessTable(env); } catch (e) { /* non-fatal */ }
 
     try {
       if (url.pathname === "/api/health") {
@@ -194,6 +245,7 @@ export default {
         if (!wantsPast(p)) { clauses.push(pastClause); binds.push(...pastBinds); }
         if (p.get("state")) { clauses.push("state = ?");            binds.push(p.get("state").toUpperCase()); }
         if (p.get("city"))  { clauses.push("LOWER(city) = LOWER(?)"); binds.push(p.get("city")); }
+        { const f = freshnessFilter(); clauses.push(f.clause); binds.push(...f.binds); }
         const { results } = await env.DB.prepare(
           `SELECT COALESCE(venue_id, course_slug) AS course_slug,
                   COALESCE(venue_id, course_slug) AS venue_id,
@@ -239,6 +291,8 @@ export default {
         }
         if (nums.max_price !== undefined) { clauses.push("price_min <= ?"); binds.push(nums.max_price); }
         if (nums.min_spots !== undefined) { clauses.push("open_spots >= ?"); binds.push(nums.min_spots); }
+        // Freshness guard: hide slots from a stalled scraper (see freshnessFilter).
+        { const f = freshnessFilter(); clauses.push(f.clause); binds.push(...f.binds); }
         // Clamp to [1, 2000] — SQLite reads a NEGATIVE limit as "no limit",
         // so ?limit=-1 used to return the entire table in one response.
         const limit = Math.min(Math.max(Math.trunc(nums.limit ?? 500), 1), 2000);
