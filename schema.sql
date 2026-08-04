@@ -54,3 +54,18 @@ CREATE TABLE IF NOT EXISTS runs (
   rows_deactivated INTEGER,
   errors          TEXT                   -- JSON array of per-course errors
 );
+
+-- Freshness ledger: when did we last SUCCESSFULLY confirm a course's sheet for
+-- a given date? One row per (course_slug, date), bumped on every scrape that
+-- returned that course cleanly (rows OR a trustworthy empty) — NOT on error.
+-- The read API hides a slot whose (course, date) has gone stale, so when a
+-- scraper stalls (CPS behind Cloudflare, kenna throttling) its slots quietly
+-- drop off the site instead of showing phantom availability. Cheap: O(courses
+-- per scrape), not O(slots) — so it never touches per-slot last_seen_at, which
+-- is only bumped on price/spots CHANGE and is useless as a freshness signal.
+CREATE TABLE IF NOT EXISTS sheet_freshness (
+  course_slug TEXT NOT NULL,
+  date        TEXT NOT NULL,          -- YYYY-MM-DD (local sheet date)
+  last_ok_at  TEXT NOT NULL,          -- ISO-8601 UTC of the last clean scrape
+  PRIMARY KEY (course_slug, date)
+);
