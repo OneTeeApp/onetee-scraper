@@ -44,7 +44,13 @@ concurrency:
   cancel-in-progress: false     # queued successor waits; never kill the loop
 
 env:
-  INTERVAL_SECONDS: 300         # target cadence per pass (the one knob)
+  # 600s target, but a gently-paced full teeitup sweep (single-flight kenna,
+  # 1.2s*shards gap — see scraper/adapters/teeitup.py) takes longer than that,
+  # so in practice each pass runs back-to-back with no sleep and near data
+  # refreshes roughly every pass-length. That is well inside the 90-min read
+  # freshness window, and completeness (no 429-dropped courses) matters more
+  # than a strict 5-minute beat. Raise this if kenna still 429s.
+  INTERVAL_SECONDS: 600         # target cadence per pass (the one knob)
   LOOP_MINUTES: 330             # stop looping after this; job timeout is 350
 
 jobs:

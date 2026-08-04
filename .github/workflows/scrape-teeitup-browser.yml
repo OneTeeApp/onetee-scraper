@@ -1,26 +1,31 @@
-name: Scrape TeeItUp via browser (RETIRED — manual dispatch only)
+name: Scrape TeeItUp via browser (days 3-30, every 2 hours)
 
-# RETIRED 2026-08-04. This job existed to clear a kenna "TLS-fingerprint
-# throttle" on far dates by firing kenna from inside a headless Chromium page.
-# That throttle was DISPROVEN by probe-kenna-impersonate: plain `requests` and
-# curl_cffi (Chrome-impersonated TLS) returned byte-identical slot counts from
-# the same Actions data-center IP at every horizon (raccoon far 47/47, riverdale
-# far 0/0). The far-date zeros are real booking-window closures, not throttling.
+# TRANSPORT NOTE (2026-08-04). This job uses the headless-Chromium transport
+# NOT because kenna fingerprint-throttles (it does not — probe-kenna-impersonate
+# proved plain `requests` == curl_cffi byte-for-byte per call). It uses the
+# browser because the browser's per-fetch page overhead paces kenna gently, and
+# kenna rate-limits the WHOLE teeitup fleet off one host when hit too fast. The
+# NEAR window (days 0-2) moved to a plain-HTTP loop for freshness
+# (scrape-teeitup-browser-near.yml); this job keeps the wider MID+FAR window
+# (days 3-30) on the browser so the two teeitup jobs together stay under kenna's
+# burst limit. If a future change proves plain HTTP can cover 3-30 without
+# tripping 429s, swap this to scraper.aggregate --platforms teeitup.
 #
-# teeitup mid+far (days 3-30) is now covered by the plain, WINDOWED tiers that
-# every other platform uses — scrape.yml (mid, days 3-7, hourly) and
-# scrape-far.yml (days 8-30, every 2h) — which no longer exclude teeitup. Those
-# tiers skip dates a course has proven it does not publish (booking-windows.json
-# via eligible_courses.py), so they are strictly more efficient than this job's
-# every-date-every-run full sweep, and they install no Chromium. teeitup near
-# (days 0-2) is owned by scrape-teeitup-browser-near.yml, now also plain HTTP.
-#
-# Left here as a manual escape hatch ONLY: if kenna ever genuinely starts
-# fingerprint-throttling the data-center client, dispatch this to fetch teeitup
-# through a real browser again. It is not scheduled and will not run on its own.
+# OWNERSHIP. This job owns days 3-30 for teeitup; scrape-teeitup-browser-near.yml
+# owns days 0-2. scrape-far.yml, scrape.yml (mid) AND scrape-near.yml all EXCLUDE
+# teeitup, so no plain tier ever writes the same course_slug+date as a teeitup
+# job and clobbers it in D1, and nothing else contends on the kenna host.
 
 on:
+  schedule:
+    - cron: "17 */2 * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_teeitup.py"
+      - "scraper/adapters/teeitup.py"
+      - ".github/workflows/scrape-teeitup-browser.yml"
 
 permissions:
   contents: read
@@ -53,6 +58,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
+          # Shuffle the date order: spreads which dates a short/interrupted run
+          # covers so the union fills the 3-30 window over a few sweeps.
           for DATE in $(python -m scraper.dates --registry registry.json --start 3 --days 28 | shuf); do
             OUT="output/tu_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::teeitup browser ${DATE} shard ${{ matrix.shard }}"
