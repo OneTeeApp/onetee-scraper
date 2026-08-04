@@ -40,17 +40,41 @@ async ([tenant, wid, cids, date]) => {
   const base = "https://" + tenant + ".cps.golf";
   const api = base + "/onlineres/onlineapi/api/v1/onlinereservation";
   const ZG = "00000000-0000-0000-0000-000000000000";
-  let token;
-  const H = (w) => ({Authorization:"Bearer "+token, "client-id":"onlineresweb",
-    "x-terminalid":"3", "x-websiteid": w || ZG, "x-ismobile":"false", "x-productid":"1",
-    "x-componentid":"1", "x-siteid":"1", "x-moduleid":"7",
-    "x-timezoneid":"America/Denver", "x-timezone-offset":"360",
-    "x-requestid":crypto.randomUUID(), "Accept":"application/json"});
+  // TWO cps auth variants:
+  //  (a) newer tenants (Indian Tree, ...) mint an anonymous Bearer token at
+  //      /identityapi/myconnect/token/short and authorize the reservation API
+  //      with "Authorization: Bearer <token>".
+  //  (b) the "apiKey" variant (Highlands Ridge, Wakulla Sands, Southern Dunes,
+  //      St James Bay, Musket Ridge, ...) has NO anonymous token — token/short
+  //      404s — and instead serves a per-tenant x-apiKey via Home/Configuration,
+  //      which alone authorizes the SAME reservation API. Verified live: Wakulla
+  //      Sands GetAllOptions+TeeTimes 200 with x-apiKey and no Bearer (50 slots).
+  // Collect whichever this tenant offers and send both; the server uses the one
+  // it recognises, so a single flow covers both variants.
+  let token = "", apiKey = "";
+  try {
+    const cfg = await fetch(base + "/onlineresweb/Home/Configuration")
+                  .then(r => r.ok ? r.json() : null);
+    if (cfg) {
+      if (cfg.apiKey) apiKey = cfg.apiKey;
+      if (!wid && cfg.websiteId && cfg.websiteId !== ZG) wid = cfg.websiteId;
+    }
+  } catch (e) {}
   const tr = await fetch(base + "/identityapi/myconnect/token/short",
     {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
      body:"client_id=onlinereswebshortlived"});
-  if (tr.status !== 200) return {status: tr.status, stage: "token", content: []};
-  token = (await tr.json()).access_token;
+  if (tr.status === 200) { try { token = (await tr.json()).access_token || ""; } catch (e) {} }
+  // Fail at the token stage ONLY when neither auth is available (a truly
+  // unsupported/dead tenant). The apiKey variant reaches here with token "".
+  if (!token && !apiKey) return {status: tr.status, stage: "token", content: []};
+  const H = (w) => { const h = {"client-id":"onlineresweb",
+    "x-terminalid":"3", "x-websiteid": w || ZG, "x-ismobile":"false", "x-productid":"1",
+    "x-componentid":"1", "x-siteid":"1", "x-moduleid":"7",
+    "x-timezoneid":"America/Denver", "x-timezone-offset":"360",
+    "x-requestid":crypto.randomUUID(), "Accept":"application/json"};
+    if (token) h["Authorization"] = "Bearer " + token;
+    if (apiKey) h["x-apiKey"] = apiKey;
+    return h; };
   // Discover websiteId + courseIds when the registry did not pin them. Done
   // in-browser (post-challenge) via GetAllOptions, which needs only the token.
   // This is why unpinned tenants (emerald-greens etc.) used to return nothing:
