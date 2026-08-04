@@ -57,6 +57,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          # Residential proxy so kenna doesn't block the data-center Chromium.
+          # Unset = direct (unchanged); browser_teeitup passes it to launch(proxy=).
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
         run: |
           # Shuffle the date order: spreads which dates a short/interrupted run
           # covers so the union fills the 3-30 window over a few sweeps.
