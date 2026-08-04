@@ -49,6 +49,13 @@ TEE_TIMES_MARKER = "/api/v1/tee-times"
 RESERVE_URL = "https://golfwithaccess.com/course/{tenant}/reserve-tee-time?date={date}&players=2"
 
 
+def _norm_slug(s: str | None) -> str:
+    """Normalize a course slug for fuzzy matching: lowercase and collapse the
+    "-and-"/"&" that Golf With Access inserts in combined-course slugs but our
+    registry omits (king-and-bear vs king-bear)."""
+    return (s or "").lower().replace("-and-", "-").replace("-&-", "-").replace("&", "")
+
+
 def _slot_key(s: dict) -> tuple:
     """Dedupe key for a raw slot across repeated responses."""
     c = (s.get("course") or {}).get("id")
@@ -108,6 +115,7 @@ def _resolve(courses: list[dict], slots: list[dict]) -> tuple[dict[str, list[dic
     diag)."""
     by_id: dict[str, dict] = {}
     slug_index: dict[str, dict] = {}
+    norm_index: dict[str, dict] = {}
     for c in courses:
         cid = (c.get("ids") or {}).get("course_id")
         if cid:
@@ -115,6 +123,7 @@ def _resolve(courses: list[dict], slots: list[dict]) -> tuple[dict[str, list[dic
         for k in {c.get("slug"), c.get("venue_id")}:
             if k:
                 slug_index.setdefault(k, c)
+                norm_index.setdefault(_norm_slug(k), c)
     sole = courses[0] if len(courses) == 1 else None
 
     owned: dict[str, list[dict]] = {c["slug"]: [] for c in courses}
@@ -124,6 +133,13 @@ def _resolve(courses: list[dict], slots: list[dict]) -> tuple[dict[str, list[dic
         c = by_id.get(sc.get("id"))
         if c is None:
             c = slug_index.get(sc.get("slug"))
+        # Normalized slug fallback: Golf With Access spells combined-course
+        # slugs with "-and-" ("world-golf-village-king-and-bear") where our
+        # registry uses "-" ("world-golf-village-king-bear"). Only fires after
+        # exact id/slug fail, and only matches within this tenant's courses, so
+        # it cannot cross-attribute to another venue.
+        if c is None:
+            c = norm_index.get(_norm_slug(sc.get("slug")))
         if c is None and sole is not None:
             c = sole
         if c is None:
