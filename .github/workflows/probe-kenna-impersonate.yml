@@ -1,0 +1,28 @@
+name: Probe kenna TLS impersonation
+
+# One-shot validation: can curl_cffi (Chrome TLS impersonation) clear kenna's
+# throttle from a data-center runner where plain python-requests is throttled?
+# If curl_cffi returns full sheets on FAR dates while plain returns empty/HTTP,
+# the teeitup browser tier (Playwright + Chromium install every run) can be
+# replaced by fast HTTP and folded into the 5-minute plain cadence.
+# Manual dispatch only; delete after reading the result.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install requests "curl_cffi>=0.7"
+      - name: Probe
+        run: python scripts/probe_kenna_impersonate.py
