@@ -145,33 +145,41 @@ const displayName = (name, label) => {
 // phantom for hours. This is the systemic fix for "the site showed a tee time
 // that wasn't really available".
 //
-// Grace is date-aware: browser platforms refresh days 7-30 only DAILY, so a
-// flat tight window would wrongly hide healthy far-horizon slots. Days 0-6 are
-// scraped at least hourly by every tier, so they get a tight 90-min window;
-// days 7+ get 30h (above the daily far cadence). Missing freshness row = never
-// scraped since this shipped = shown (cold-start safe; we only hide on PROVEN
-// staleness, never on absence of data).
-const FRESH_NEAR_DAYS = 6;
-const FRESH_NEAR_MIN = 90;
-const FRESH_FAR_HOURS = 30;
+// Grace is date-aware, matched to how often each horizon is ACTUALLY
+// re-confirmed (grace must be >= the slowest healthy re-scrape interval for the
+// tier, or the guard hides real slots):
+//   days 0-2  (near tier, ~5-min plain + hourly browser): 90 min
+//   days 3-7  (mid tier, hourly plain but kenna-throttle-prone): 6 h
+//   days 8-30 (far tier, residential browser refreshes DAILY): 30 h
+// Missing freshness row = never scraped since this shipped = shown (cold-start
+// safe; we only hide on PROVEN staleness, never on absence of data).
+const FRESH_TIGHT_DAYS = 2, FRESH_TIGHT_MIN = 90;
+const FRESH_MID_DAYS = 7,   FRESH_MID_MIN = 360;
+const FRESH_FAR_MIN = 30 * 60;
 const utc19 = (ms) => new Date(ms).toISOString().slice(0, 19);
 function freshnessFilter() {
   const now = Date.now();
   const denverToday = new Date()
     .toLocaleString("sv-SE", { timeZone: "America/Denver" }).slice(0, 10);
-  const b = new Date(denverToday + "T00:00:00Z");
-  b.setUTCDate(b.getUTCDate() + FRESH_NEAR_DAYS);
-  const nearBoundary = b.toISOString().slice(0, 10);
-  const tightCut = utc19(now - FRESH_NEAR_MIN * 60000);
-  const looseCut = utc19(now - FRESH_FAR_HOURS * 3600000);
+  const boundary = (days) => {
+    const b = new Date(denverToday + "T00:00:00Z");
+    b.setUTCDate(b.getUTCDate() + days);
+    return b.toISOString().slice(0, 10);
+  };
+  const tightBoundary = boundary(FRESH_TIGHT_DAYS);
+  const midBoundary = boundary(FRESH_MID_DAYS);
+  const tightCut = utc19(now - FRESH_TIGHT_MIN * 60000);
+  const midCut = utc19(now - FRESH_MID_MIN * 60000);
+  const farCut = utc19(now - FRESH_FAR_MIN * 60000);
   // Hide the row iff a freshness record exists AND is stale for its date-tier.
   const clause =
     "NOT EXISTS (SELECT 1 FROM sheet_freshness sf " +
     "WHERE sf.course_slug = tee_times.course_slug " +
     "AND sf.date = substr(tee_times.teetime,1,10) " +
-    "AND substr(sf.last_ok_at,1,19) < " +
-    "CASE WHEN substr(tee_times.teetime,1,10) <= ? THEN ? ELSE ? END)";
-  return { clause, binds: [nearBoundary, tightCut, looseCut] };
+    "AND substr(sf.last_ok_at,1,19) < CASE " +
+    "WHEN substr(tee_times.teetime,1,10) <= ? THEN ? " +
+    "WHEN substr(tee_times.teetime,1,10) <= ? THEN ? ELSE ? END)";
+  return { clause, binds: [tightBoundary, tightCut, midBoundary, midCut, farCut] };
 }
 let freshnessReady = false;
 async function ensureFreshnessTable(env) {
