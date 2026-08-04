@@ -75,39 +75,63 @@ class GolfWithAccessAdapter(Adapter):
             "day": date.isoformat(),
         })
         slots = (data or {}).get("teeTimes") or []
+        # Plain single-id path: a foreign course.id means the wrong-id hazard
+        # fired (a stranger's sheet under our name) — raise. The browser path
+        # (browser_golfwithaccess) fetches ALL of a tenant's ids at once, where
+        # foreign ids are EXPECTED, and resolves ownership itself before calling
+        # _slot_to_teetime, so it does not pass through this raising filter.
+        return self.parse_slots(course, slots, date=date, on_foreign="raise")
 
+    # -- shared parsing (reused by browser_golfwithaccess) -------------------
+
+    @classmethod
+    def parse_slots(cls, course: dict[str, Any], slots: list[dict], *,
+                    date: dt.date, booking_url: str | None = None,
+                    on_foreign: str = "raise") -> list[TeeTime]:
+        """Map a raw teeTimes list to this course's TeeTimes, filtering by the
+        pinned course id. on_foreign="raise" (the plain single-id contract) or
+        "skip" (multi-id responses, where other courses' slots are normal)."""
+        ids = course.get("ids") or {}
+        course_id = ids.get("course_id")
         tenant = ids.get("tenant") or ""
-        booking_url = (course.get("booking_url")
-                       or (BOOKING_PAGE.format(tenant=tenant) if tenant else ""))
-
+        if booking_url is None:
+            booking_url = (course.get("booking_url")
+                           or (BOOKING_PAGE.format(tenant=tenant) if tenant else ""))
         out: list[TeeTime] = []
         for s in slots:
-            # Hazard 3: never publish another course's sheet under our name.
             sc = (s.get("course") or {})
-            if sc.get("id") and sc["id"] != course_id:
-                raise ValueError(
-                    f"golfwithaccess: pinned id {course_id} returned a slot for "
-                    f"{sc.get('id')} ({sc.get('name')}) — refusing to publish it")
-
-            teetime = self._iso(s.get("dayTime"))
-            if teetime is None:
+            if sc.get("id") and course_id and sc["id"] != course_id:
+                if on_foreign == "raise":
+                    raise ValueError(
+                        f"golfwithaccess: pinned id {course_id} returned a slot "
+                        f"for {sc.get('id')} ({sc.get('name')}) — refusing to "
+                        f"publish it")
                 continue
-
-            holes = self._holes(s.get("holesOption"))
-            players = s.get("players") or {}
-            open_spots = players.get("max")
-            lo, hi = self._public_price(s)
-
-            tt = self.base_tee_time(
-                course, teetime=teetime, holes=holes,
-                open_spots=open_spots, price_min=lo, price_max=hi,
-                raw=s,
-            )
-            # base_tee_time seeds booking_url from the registry row; deepen it
-            # to the chosen date so a golfer lands on the right day's sheet.
-            tt.booking_url = self._slot_url(booking_url, date)
-            out.append(tt)
+            tt = cls._slot_to_teetime(course, s, booking_url, date)
+            if tt is not None:
+                out.append(tt)
         return out
+
+    @classmethod
+    def _slot_to_teetime(cls, course: dict[str, Any], s: dict,
+                         booking_url: str, date: dt.date) -> "TeeTime | None":
+        """Pure mapping of ONE already-owned slot to a TeeTime (no ownership
+        check — the caller guarantees the slot belongs to `course`)."""
+        teetime = cls._iso(s.get("dayTime"))
+        if teetime is None:
+            return None
+        holes = cls._holes(s.get("holesOption"))
+        players = s.get("players") or {}
+        open_spots = players.get("max")
+        lo, hi = cls._public_price(s)
+        tt = cls.base_tee_time(
+            course, teetime=teetime, holes=holes,
+            open_spots=open_spots, price_min=lo, price_max=hi, raw=s,
+        )
+        # base_tee_time seeds booking_url from the registry row; deepen it to
+        # the chosen date so a golfer lands on the right day's sheet.
+        tt.booking_url = cls._slot_url(booking_url, date)
+        return tt
 
     # -- helpers -------------------------------------------------------------
 
