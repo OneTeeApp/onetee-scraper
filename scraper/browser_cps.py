@@ -191,8 +191,11 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
             browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
+                # 22s (was 35s): a real cps tenant serves the challenge page well
+                # under this; the only things that hit 35s were dead/slow tenants,
+                # so the long timeout was pure wasted wall-time x3 attempts.
                 page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
-                          wait_until="domcontentloaded", timeout=35000)
+                          wait_until="domcontentloaded", timeout=22000)
                 page.wait_for_timeout(6000)  # let the managed challenge clear
                 r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
                 last = f"{r.get('stage')} {r.get('status')}" + (
@@ -200,6 +203,11 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
                 if r.get("status") == 200 and not r.get("parse_failed"):
                     tts = _teetimes(course, r.get("content") or [])
                     return {"slug": course["slug"], "ok": True, "tts": tts}
+                # A wrong/dead tenant token endpoint 404s (or 401s) identically on
+                # every attempt — retrying just burns another goto + 6s challenge
+                # wait. Stop now; the fix is the registry subdomain, not a retry.
+                if r.get("stage") == "token" and r.get("status") in (401, 404):
+                    break
             except Exception as e:  # noqa: BLE001
                 # Include the message, not just the type: ocean-city's two tenants
                 # fail with a bare "AttributeError" whose cause the type name hides.
