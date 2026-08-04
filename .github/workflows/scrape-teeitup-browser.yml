@@ -1,4 +1,4 @@
-name: Scrape TeeItUp far via browser (days 8-30, every 2 hours)
+name: Scrape TeeItUp via browser (days 3-30, every 2 hours)
 
 # WHY. kenna (TeeItUp's backend) soft-throttles the plain scraper's data-center
 # traffic on far dates: coldwater-golf-club read 0 rows in D1 at +14 while its own
@@ -8,13 +8,17 @@ name: Scrape TeeItUp far via browser (days 8-30, every 2 hours)
 # 89 (+21), zero errors. No residential proxy needed (though browser_teeitup
 # honours HTTPS_PROXY if kenna ever tightens).
 #
-# OWNERSHIP. This job owns the FAR window (days 8-30) for teeitup. scrape-far.yml
-# EXCLUDES teeitup, so the two never write the same course_slug+date and clobber
-# each other in D1. The near/mid tiers keep scraping teeitup with the plain
-# adapter — kenna serves near dates fine, and a browser at that cadence would be
-# wasteful. Unlike the windowed plain far tier this sweeps every far date every
-# run; the platform-liveness guard in aggregate.py + D1's per-date reconciliation
-# mean a throttled-empty read never wipes a good prior capture.
+# OWNERSHIP. This job owns the MID+FAR window (days 3-30) for teeitup.
+# scrape-far.yml AND scrape.yml (the mid tier) both EXCLUDE teeitup, so no two
+# jobs ever write the same course_slug+date and clobber each other in D1. Only
+# the near tier (scrape-near.yml, days 0-2) still scrapes teeitup with the plain
+# adapter — kenna serves near dates fine there, and a browser at that cadence
+# would be wasteful. kenna soft-throttles the data-center plain scraper from day
+# 3 onward at full-fleet scale (this is what hid CommonGround's weekend-afternoon
+# 18-hole slots at the mid horizon), so the browser now owns everything from day
+# 3 out. Unlike the windowed plain tiers this sweeps every date every run; the
+# platform-liveness guard in aggregate.py + D1's per-date reconciliation mean a
+# throttled-empty read never wipes a good prior capture.
 
 on:
   schedule:
@@ -58,11 +62,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          # Shuffle the far date order (same reasoning as scrape-far.yml): if
-          # kenna does still throttle mid-sweep at full fleet scale, a random
-          # order moves the starved band each run so the union fills over a few
-          # sweeps rather than the same dates starving every time.
-          for DATE in $(python -m scraper.dates --registry registry.json --start 8 --days 23 | shuf); do
+          # Shuffle the date order (same reasoning as scrape-far.yml): kenna
+          # throttles the plain scraper at full fleet scale, so a random order
+          # moves the starved band each run and the union fills over a few
+          # sweeps rather than the same dates starving every time. Covers the
+          # full mid+far window (days 3-30) — the mid plain tier now excludes
+          # teeitup, so the browser is the sole writer of teeitup from day 3 out.
+          for DATE in $(python -m scraper.dates --registry registry.json --start 3 --days 28 | shuf); do
             OUT="output/tu_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::teeitup browser ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.browser_teeitup --date "${DATE}" \
