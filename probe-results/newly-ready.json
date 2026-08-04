@@ -1,23 +1,156 @@
 {
  "dates": [
-  "2026-07-30",
-  "2026-08-02",
-  "2026-08-07"
+  "2026-08-05",
+  "2026-08-08",
+  "2026-08-13"
  ],
- "probed": 166,
+ "probed": 75,
  "tally": {
-  "error": 61,
-  "empty": 42,
-  "rows": 63
+  "empty": 36,
+  "error": 37,
+  "partial_error": 2
  },
- "complete": true,
- "stopped_early": null,
+ "complete": false,
+ "stopped_early": "time budget 16 min reached after 75 of 132 targets",
  "rate_limited_by_platform": {
-  "teeitup": 25
+  "teeitup": 27
  },
  "rate_limit_warning": "Rows with rate_limited=true returned HTTP 429. That is this probe throttling itself against a shared host, NOT a fault at the course \u2014 do not retag on it. Act only on errors whose status is specific (404 unknown alias, an adapter's own unclaimed/no-schedule_id verdict) and consistent across every date.",
- "not_reached": [],
+ "not_reached": [
+  "suncoast-golf-center",
+  "sunridge-canyon-golf-club",
+  "tarpon-springs-golf-course",
+  "the-club-at-emerald-hills",
+  "the-club-at-starr-pass",
+  "the-country-club-of-coral-springs",
+  "the-golf-club-at-south-hampton",
+  "the-links-at-boynton-beach-championship-course",
+  "the-links-at-boynton-beach-the-family-course",
+  "the-links-at-greenfield-plantation",
+  "the-national-golf-country-club-at-ave-maria",
+  "the-ritz-carlton-golf-club-orlando-grande-lakes",
+  "the-rookery-at-marco",
+  "tiburon-golf-club-black-course",
+  "tiburon-golf-club-gold-course",
+  "timber-creek-golf-course",
+  "timber-greens-golf-country-club",
+  "torres-blancas-golf-club",
+  "treasure-bay-golf-tennis",
+  "turkey-creek-golf-course",
+  "valencia-golf-country-club",
+  "wentworth-golf-club",
+  "westchase-golf-club",
+  "westin-kierland-golf-club",
+  "adobe-creek-national-golf-course",
+  "arizona-biltmore-golf-club-estates-course",
+  "arizona-biltmore-golf-club-links-course",
+  "bella-rosa-municipal-golf-course",
+  "broadlands-golf-course",
+  "cattails-golf-club",
+  "chipeta-golf-course",
+  "city-park-nine-golf-course",
+  "collindale-golf-course",
+  "estes-park-golf-course",
+  "golf-at-river-valley-ranch",
+  "grand-canyon-university-golf-course",
+  "highland-meadows-golf-course",
+  "kings-deer-golf-club",
+  "lake-powell-national-golf-course",
+  "lakota-links-golf-course",
+  "laughlin-ranch-golf-club",
+  "legend-trail-golf-club",
+  "littleton-golf-tennis-club",
+  "lone-tree-golf-club-hotel",
+  "mesa-del-sol-golf-club",
+  "oakcreek-country-club",
+  "orange-tree-golf-resort",
+  "patty-jewett-golf-course",
+  "payson-golf-course",
+  "rifle-creek-golf-course",
+  "rio-grande-club",
+  "scottsdale-country-club",
+  "south-suburban-family-sports-center",
+  "south-suburban-golf-course",
+  "southridge-golf-course",
+  "the-500-club",
+  "valley-hi-golf-course"
+ ],
  "results": [
+  {
+   "slug": "abacoa-golf-club",
+   "state": "FL",
+   "platform": "foreup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "course_id": "20120",
+    "schedule_id": "3710"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "antelope-hills-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "antelope-hills-golf-course",
+    "course_id": "e2aeb67d-6e7f-41c5-90ef-df6dca5f5c72"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "arizona-national-golf-club",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "arizona-national-golf-club",
+    "course_id": "61cc7d8d-3c22-44f6-ad4d-1799a515249a"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "arlington-ridge-golf-club",
+   "state": "FL",
+   "platform": "teeitup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "alias": "arlington-ridge-mobile-app"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
   {
    "slug": "bardmoor-golf-tennis-club",
    "state": "FL",
@@ -30,14 +163,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://bardmoorres.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -53,9 +186,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -71,9 +204,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -89,9 +222,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -107,14 +240,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://bobbyjonesgolf.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -130,9 +263,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -148,9 +281,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -166,9 +299,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -184,14 +317,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -207,14 +340,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -230,14 +363,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://championsgate.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -253,14 +386,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)",
-    "2026-08-02: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)",
-    "2026-08-07: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)"
+    "2026-08-05: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)",
+    "2026-08-08: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)",
+    "2026-08-13: RuntimeError: EZLinks chichi: no course ids from init (Cloudflare challenge or empty portal)"
    ],
    "rate_limited": false
   },
@@ -276,9 +409,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -294,9 +427,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -312,228 +445,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "bay-hills-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "bay-hills-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 109,
-   "by_date": {
-    "2026-07-30": 7,
-    "2026-08-02": 38,
-    "2026-08-07": 64
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "beach-club-golf-links",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "beach-club-golf-links",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: beach-club-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: beach-club-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: beach-club-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "black-rock-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "black-rock-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 107,
-   "by_date": {
-    "2026-07-30": 52,
-    "2026-08-02": 55,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "blue-mash-golf-course",
-   "state": "MD",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "bluemash"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://bluemash.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://bluemash.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://bluemash.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "bowie-golf-club",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "bowie-golf-and-country-club"
-   },
-   "verdict": "rows",
-   "total_rows": 47,
-   "by_date": {
-    "2026-07-30": 12,
-    "2026-08-02": 35,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "breton-bay-golf-country-club",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "22147",
-    "schedule_id": "9972"
-   },
-   "verdict": "rows",
-   "total_rows": 65,
-   "by_date": {
-    "2026-07-30": 34,
-    "2026-08-02": 31,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "bulle-rock-golf-course",
-   "state": "MD",
-   "platform": "golfnow",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "golfnow_facility_id": "866",
-    "golfnow_slug": "bulle-rock-golf-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/866-bulle-rock-golf-club/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/866-bulle-rock-golf-club/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/866-bulle-rock-golf-club/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "caroline-country-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "caroline-country-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 182,
-   "by_date": {
-    "2026-07-30": 58,
-    "2026-08-02": 61,
-    "2026-08-07": 63
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "chesapeake-hills-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "22019",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 41,
-   "by_date": {
-    "2026-07-30": 22,
-    "2026-08-02": 19,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "clustered-spires-golf-club",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "clustered-spires-golf-club"
-   },
-   "verdict": "rows",
-   "total_rows": 147,
-   "by_date": {
-    "2026-07-30": 36,
-    "2026-08-02": 54,
-    "2026-08-07": 57
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "compass-pointe-golf-courses",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "compass-pointe-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 94,
-   "by_date": {
-    "2026-07-30": 3,
-    "2026-08-02": 45,
-    "2026-08-07": 46
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -549,38 +463,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/",
-    "2026-08-02: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/",
-    "2026-08-07: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "deer-run-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "deer-run-golf-course-maryland",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: deer-run-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: deer-run-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: deer-run-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
+    "2026-08-05: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/",
+    "2026-08-08: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/",
+    "2026-08-13: HTTPError: 500 Server Error: Internal Server Error for url: https://deercreek.teesnap.net/"
    ],
    "rate_limited": false
   },
@@ -598,9 +488,28 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "dell-urich-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "tucson-city-golf",
+    "course_id": "e37da0d2-865e-4ea0-9cc8-3331440ad82f"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -618,33 +527,31 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
   {
-   "slug": "eagle-s-landing-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
+   "slug": "eagle-ridge-golf-club-at-del-webb-spruce-creek-golf-country-club",
+   "state": "FL",
+   "platform": "golfback",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "slug": "eagles-landing-golf-club",
-    "club_uuid": null
+    "course_uuid": "d32ff79f-60d3-43c7-9a34-dd1ad21aa8f7"
    },
-   "verdict": "error",
+   "verdict": "partial_error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": 0
    },
    "errors": [
-    "2026-07-30: RuntimeError: eagle-s-landing-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: eagle-s-landing-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: eagle-s-landing-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
+    "2026-08-05: RuntimeError: eagle-ridge-golf-club-at-del-webb-spruce-creek-golf-country-club: golfback returned 117 row(s), none usable (117 for another courseId, 0 for another day) \u2014 check the pinned uuid d32ff79f-60d3-43c7-9a34-dd1ad21aa8f7",
+    "2026-08-08: RuntimeError: eagle-ridge-golf-club-at-del-webb-spruce-creek-golf-country-club: golfback returned 181 row(s), none usable (181 for another courseId, 0 for another day) \u2014 check the pinned uuid d32ff79f-60d3-43c7-9a34-dd1ad21aa8f7"
    ],
    "rate_limited": false
   },
@@ -660,9 +567,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -678,9 +585,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -696,28 +603,47 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
   {
-   "slug": "fairway-hills-golf-club",
-   "state": "MD",
-   "platform": "foreup",
+   "slug": "el-conquistador-golf-club",
+   "state": "AZ",
+   "platform": "golfwithaccess",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "course_id": "19823",
-    "schedule_id": "2572"
+    "tenant": "el-conquistador-golf-club",
+    "course_id": "4632ffdb-fe79-46ec-ab9b-b3b70bb8a965"
    },
-   "verdict": "rows",
-   "total_rows": 58,
+   "verdict": "empty",
+   "total_rows": 0,
    "by_date": {
-    "2026-07-30": 21,
-    "2026-08-02": 37,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "el-rio-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "tucson-city-golf",
+    "course_id": "7bb875b1-777d-43bb-8802-6c15c540dfa7"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -733,9 +659,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -751,9 +677,9 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -770,34 +696,29 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
   {
-   "slug": "furnace-bay-golf-course",
-   "state": "MD",
-   "platform": "golfnow",
+   "slug": "fred-enke-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
    "cohort": "silent",
-   "status": "experimental",
+   "status": "ready",
    "ids": {
-    "golfnow_facility_id": "9559",
-    "golfnow_slug": "furnace-bay-golf-course"
+    "tenant": "tucson-city-golf",
+    "course_id": "c70e6b85-4076-4cb8-9cb3-419c97586162"
    },
-   "verdict": "error",
+   "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9559-furnace-bay-golf-course/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9559-furnace-bay-golf-course/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9559-furnace-bay-golf-course/search"
-   ],
    "rate_limited": false
   },
   {
@@ -812,27 +733,28 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
   {
-   "slug": "glade-valley-golf-club",
-   "state": "MD",
-   "platform": "teeitup",
+   "slug": "golf-club-at-eagle-mountain",
+   "state": "AZ",
+   "platform": "golfwithaccess",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "alias": "glade-valley-golf-club"
+    "tenant": "eagle-mountain-golf-club",
+    "course_id": "698b68b9-908e-416e-8368-a043e2a90072"
    },
-   "verdict": "rows",
-   "total_rows": 101,
+   "verdict": "empty",
+   "total_rows": 0,
    "by_date": {
-    "2026-07-30": 43,
-    "2026-08-02": 58,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -845,14 +767,17 @@
    "ids": {
     "alias": "harder-hall-country-club"
    },
-   "verdict": "empty",
+   "verdict": "partial_error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": null
    },
-   "rate_limited": false
+   "errors": [
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
   },
   {
    "slug": "heather-gardens-golf-course",
@@ -866,30 +791,34 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
   {
-   "slug": "hog-neck-golf-course",
-   "state": "MD",
-   "platform": "foreup",
+   "slug": "highlands-reserve-golf-club",
+   "state": "FL",
+   "platform": "teeitup",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "course_id": "23006",
-    "schedule_id": null
+    "alias": "highlands-reserve-golf-club"
    },
-   "verdict": "rows",
-   "total_rows": 62,
+   "verdict": "error",
+   "total_rows": 0,
    "by_date": {
-    "2026-07-30": 25,
-    "2026-08-02": 37,
-    "2026-08-07": 0
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
-   "rate_limited": false
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
   },
   {
    "slug": "hollywood-beach-golf-club",
@@ -900,14 +829,19 @@
    "ids": {
     "alias": "hollywood-beach-golf-resort"
    },
-   "verdict": "empty",
+   "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
-   "rate_limited": false
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
   },
   {
    "slug": "indian-hills-golf-course",
@@ -918,14 +852,19 @@
    "ids": {
     "alias": "indian-hills-golf-course"
    },
-   "verdict": "empty",
+   "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
-   "rate_limited": false
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
   },
   {
    "slug": "juliette-falls-golf-club",
@@ -936,36 +875,61 @@
    "ids": {
     "alias": "juliette-falls"
    },
-   "verdict": "empty",
+   "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
-   "rate_limited": false
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
   },
   {
-   "slug": "lake-presidential-golf-club",
-   "state": "MD",
-   "platform": "ezlinks",
+   "slug": "lake-jovita-golf-country-club-north-course",
+   "state": "FL",
+   "platform": "clubcaddie",
    "cohort": "silent",
-   "status": "experimental",
+   "status": "ready",
    "ids": {
-    "portal": "lakepresidential"
+    "shard": "cc37",
+    "view_token": "jjedabab"
    },
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://lakepresidential.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://lakepresidential.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://lakepresidential.ezlinksgolf.com/api/search/search"
+    "2026-08-05: RuntimeError: lake-jovita-golf-country-club-north-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-08-08: RuntimeError: lake-jovita-golf-country-club-north-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-08-13: RuntimeError: lake-jovita-golf-country-club-north-course: could not resolve Club Caddie CourseId from the booking page"
    ],
+   "rate_limited": false
+  },
+  {
+   "slug": "lake-monticello-golf-course",
+   "state": "VA",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "lake-monticello-golf-course",
+    "course_id": "324901f5-cbf7-4575-8304-f3b062efe61b"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
    "rate_limited": false
   },
   {
@@ -980,14 +944,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -1003,14 +967,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search"
+    "2026-08-05: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
+    "2026-08-08: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search",
+    "2026-08-13: HTTPError: 403 Client Error: Forbidden for url: https://lpgainternational.ezlinksgolf.com/api/search/search"
    ],
    "rate_limited": false
   },
@@ -1027,14 +991,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1050,40 +1014,16 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
-  },
-  {
-   "slug": "mountain-branch-golf-club",
-   "state": "MD",
-   "platform": "golfnow",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "golfnow_facility_id": "6254",
-    "golfnow_slug": "mountain-branch-golf-course"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6254-mountain-branch-golf-course/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6254-mountain-branch-golf-course/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6254-mountain-branch-golf-course/search"
-   ],
-   "rate_limited": false
   },
   {
    "slug": "oak-hills-golf-club",
@@ -1097,14 +1037,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1120,64 +1060,40 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
   {
-   "slug": "ocean-pines-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
+   "slug": "ocean-view-golf-course",
+   "state": "VA",
+   "platform": "teeitup",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "slug": "ocean-pines-golf-country-club",
-    "club_uuid": null
+    "alias": "virginia-beach-golf-management",
+    "facility_id": "3247"
    },
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: RuntimeError: ocean-pines-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: ocean-pines-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: ocean-pines-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
-   "rate_limited": false
-  },
-  {
-   "slug": "ocean-resorts-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "ocean-resorts-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: ocean-resorts-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: ocean-resorts-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: ocean-resorts-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
-   ],
-   "rate_limited": false
+   "rate_limited": true
   },
   {
    "slug": "ocean-village-golf-course",
@@ -1192,54 +1108,11 @@
    "verdict": "empty",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
-  },
-  {
-   "slug": "p-b-dye-golf-club",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "19774",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 77,
-   "by_date": {
-    "2026-07-30": 30,
-    "2026-08-02": 47,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "paint-branch-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "department-of-parks-and-recreation-prince-georges-county",
-    "facility_id": "18697"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
   },
   {
    "slug": "pelican-preserve-golf-club",
@@ -1253,14 +1126,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1276,14 +1149,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/",
-    "2026-08-02: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/",
-    "2026-08-07: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/"
+    "2026-08-05: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/",
+    "2026-08-08: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/",
+    "2026-08-13: HTTPError: 500 Server Error: Internal Server Error for url: https://placidlakescc.teesnap.net/"
    ],
    "rate_limited": false
   },
@@ -1299,14 +1172,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1322,33 +1195,52 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
   {
-   "slug": "renditions-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
+   "slug": "potomac-shores-golf-club",
+   "state": "VA",
+   "platform": "golfwithaccess",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "slug": "renditions-golf-club",
-    "club_uuid": null
+    "tenant": "potomac-shores-golf-club",
+    "course_id": "10c68f5d-6ad2-4e04-ba84-9d96b79688c5"
    },
-   "verdict": "rows",
-   "total_rows": 97,
+   "verdict": "empty",
+   "total_rows": 0,
    "by_date": {
-    "2026-07-30": 26,
-    "2026-08-02": 48,
-    "2026-08-07": 23
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "randolph-north-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "tucson-city-golf",
+    "course_id": "78c4ad12-e482-43d5-a39e-1d6115c8b09b"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
    },
    "rate_limited": false
   },
@@ -1364,40 +1256,16 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
-  },
-  {
-   "slug": "river-run-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "river-run-golf-club-community",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: river-run-golf-club: no online-bookable courses",
-    "2026-08-02: RuntimeError: river-run-golf-club: no online-bookable courses",
-    "2026-08-07: RuntimeError: river-run-golf-club: no online-bookable courses"
-   ],
-   "rate_limited": false
   },
   {
    "slug": "riviera-golf-club",
@@ -1411,16 +1279,35 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
+  },
+  {
+   "slug": "rollingstone-ranch-golf-club",
+   "state": "CO",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "rollingstone-ranch-golf-club",
+    "course_id": "4ed9004a-c17f-4e52-aa86-d6c0bf46e869"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
   },
   {
    "slug": "saltleaf-golf-preserve-the-leaf",
@@ -1435,14 +1322,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1459,37 +1346,149 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
   {
-   "slug": "severna-park-golf-center",
-   "state": "MD",
+   "slug": "san-carlos-golf-club",
+   "state": "FL",
    "platform": "teeitup",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "alias": "severna-park-golf-center"
+    "alias": "san-carlos-golf-club"
    },
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
+  },
+  {
+   "slug": "san-pedro-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "san-pedro-golf-course",
+    "course_id": "d10ed1e5-1bf2-4e52-b312-3c8ee622b64c"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "serenoa-golf-club",
+   "state": "FL",
+   "platform": "teeitup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "alias": "serenoa-golf-club"
+   },
+   "verdict": "error",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
+   },
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
+  },
+  {
+   "slug": "seven-springs-golf-country-club-champion-course",
+   "state": "FL",
+   "platform": "teeitup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "alias": "seven-springs-golf-and-country-club-v2",
+    "facility_id": "5782"
+   },
+   "verdict": "error",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
+   },
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
+  },
+  {
+   "slug": "seven-springs-golf-country-club-executive-course",
+   "state": "FL",
+   "platform": "teeitup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "alias": "seven-springs-golf-and-country-club-v2"
+   },
+   "verdict": "error",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
+   },
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
+   ],
+   "rate_limited": true
+  },
+  {
+   "slug": "shalimar-pointe-golf-club",
+   "state": "FL",
+   "platform": "teeitup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "alias": "shalimar-pointe-golf-club"
+   },
+   "verdict": "error",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
+   },
+   "errors": [
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1505,14 +1504,14 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1528,16 +1527,54 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
+  },
+  {
+   "slug": "silverbell-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "tenant": "tucson-city-golf",
+    "course_id": "e3525d5b-9dea-4c91-a704-0d243c694ac6"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
+  },
+  {
+   "slug": "southwinds-golf-course",
+   "state": "FL",
+   "platform": "foreup",
+   "cohort": "silent",
+   "status": "ready",
+   "ids": {
+    "course_id": "21261",
+    "schedule_id": "7476"
+   },
+   "verdict": "empty",
+   "total_rows": 0,
+   "by_date": {
+    "2026-08-05": 0,
+    "2026-08-08": 0,
+    "2026-08-13": 0
+   },
+   "rate_limited": false
   },
   {
    "slug": "st-augustine-shores-golf-club",
@@ -1551,37 +1588,37 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
   {
-   "slug": "stoneybrook-at-heritage-harbour-golf-club",
+   "slug": "stonegate-golf-club-at-solivita-oaks-course",
    "state": "FL",
    "platform": "teeitup",
    "cohort": "silent",
    "status": "ready",
    "ids": {
-    "alias": "heritage-harbour-golf-club"
+    "alias": "stonegate-golf-club-oaks-course"
    },
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
   },
@@ -1597,1854 +1634,16 @@
    "verdict": "error",
    "total_rows": 0,
    "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
+    "2026-08-05": null,
+    "2026-08-08": null,
+    "2026-08-13": null
    },
    "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
+    "2026-08-05: HTTPError: 429",
+    "2026-08-08: HTTPError: 429",
+    "2026-08-13: HTTPError: 429"
    ],
    "rate_limited": true
-  },
-  {
-   "slug": "suncoast-golf-center",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "suncoast-golf-center"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "sunridge-canyon-golf-club",
-   "state": "AZ",
-   "platform": "quick18",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "subdomain": "sunridgecanyon",
-    "domain": "play18.com"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "swan-point-yacht-country-club",
-   "state": "MD",
-   "platform": "golfnow",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "golfnow_facility_id": "952",
-    "golfnow_slug": "swan-point-yacht-country-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "tarpon-springs-golf-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "tarpon-springs-golf-course"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "the-club-at-viniterra",
-   "state": "VA",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "club-at-viniterra"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "the-golf-club-at-south-hampton",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-golf-club-at-south-hampton"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "the-lakes-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-lakes-gc"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "the-links-at-boynton-beach-championship-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-links-at-boynton-beach"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "the-links-at-boynton-beach-the-family-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-links-at-boynton-beach"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 429",
-    "2026-08-02: HTTPError: 429",
-    "2026-08-07: HTTPError: 429"
-   ],
-   "rate_limited": true
-  },
-  {
-   "slug": "carroll-park-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "20751",
-    "schedule_id": "6231"
-   },
-   "verdict": "rows",
-   "total_rows": 221,
-   "by_date": {
-    "2026-07-30": 63,
-    "2026-08-02": 77,
-    "2026-08-07": 81
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "clifton-park-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "20751",
-    "schedule_id": "6229"
-   },
-   "verdict": "rows",
-   "total_rows": 156,
-   "by_date": {
-    "2026-07-30": 36,
-    "2026-08-02": 53,
-    "2026-08-07": 67
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "falls-road-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21184
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "forest-park-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "20751",
-    "schedule_id": "6170"
-   },
-   "verdict": "rows",
-   "total_rows": 169,
-   "by_date": {
-    "2026-07-30": 49,
-    "2026-08-02": 61,
-    "2026-08-07": 59
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "hampshire-greens-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21183
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "laytonsville-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21182
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "little-bennett-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21181
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "mount-pleasant-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "20751",
-    "schedule_id": "5956"
-   },
-   "verdict": "rows",
-   "total_rows": 111,
-   "by_date": {
-    "2026-07-30": 33,
-    "2026-08-02": 31,
-    "2026-08-07": 47
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "needwood-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21180
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "needwood-golf-course-executive-9",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21179
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "northwest-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21178
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "northwest-golf-course-inside-9",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21177
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "pine-ridge-golf-course",
-   "state": "MD",
-   "platform": "foreup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "course_id": "20751",
-    "schedule_id": "5934"
-   },
-   "verdict": "rows",
-   "total_rows": 49,
-   "by_date": {
-    "2026-07-30": 11,
-    "2026-08-02": 17,
-    "2026-08-07": 21
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "poolesville-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21176
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "rattlewood-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21175
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "rocky-gap-casino-resort-golf-course",
-   "state": "MD",
-   "platform": "rguest",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "tenant": "2060",
-    "property": "RockyGapBook"
-   },
-   "verdict": "rows",
-   "total_rows": 116,
-   "by_date": {
-    "2026-07-30": 32,
-    "2026-08-02": 44,
-    "2026-08-07": 40
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "sligo-creek-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "mcg-golf",
-    "club_uuid": null,
-    "course_ids": [
-     21174
-    ]
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-national-golf-country-club-at-ave-maria",
-   "state": "FL",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "nationalatavemaria"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://nationalatavemaria.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://nationalatavemaria.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://nationalatavemaria.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "the-omni-homestead-resort-cascades-course",
-   "state": "VA",
-   "platform": "resortsuite",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "host": "omnihomesteadexperiences.com",
-    "course_id": "CAS"
-   },
-   "verdict": "rows",
-   "total_rows": 133,
-   "by_date": {
-    "2026-07-30": 47,
-    "2026-08-02": 44,
-    "2026-08-07": 42
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-omni-homestead-resort-old-course",
-   "state": "VA",
-   "platform": "resortsuite",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "host": "omnihomesteadexperiences.com",
-    "course_id": "OLD"
-   },
-   "verdict": "rows",
-   "total_rows": 190,
-   "by_date": {
-    "2026-07-30": 66,
-    "2026-08-02": 64,
-    "2026-08-07": 60
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-preserve-at-eisenhower-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-preserve-at-eisenhower-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 41,
-   "by_date": {
-    "2026-07-30": 2,
-    "2026-08-02": 39,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-ritz-carlton-golf-club-orlando-grande-lakes",
-   "state": "FL",
-   "platform": "rguest",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "tenant": "2282",
-    "property": "the-ritz-carlton-golf-club-grande-lakes-orlando"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-rookery-at-marco",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "the-rookery-at-marco"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-wetlands-golf-course",
-   "state": "MD",
-   "platform": "golfnow",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "golfnow_facility_id": "11988",
-    "golfnow_slug": "the-wetlands-golf-course-md"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11988-the-wetlands-golf-course-md/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11988-the-wetlands-golf-course-md/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11988-the-wetlands-golf-course-md/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "tiburon-golf-club-black-course",
-   "state": "FL",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "tiburon"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "tiburon-golf-club-gold-course",
-   "state": "FL",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "tiburon"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "timber-creek-golf-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "timber-creek-golf-club"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "timber-greens-golf-country-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "timber-greens-country-club"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "treasure-bay-golf-tennis",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "treasure-bay-golf-and-tennis"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "turf-valley-resort-hialeah-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "turf-valley-resort",
-    "club_uuid": null,
-    "course_ids": [
-     8697
-    ]
-   },
-   "verdict": "rows",
-   "total_rows": 220,
-   "by_date": {
-    "2026-07-30": 62,
-    "2026-08-02": 69,
-    "2026-08-07": 89
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "turf-valley-resort-original-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "turf-valley-resort",
-    "club_uuid": null,
-    "course_ids": [
-     8698
-    ]
-   },
-   "verdict": "rows",
-   "total_rows": 178,
-   "by_date": {
-    "2026-07-30": 29,
-    "2026-08-02": 64,
-    "2026-08-07": 85
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "upland-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "upland-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: upland-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: upland-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: upland-golf-club: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "water-oak-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "water-oak-golf-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-02: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-07: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "waverly-woods-golf-club",
-   "state": "MD",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "waverlywoods"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://waverlywoods.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://waverlywoods.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://waverlywoods.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "westchase-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "westchase-golf-club"
-   },
-   "verdict": "empty",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "westminster-national-golf-course",
-   "state": "MD",
-   "platform": "golfnow",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "golfnow_facility_id": "11304",
-    "golfnow_slug": "westminster-national-golf-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11304-westminster-national-golf-club/search",
-    "2026-08-02: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11304-westminster-national-golf-club/search",
-    "2026-08-07: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11304-westminster-national-golf-club/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "whiskey-creek-golf-club",
-   "state": "MD",
-   "platform": "ezlinks",
-   "cohort": "silent",
-   "status": "experimental",
-   "ids": {
-    "portal": "whiskeycreek"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 403 Client Error: Forbidden for url: https://whiskeycreek.ezlinksgolf.com/api/search/search",
-    "2026-08-02: HTTPError: 403 Client Error: Forbidden for url: https://whiskeycreek.ezlinksgolf.com/api/search/search",
-    "2026-08-07: HTTPError: 403 Client Error: Forbidden for url: https://whiskeycreek.ezlinksgolf.com/api/search/search"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "wicomico-shores-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "656a48da-8038-4a1c-8468-06e41d2217ff"
-   },
-   "verdict": "rows",
-   "total_rows": 65,
-   "by_date": {
-    "2026-07-30": 26,
-    "2026-08-02": 39,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "wildcat-crossing-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "wildcat-crossing-golf-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-02: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-07: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "willow-lakes-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "willow-lakes-golf-club"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-02: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses",
-    "2026-08-07: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/courses"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "willow-springs-golf-course",
-   "state": "MD",
-   "platform": "teesnap",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "subdomain": "wsgolf"
-   },
-   "verdict": "rows",
-   "total_rows": 219,
-   "by_date": {
-    "2026-07-30": 73,
-    "2026-08-02": 73,
-    "2026-08-07": 73
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "winter-park-pines-golf-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "winter-park-pines-golf-club-wp18",
-    "facility_id": "5634"
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-07-30&facilityIds=5634",
-    "2026-08-02: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-02&facilityIds=5634",
-    "2026-08-07: HTTPError: 404 Client Error: Not Found for url: https://phx-api-be-east-1b.kenna.io/v2/tee-times?date=2026-08-07&facilityIds=5634"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "winter-quarters-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "winter-quarters-municipal-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: winter-quarters-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: winter-quarters-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: winter-quarters-golf-course: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "wisp-resort-fantasy-valley-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "fantasy-valley-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 132,
-   "by_date": {
-    "2026-07-30": 35,
-    "2026-08-02": 57,
-    "2026-08-07": 40
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "wisp-resort-lodestone-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "alias": "lodestone-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 133,
-   "by_date": {
-    "2026-07-30": 41,
-    "2026-08-02": 53,
-    "2026-08-07": 39
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "wood-creek-golf-links",
-   "state": "MD",
-   "platform": "chronogolf",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "slug": "wood-creek-golf-links",
-    "club_uuid": null
-   },
-   "verdict": "error",
-   "total_rows": 0,
-   "by_date": {
-    "2026-07-30": null,
-    "2026-08-02": null,
-    "2026-08-07": null
-   },
-   "errors": [
-    "2026-07-30: RuntimeError: wood-creek-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-02: RuntimeError: wood-creek-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine",
-    "2026-08-07: RuntimeError: wood-creek-golf-links: unclaimed Chronogolf directory listing (club online_booking disabled) \u2014 books through another engine"
-   ],
-   "rate_limited": false
-  },
-  {
-   "slug": "worthington-manor-golf-club",
-   "state": "MD",
-   "platform": "teesnap",
-   "cohort": "silent",
-   "status": "ready",
-   "ids": {
-    "subdomain": "worthingtonmanor"
-   },
-   "verdict": "rows",
-   "total_rows": 190,
-   "by_date": {
-    "2026-07-30": 48,
-    "2026-08-02": 71,
-    "2026-08-07": 71
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "adobe-creek-national-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "22979",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 562,
-   "by_date": {
-    "2026-07-30": 180,
-    "2026-08-02": 142,
-    "2026-08-07": 240
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "arizona-biltmore-golf-club-estates-course",
-   "state": "AZ",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "arizona-biltmore-golf-club-arizona-phoenix",
-    "club_uuid": null,
-    "course_ids": [
-     21028
-    ]
-   },
-   "verdict": "rows",
-   "total_rows": 137,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 63,
-    "2026-08-07": 74
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "arizona-biltmore-golf-club-links-course",
-   "state": "AZ",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "arizona-biltmore-golf-club-arizona-phoenix",
-    "club_uuid": null,
-    "course_ids": [
-     21027
-    ]
-   },
-   "verdict": "rows",
-   "total_rows": 204,
-   "by_date": {
-    "2026-07-30": 69,
-    "2026-08-02": 59,
-    "2026-08-07": 76
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "bella-rosa-municipal-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "23186",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 61,
-   "by_date": {
-    "2026-07-30": 21,
-    "2026-08-02": 40,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "broadlands-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "broadlands-golf-course"
-   },
-   "verdict": "rows",
-   "total_rows": 31,
-   "by_date": {
-    "2026-07-30": 12,
-    "2026-08-02": 19,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "cattails-golf-club",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "22914",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 145,
-   "by_date": {
-    "2026-07-30": 69,
-    "2026-08-02": 76,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "chipeta-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "22981",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 378,
-   "by_date": {
-    "2026-07-30": 90,
-    "2026-08-02": 146,
-    "2026-08-07": 142
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "city-park-nine-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "city-park-nine-golf-course",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 79,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 32,
-    "2026-08-07": 47
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "collindale-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "collindale-golf-course",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 74,
-   "by_date": {
-    "2026-07-30": 27,
-    "2026-08-02": 20,
-    "2026-08-07": 27
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "estes-park-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "22457",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 79,
-   "by_date": {
-    "2026-07-30": 42,
-    "2026-08-02": 37,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "golf-at-river-valley-ranch",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "18848",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 27,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 27,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "grand-canyon-university-golf-course",
-   "state": "AZ",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "22280",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 206,
-   "by_date": {
-    "2026-07-30": 73,
-    "2026-08-02": 55,
-    "2026-08-07": 78
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "highland-meadows-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "highland-meadows-golf-club-colorado",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 77,
-   "by_date": {
-    "2026-07-30": 38,
-    "2026-08-02": 39,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "kings-deer-golf-club",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "kings-deer-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 60,
-   "by_date": {
-    "2026-07-30": 28,
-    "2026-08-02": 32,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "lake-powell-national-golf-course",
-   "state": "AZ",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "20878",
-    "schedule_id": "5966"
-   },
-   "verdict": "rows",
-   "total_rows": 144,
-   "by_date": {
-    "2026-07-30": 52,
-    "2026-08-02": 25,
-    "2026-08-07": 67
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "lakota-links-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "club_id": "19332",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 79,
-   "by_date": {
-    "2026-07-30": 39,
-    "2026-08-02": 40,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "laughlin-ranch-golf-club",
-   "state": "AZ",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "laughlin-ranch-golf-course",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 167,
-   "by_date": {
-    "2026-07-30": 55,
-    "2026-08-02": 56,
-    "2026-08-07": 56
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "legend-trail-golf-club",
-   "state": "AZ",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "21561",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 121,
-   "by_date": {
-    "2026-07-30": 59,
-    "2026-08-02": 62,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "littleton-golf-tennis-club",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "littleton-golf-tennis-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 52,
-   "by_date": {
-    "2026-07-30": 20,
-    "2026-08-02": 32,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "lone-tree-golf-club-hotel",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "lone-tree-golf-club-hotel",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 4,
-   "by_date": {
-    "2026-07-30": 4,
-    "2026-08-02": 0,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "mesa-del-sol-golf-club",
-   "state": "AZ",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "19175",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 142,
-   "by_date": {
-    "2026-07-30": 0,
-    "2026-08-02": 71,
-    "2026-08-07": 71
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "oakcreek-country-club",
-   "state": "AZ",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "the-oakcreek-country-club-arizona-sedona",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 114,
-   "by_date": {
-    "2026-07-30": 47,
-    "2026-08-02": 31,
-    "2026-08-07": 36
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "orange-tree-golf-resort",
-   "state": "AZ",
-   "platform": "quick18",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "subdomain": "orangetree"
-   },
-   "verdict": "rows",
-   "total_rows": 233,
-   "by_date": {
-    "2026-07-30": 81,
-    "2026-08-02": 74,
-    "2026-08-07": 78
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "patty-jewett-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "19459",
-    "schedule_id": null,
-    "booking_class": "1339"
-   },
-   "verdict": "rows",
-   "total_rows": 49,
-   "by_date": {
-    "2026-07-30": 7,
-    "2026-08-02": 42,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "payson-golf-course",
-   "state": "AZ",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "payson-golf-course",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 81,
-   "by_date": {
-    "2026-07-30": 49,
-    "2026-08-02": 32,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "rifle-creek-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "club_id": "3399",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 77,
-   "by_date": {
-    "2026-07-30": 21,
-    "2026-08-02": 56,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "rio-grande-club",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "rio-grande-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 76,
-   "by_date": {
-    "2026-07-30": 26,
-    "2026-08-02": 50,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "scottsdale-country-club",
-   "state": "AZ",
-   "platform": "quick18",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "subdomain": "scottsdalecc"
-   },
-   "verdict": "rows",
-   "total_rows": 271,
-   "by_date": {
-    "2026-07-30": 70,
-    "2026-08-02": 100,
-    "2026-08-07": 101
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "south-suburban-family-sports-center",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "family-sports-golf-course",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 60,
-   "by_date": {
-    "2026-07-30": 22,
-    "2026-08-02": 38,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "south-suburban-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "south-suburban-golf-club",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 38,
-   "by_date": {
-    "2026-07-30": 20,
-    "2026-08-02": 18,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "southridge-golf-course",
-   "state": "CO",
-   "platform": "chronogolf",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "slug": "southridge-golf-course-ft-collins",
-    "club_uuid": null
-   },
-   "verdict": "rows",
-   "total_rows": 42,
-   "by_date": {
-    "2026-07-30": 13,
-    "2026-08-02": 29,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "the-500-club",
-   "state": "AZ",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "19433",
-    "schedule_id": null
-   },
-   "verdict": "rows",
-   "total_rows": 129,
-   "by_date": {
-    "2026-07-30": 56,
-    "2026-08-02": 73,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "valley-hi-golf-course",
-   "state": "CO",
-   "platform": "foreup",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "course_id": "19457",
-    "schedule_id": null,
-    "booking_class": "4502"
-   },
-   "verdict": "rows",
-   "total_rows": 24,
-   "by_date": {
-    "2026-07-30": 5,
-    "2026-08-02": 19,
-    "2026-08-07": 0
-   },
-   "rate_limited": false
-  },
-  {
-   "slug": "westin-kierland-golf-club",
-   "state": "AZ",
-   "platform": "golfwithaccess",
-   "cohort": "unheld",
-   "status": "ready",
-   "ids": {
-    "tenant": "the-westin-kierland-golf-club",
-    "course_id": "ab5ad653-b217-4119-bcb7-80dd0aecffaa"
-   },
-   "verdict": "rows",
-   "total_rows": 164,
-   "by_date": {
-    "2026-07-30": 59,
-    "2026-08-02": 37,
-    "2026-08-07": 68
-   },
-   "rate_limited": false
   }
  ]
 }
