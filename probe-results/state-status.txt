@@ -6,10 +6,10 @@ state  bookable  live  cover       silent    needs_ids experimental  unsupported
 CO          181   127    70%            2            2            0            2            0           48           60
 AZ          204   173    85%           17            0            0            0            0           14           14
 VA          227   110    48%            3            0            0            4            0          110          102
-FL          646   253    39%           65           45           11           72           21          179           10
+FL          646   251    39%           67           45           11           72           21          179           10
 MD          119    66    55%            0            1            0           17            2           33            1
 -----------------------------------------------------------------------------------------------------------------------
-ALL        1377   729    53%           87           48           11           95           23          384          187
+ALL        1377   727    53%           89           48           11           95           23          384          187
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -18,7 +18,7 @@ ALL        1377   729    53%           87           48           11           95
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     57   AZ:1 FL:55 VA:1
+  silent       teeitup                     59   AZ:1 FL:57 VA:1
   silent       golfwithaccess              15   AZ:12 CO:1 VA:2
   silent       teesnap                      3   CO:1 FL:2
   silent       foreup                       3   AZ:1 FL:2
@@ -309,10 +309,10 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Woodside Country Club                        —              Tappahannock
 
 ==========================================================================
-FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 253 live (39%)
+FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 251 live (39%)
 ==========================================================================
 
-  SILENT  (65) — believed scrapable, returning nothing
+  SILENT  (67) — believed scrapable, returning nothing
      Abacoa Golf Club                             foreup         Jupiter
      Arlington Ridge Golf Club                    teeitup        Leesburg
      Baytree Executive Golf Course                teeitup        Tavares
@@ -365,16 +365,18 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Suncoast Golf Center                         teeitup        Sarasota
      Tarpon Springs Golf Course                   teeitup        Tarpon Springs
      The Club at Emerald Hills                    teeitup        Hollywood
-     The Country Club of Coral Springs            teeitup        Coral Springs
      The Golf Club at South Hampton               teeitup        St. Augustine
+     The Groves Golf & Country Club               teeitup        Land O' Lakes
      The Links at Boynton Beach - Championship Co teeitup        Boynton Beach
      The Links at Boynton Beach - The Family Cour teeitup        Boynton Beach
      The Links at Greenfield Plantation           teeitup        Bradenton
      The Ritz-Carlton Golf Club, Orlando, Grande  rguest         Orlando
      The Rookery at Marco                         teeitup        Naples
+     The Yards                                    teeitup        Ponte Vedra Beach
      Timber Creek Golf Course                     teeitup        Bradenton
      Timber Greens Golf & Country Club            teeitup        New Port Richey
      Treasure Bay Golf & Tennis                   teeitup        Treasure Island
+     Turkey Creek Golf Course                     teeitup        Alachua
      Valencia Golf & Country Club                 clubcaddie     Naples
      Wentworth Golf Club                          golfback       Tarpon Springs
      Westchase Golf Club                          teeitup        Tampa
@@ -785,11 +787,11 @@ MD  —  119 bookable courses (120 in maryland_golf_courses_booking.csv, 1 priva
 ==========================================================================
 REGISTRY DRIFT (5) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     347 rows
-  FL  Providence Golf Club                         teeitup        315 rows
-  FL  Willowbrook Golf Course                      teeitup        196 rows
-  MD  Fox Hollow Golf Course                       foreup         281 rows
-  MD  Rocky Point Golf Course                      foreup         318 rows
+  FL  Continental Country Club                     chronogolf     318 rows
+  FL  Providence Golf Club                         teeitup        300 rows
+  FL  Willowbrook Golf Course                      teeitup        173 rows
+  MD  Fox Hollow Golf Course                       foreup         275 rows
+  MD  Rocky Point Golf Course                      foreup         315 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (5) — serving tee times, not traceable to a CSV course
