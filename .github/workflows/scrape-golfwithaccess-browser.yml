@@ -1,0 +1,82 @@
+name: Scrape Golf With Access via browser (0-13 every 2h, 0-30 daily)
+
+# WHY. golfwithaccess.com's public /api/v1/tee-times returns a clean HTTP 200
+# with an EMPTY teeTimes list to our plain client — even from a residential IP
+# and even byte-identical to the SPA's own request. The live SPA gets full data
+# because its bundled client attaches a signed/session value we cannot replay.
+# So all 22 Golf With Access courses silently went dark on the feed (empty-200
+# reads as "sold out", not an error). Proven live 2026-08-04.
+#
+# THE FIX. A real headless Chromium loads each tenant's reserve page and reads
+# the response to the SPA'S OWN tee-times request (made WITH its header);
+# browser_golfwithaccess reuses GolfWithAccessAdapter's parsing. This job SOLELY
+# owns golfwithaccess in D1 — the plain near/mid/far tiers now EXCLUDE the
+# platform, so no two writers touch the same course_slug+date.
+#
+# One reserve page serves all of a tenant's courses (Tucson City Golf = 5 munis
+# in one load), so there are only ~17 page loads per date — light enough to
+# sweep the whole horizon in one un-sharded run.
+
+on:
+  schedule:
+    - cron: "37 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: "Scrape the full 0-30 day horizon"
+        default: "no"
+  push:
+    branches: [main]
+    paths:
+      - "registry.json"
+      - "scraper/browser_golfwithaccess.py"
+      - "scraper/adapters/golfwithaccess.py"
+      - ".github/workflows/scrape-golfwithaccess-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-golfwithaccess-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Scrape + push each date to D1 (tiered horizon)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          # Every 2h covers days 0-13 (Access munis rarely open further); the
+          # 10:xx UTC run and a manual deep dispatch stretch to the full 30-day
+          # horizon as a safety net for any resort with a longer window.
+          DEEP=no
+          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+          LAST=13
+          [ "$DEEP" = "yes" ] && LAST=30
+          # Shuffle the date order (as scrape-far.yml / scrape.yml do): if a run
+          # is short of budget it leaves a DIFFERENT gap each time, so the union
+          # across runs still covers the horizon instead of permanently starving
+          # the tail dates. Dates from scraper.dates (union of local todays
+          # across the AZ/CO/VA/FL timezones), not `date -u`.
+          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | shuf); do
+            echo "::group::golfwithaccess browser ${DATE}"
+            python -m scraper.browser_golfwithaccess --date "${DATE}" \
+              --out "output/gwa_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/gwa_${DATE}.json" || true
+            echo "::endgroup::"
+          done

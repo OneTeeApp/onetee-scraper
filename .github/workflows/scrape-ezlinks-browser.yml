@@ -51,19 +51,26 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
         run: |
-          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
-          # manual deep dispatch stretch to the full 30-day horizon. Browser
-          # scrapes are too slow to loop at the near tier's cadence, so daily
-          # is the far-tier freshness for these platforms.
+          # Hourly runs cover days 0-6; the deep runs (every 8h at 02/10/18 UTC,
+          # or a manual dispatch) stretch to the full 30-day horizon. Browser
+          # scrapes are too slow to loop at the near tier's cadence.
+          #
+          # Two fixes here (2026-08-04): (1) the deep loop is now SHUFFLED. One
+          # un-sharded Chromium cannot finish ~80 portals x 31 dates inside the
+          # 170-min budget, so an in-ORDER loop always died around day ~14 and
+          # the far dates (21-30) were NEVER reached — measured d21/d29 = 0 live.
+          # Shuffled, a short run leaves a different gap each time and the union
+          # fills the tail. (2) deep now runs every 8h instead of once/day, so
+          # each far date is re-hit well within the 30h far-freshness grace.
           DEEP=no
-          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          case "$(date -u +%H)" in 02|10|18) DEEP=yes ;; esac
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=6
           [ "$DEEP" = "yes" ] && LAST=30
           # Dates from scraper.dates (union of local todays across covered
           # timezones), not `date -u`: after ~5pm Mountain the UTC date is
           # already tomorrow and a UTC "today" skips the real one.
-          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | shuf); do
             echo "::group::ezlinks browser ${DATE}"
             python -m scraper.browser_ezlinks --date "${DATE}" \
               --out "output/ez_${DATE}.json" || true
