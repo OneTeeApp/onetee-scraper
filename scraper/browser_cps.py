@@ -115,12 +115,26 @@ def _teetimes(course: dict, slots: list[dict]) -> list:
     return out
 
 
-def _proxy_launch_kwargs() -> dict:
+def _proxy_launch_kwargs(session: str | None = None) -> dict:
     """chromium.launch kwargs, adding a residential proxy if TEEITUP_PROXY is set.
 
     cps.golf (like kenna) blocks/challenges the data-center IP; a residential
     proxy clears it. Playwright's Chromium ignores HTTPS_PROXY on its own, so the
     proxy MUST be passed to launch(proxy=). TEEITUP_PROXY is the shared secret.
+
+    STICKY SESSION (session=): when given, append DataImpulse's `;sessid.<id>`
+    to the proxy username so every request in ONE course's flow egresses a
+    single residential IP for ~30 min. This is the fix for the 2026-08-04
+    finding that 19/27 cps tenants 403'd at the TeeTimes stage through the
+    plain rotating proxy while the exact flow returned 200 from a real
+    residential browser: cps.golf's Cloudflare binds its clearance cookie to
+    the IP, and a rotating proxy that egresses page.goto on one IP and the
+    TeeTimes fetch on another invalidates the cookie -> 403. A per-course sticky
+    session pins the IP within the flow; a FRESH session per attempt also hands
+    each retry a new IP, which dodges an individually-flagged address. Format
+    per DataImpulse docs: `login__cr.us;sessid.<id>` (docs.dataimpulse.com/
+    proxies/parameters/session-id). If the operator already pinned a sessid in
+    the secret we leave it alone.
     """
     kwargs = {"args": ["--no-sandbox"]}
     url = os.environ.get("TEEITUP_PROXY", "").strip()
@@ -129,11 +143,15 @@ def _proxy_launch_kwargs() -> dict:
         server = f"{pu.scheme}://{pu.hostname}" + (f":{pu.port}" if pu.port else "")
         proxy = {"server": server}
         if pu.username:
-            proxy["username"] = urllib.parse.unquote(pu.username)
+            user = urllib.parse.unquote(pu.username)
+            if session and "sessid." not in user:
+                user = f"{user};sessid.{session}"
+            proxy["username"] = user
         if pu.password:
             proxy["password"] = urllib.parse.unquote(pu.password)
         kwargs["proxy"] = proxy
-        log.info("cps: routing Chromium through proxy %s", server)
+        log.info("cps: routing Chromium through proxy %s (sticky=%s)",
+                 server, session or "off")
     return kwargs
 
 
@@ -156,7 +174,8 @@ def run(date: dt.date, registry_path: str, out_path: str,
     # data-center IP (measured 2026-08-04: indian-tree 0/17, indian-peaks 1/3,
     # emerald-greens 0 from the runner while all full from a residential browser).
     # Same TEEITUP_PROXY secret as browser_teeitup; unset = direct (unchanged).
-    _proxy = _proxy_launch_kwargs()
+    # The launch kwargs are (re)built per attempt below with a per-course sticky
+    # session id — see _proxy_launch_kwargs — so each flow keeps ONE IP.
 
     tee_times, errors = [], []
     with sync_playwright() as pw:
@@ -174,7 +193,11 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 # reliably than a reused page with a short settle (2/16 -> 13/13
                 # tenants in testing). This is the same legit managed-challenge
                 # auto-clear used for EZLinks — no stealth, no challenge-solving.
-                browser = pw.chromium.launch(**_proxy)
+                # Sticky proxy session per course+attempt: one IP for this whole
+                # token->register->TeeTimes flow (keeps Cloudflare's IP-bound
+                # clearance cookie valid), a fresh IP on each retry.
+                sid = f"{c['slug']}-{attempt}"
+                browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
                 try:
                     page = browser.new_page(user_agent=USER_AGENT)
                     page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
@@ -189,7 +212,10 @@ def run(date: dt.date, registry_path: str, out_path: str,
                         log.info("  %-34s %d times", c["slug"], len(tts))
                         got = True
                 except Exception as e:  # noqa: BLE001
-                    last = f"{type(e).__name__}"
+                    # Include the message, not just the type: ocean-city's two
+                    # tenants fail with a bare "AttributeError" whose cause the
+                    # type name alone hides. Truncated so the log stays readable.
+                    last = f"{type(e).__name__}: {e}"[:120]
                 finally:
                     browser.close()
                 if got:
