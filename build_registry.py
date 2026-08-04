@@ -90,6 +90,16 @@ EXTRA_IDS = {
                                   "config_ids": [0, 1, 2]},
     # city-park stays 3660/4711 (correct as extracted)
 
+    # Heather Gardens (HOA course, Aurora CO): its window.courses TOP-LEVEL id
+    # (148) is an EMPTY placeholder sheet, so the adapter's default discovery
+    # returned 0 on every date. The real public tee sheet lives under
+    # teetimes-day course 131 (verified live 2026-08-04 from heathergardens.
+    # teesnap.net: 78 Wed slots at $42/$32). teetimes-day resolves course ids
+    # globally, so pinning 131 for this tenant is valid even though 131 is not in
+    # heathergardens' own window.courses; the teesnap adapter now trusts explicit
+    # pins (no other teesnap row is pinned, so this changes nothing else).
+    "heather gardens golf course": {"teesnap_course_ids": [131]},
+
     # Total-e-Integrated: one DNN tee sheet per tenant lists every course
     # interleaved, each row labelled with its course. `tenant` is the
     # *.totaleintegrated.com subdomain; `label` is the exact course name the
@@ -234,11 +244,6 @@ EXTRA_IDS = {
     "omni interlocken resort golf club": {"alias": "interlocken-golf-club-ohr"},
     "pole creek golf club":              {"alias": "pole-creek-golf-club"},
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
-    # Riverdale runs two 18s (Dunes + Knolls) on one kenna alias. Pinning each
-    # facility_id splits them into two courses instead of one merged sheet —
-    # facilities read live 2026-08-04 from /alias/riverdale/facilities.
-    "riverdale dunes golf course":  {"alias": "riverdale", "facility_id": "1016"},
-    "riverdale knolls golf course": {"alias": "riverdale", "facility_id": "1017"},
     # Rollingstone's entry ({"alias": "rollingstone-ranch"}) is gone on
     # purpose: the alias was confirmed real and confirmed EMPTY on every date
     # (registry note, 2026-07-26) — Troon does not publish that sheet
