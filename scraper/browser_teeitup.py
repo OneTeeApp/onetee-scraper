@@ -18,11 +18,13 @@ phoenix-golf-courses` returns that alias's 7 facilities), so ONE page load serve
 the whole fleet cross-alias. Requests are paced to stay under kenna's burst
 limit.
 
-Whether a browser on a *data-center* Actions runner is enough to clear the
-throttle (vs. needing a genuinely residential IP) is the open question this
-fetcher is built to answer in production: if it still comes back empty for the
-far band, the same code runs unchanged behind a residential proxy (set HTTPS_PROXY
-for the Chromium launch) — that is the only remaining lever.
+ANSWERED 2026-08-04: a data-center Actions runner is NOT enough. kenna now
+blocks the runner's Chromium at the network/CORS layer ("Failed to fetch" on
+~87 courses a pass) and 429s the plain client, while the identical calls succeed
+from a residential browser. The remaining lever is a residential proxy: set the
+`TEEITUP_PROXY` env var (a full URL, optionally with credentials) and run()
+passes it to chromium.launch(proxy=...) below. Chromium ignores HTTPS_PROXY on
+its own, so it MUST go through launch(proxy=), which is what the code now does.
 
 OWNERSHIP. This owns the FAR window for teeitup. The plain far tier
 (scrape-far.yml) excludes `teeitup`, so the two never write the same
@@ -42,9 +44,11 @@ import argparse
 import datetime as dt
 import json
 import logging
+import os
 import pathlib
 import sys
 import time
+import urllib.parse
 
 from .adapters.base import USER_AGENT
 from .adapters.teeitup import TeeItUpAdapter, API_BASE
@@ -137,7 +141,29 @@ def run(date: dt.date, registry_path: str, out_path: str,
     served = throttled = 0
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=["--no-sandbox"])
+        # Residential proxy (the only lever left once kenna blocks the
+        # data-center IP — measured 2026-08-04: kenna refuses the runner's
+        # Chromium fetches with a network/CORS "Failed to fetch" on ~87 courses
+        # a pass, and 429s the plain client, while the same calls succeed from a
+        # residential browser). Playwright's Chromium does NOT honour the
+        # HTTPS_PROXY env var on its own — it must be passed to launch(proxy=).
+        # TEEITUP_PROXY is a full URL, optionally with credentials, e.g.
+        # http://user:pass@host:port ; unset = direct connection (unchanged).
+        launch_kwargs = {"args": ["--no-sandbox"]}
+        _proxy_url = os.environ.get("TEEITUP_PROXY", "").strip()
+        if _proxy_url:
+            _pu = urllib.parse.urlparse(_proxy_url)
+            _server = f"{_pu.scheme}://{_pu.hostname}"
+            if _pu.port:
+                _server += f":{_pu.port}"
+            _proxy = {"server": _server}
+            if _pu.username:
+                _proxy["username"] = urllib.parse.unquote(_pu.username)
+            if _pu.password:
+                _proxy["password"] = urllib.parse.unquote(_pu.password)
+            launch_kwargs["proxy"] = _proxy
+            log.info("teeitup: routing Chromium through proxy %s", _server)
+        browser = pw.chromium.launch(**launch_kwargs)
         page = browser.new_page(user_agent=USER_AGENT)
         origin = _load_origin(page, courses)
         if not origin:
