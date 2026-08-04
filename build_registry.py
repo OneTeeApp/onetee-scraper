@@ -234,6 +234,11 @@ EXTRA_IDS = {
     "omni interlocken resort golf club": {"alias": "interlocken-golf-club-ohr"},
     "pole creek golf club":              {"alias": "pole-creek-golf-club"},
     "raindance national resort & golf":  {"alias": "raindance-national-resort-golf"},
+    # Riverdale runs two 18s (Dunes + Knolls) on one kenna alias. Pinning each
+    # facility_id splits them into two courses instead of one merged sheet —
+    # facilities read live 2026-08-04 from /alias/riverdale/facilities.
+    "riverdale dunes golf course":  {"alias": "riverdale", "facility_id": "1016"},
+    "riverdale knolls golf course": {"alias": "riverdale", "facility_id": "1017"},
     # Rollingstone's entry ({"alias": "rollingstone-ranch"}) is gone on
     # purpose: the alias was confirmed real and confirmed EMPTY on every date
     # (registry note, 2026-07-26) — Troon does not publish that sheet
