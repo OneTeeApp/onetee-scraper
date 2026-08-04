@@ -93,6 +93,12 @@ async ([tenant, wid, cids, date]) => {
 
 
 def _teetimes(course: dict, slots: list[dict]) -> list:
+    # cps.golf occasionally returns `content` items that are strings (an error or
+    # notice payload) instead of slot dicts; s.get() then raised "AttributeError:
+    # 'str' object has no attribute 'get'" and errored the WHOLE tenant for that
+    # date (indian-peaks 2026-08-06, both ocean-city tenants earlier). Keep only
+    # real dict slots so any valid rows still publish instead of losing the venue.
+    slots = [s for s in slots if isinstance(s, dict)]
     # Label per sub-course when one tenant query spans several (Fossil Trace's
     # 3 nines, GVR's sheets) so same-time slots don't collapse in D1.
     names = {s.get("courseName") for s in slots if s.get("courseName")}
