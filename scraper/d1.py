@@ -438,6 +438,17 @@ def prune_past(db, dry_run: bool = False) -> dict:
         per_tz["(no state)"] = n
         total += n
 
+    # Housekeeping: drop freshness rows for dates that are wholly in the past
+    # (UTC is safe — a date is past for every US tz once it is past in UTC minus
+    # a day of slack). Keeps the ledger to ~courses×31, self-limiting.
+    if not dry_run:
+        try:
+            cutoff = (dt.datetime.now(dt.timezone.utc).date()
+                      - dt.timedelta(days=1)).isoformat()
+            db.execute("DELETE FROM sheet_freshness WHERE date < ?", [cutoff])
+        except Exception:  # noqa: BLE001 — table may not exist on a legacy DB
+            pass
+
     return {"deactivated": total, "by_tz": per_tz, "dry_run": dry_run}
 
 
@@ -548,6 +559,25 @@ def sync(db, doc: dict) -> dict:
         db.execute("UPDATE tee_times SET active=0, last_seen_at=? "
                    "WHERE course_slug=? AND teetime=? AND course_label=?",
                    [now, slug, teetime, label])
+
+    # Freshness ledger: stamp every course we CONFIRMED for this date — those
+    # that returned rows plus those that returned a trustworthy clean empty
+    # (`scraped_courses` already = keyed rows ∪ courses_empty, and both exclude
+    # errored/label-errored courses). A course that errored is deliberately NOT
+    # stamped, so its last_ok_at goes stale and the read API stops showing its
+    # (shielded, still-active) rows until a scrape confirms them again. This is
+    # what turns a stalled scraper into "no slots" instead of "phantom slots".
+    # Batched: 3 cols, ≤30 rows/statement stays under D1's 100-param cap.
+    confirmed = sorted(c for c in scraped_courses if c not in errored)
+    for i in range(0, len(confirmed), 30):
+        batch = confirmed[i:i + 30]
+        values = ",".join("(?,?,?)" for _ in batch)
+        params = [p for c in batch for p in (c, date, now)]
+        db.execute(
+            f"INSERT INTO sheet_freshness (course_slug, date, last_ok_at) "
+            f"VALUES {values} "
+            f"ON CONFLICT(course_slug, date) DO UPDATE SET "
+            f"last_ok_at=excluded.last_ok_at", params)
 
     stats = {"rows_inserted": len(to_insert), "rows_updated": len(to_update),
              "rows_deactivated": len(to_deactivate)}
