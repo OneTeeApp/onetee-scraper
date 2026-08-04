@@ -181,16 +181,22 @@ class TeesnapAdapter(Adapter):
                  for c in discovered}
 
         if pinned:
-            # A pinned id still has to belong to this tenant. Because the id
-            # space is global, a stale or mistyped pin does not 404 — it
-            # quietly serves another club's sheet under this course's name.
+            # An explicit pin is TRUSTED, even if the id is not in this tenant's
+            # window.courses. window.courses lists only the top-level sheets, but
+            # some tenants (heathergardens) expose their real bookable sheet only
+            # under a property/teetimes id (131) that never appears there — its
+            # top-level id (148) is an empty placeholder. teetimes-day resolves
+            # ids globally, so a deliberately-pinned, verified id is valid. The
+            # global id space still means a WRONG pin serves another club's
+            # sheet, so we warn on any pinned id not in window.courses — but we
+            # use it, because the operator pinned it on purpose after verifying.
             owned = {c["id"] for c in discovered}
-            course_ids = [int(i) for i in pinned if int(i) in owned]
-            foreign = [int(i) for i in pinned if int(i) not in owned]
+            course_ids = [int(i) for i in pinned]
+            foreign = [i for i in course_ids if i not in owned]
             if foreign:
-                print(f"    {course['slug']}: ignoring pinned Teesnap id(s) "
-                      f"{foreign} — not in {sub}'s own window.courses "
-                      f"(ids are global; see adapters/teesnap.py)")
+                print(f"    {course['slug']}: pinned Teesnap id(s) {foreign} not "
+                      f"in {sub}'s window.courses — using anyway (explicit pin; "
+                      f"teetimes-day ids are global, see adapters/teesnap.py)")
         else:
             course_ids = [c["id"] for c in discovered]
 
