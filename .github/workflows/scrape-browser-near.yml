@@ -1,0 +1,137 @@
+name: Scrape browser platforms near (days 0-2, self-chaining loop)
+
+# WHY (2026-08-04). The near window (days 0-2) for the headless-browser
+# platforms was being HIDDEN, not missing. Each of these platforms — ezlinks,
+# clubcaddie, cps (ClubProphet), golfnow, supersaas, golfwithaccess — is
+# excluded from the fast plain near tier (scrape-near.yml) and scraped only by
+# its own hourly + shuffled browser job. The read-path freshness guard hides
+# near-date (0-2) slots whose sheet_freshness stamp is older than 90 min; the
+# hourly browser cadence + GitHub cron flakiness + the date shuffle routinely
+# let near dates age past 90 min, so validly-scraped Wednesday/near availability
+# vanished from the site. Measured on CO for 2026-08-05: ~39 online-bookable
+# courses (ezlinks ~14, clubcaddie ~11, golfnow/cps/etc.) showed "not available"
+# while their next-day sheets were still in D1, just stale-stamped. aurora-hills
+# +2 showed (scraped ~1h earlier) while +1 was hidden — same course, same run.
+#
+# FIX. A self-chaining loop (same pattern as scrape-near.yml and the teeitup
+# near loop) that re-scrapes ONLY days 0-2 for every browser platform, in
+# parallel matrix jobs, fast enough to keep each near date's freshness stamp
+# under 90 min. A 3-day pass per platform runs in well under 90 min (the hourly
+# jobs do 7 days), and reliability comes from SELF-CHAINING (the ezlinks job
+# dispatches the successor), not GitHub cron. The existing per-platform browser
+# jobs keep owning the wider horizon (days 3-30); their harmless overlap on
+# 0-2 is idempotent in D1 (push reconciles per course_slug+date).
+
+on:
+  schedule:
+    - cron: "13 * * * *"        # crash backstop; self-chain is primary
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scraper/browser_ezlinks.py"
+      - "scraper/browser_clubcaddie.py"
+      - "scraper/browser_cps.py"
+      - "scraper/browser_golfnow.py"
+      - "scraper/browser_supersaas.py"
+      - "scraper/browser_golfwithaccess.py"
+      - ".github/workflows/scrape-browser-near.yml"
+
+permissions:
+  contents: read
+  actions: write             # the ezlinks job chains the next run
+
+concurrency:
+  group: scrape-browser-near
+  cancel-in-progress: false     # queued successor waits; never kill the loop
+
+env:
+  INTERVAL_SECONDS: 300         # min seconds per pass; a browser pass usually
+                                # exceeds this, so passes run back-to-back
+  LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 335
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ezlinks, clubcaddie, cps, golfnow, supersaas, golfwithaccess]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium (once per run)
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Loop ${{ matrix.platform }} over days 0-2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          PLAT="${{ matrix.platform }}"
+          START=$(date +%s)
+          PASS=0
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED_MIN=$(( (NOW - START) / 60 ))
+            if [ "$ELAPSED_MIN" -ge "$LOOP_MINUTES" ]; then
+              echo "loop budget spent after $PASS passes"; break
+            fi
+            PASS=$((PASS + 1))
+            T0=$(date +%s)
+            mkdir -p output
+            # Days 0-2 only; dates from scraper.dates (union of local todays).
+            DATES=$(python -m scraper.dates --registry registry.json --days 3)
+            case "$PLAT" in
+              clubcaddie)
+                # clubcaddie takes a RANGE in one widget-load-per-course call and
+                # writes output/cc_<date>.json per date.
+                D0=$(echo "$DATES" | head -1)
+                echo "::group::clubcaddie near pass ${PASS}"
+                python -m scraper.browser_clubcaddie --date "$D0" --days 3 --out-dir output || true
+                for DATE in $DATES; do
+                  python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
+                done
+                echo "::endgroup::"
+                ;;
+              *)
+                case "$PLAT" in
+                  ezlinks)         MOD=browser_ezlinks;        PFX=ez  ;;
+                  cps)             MOD=browser_cps;            PFX=cps ;;
+                  golfnow)         MOD=browser_golfnow;        PFX=gn  ;;
+                  supersaas)       MOD=browser_supersaas;      PFX=ss  ;;
+                  golfwithaccess)  MOD=browser_golfwithaccess; PFX=gwa ;;
+                esac
+                for DATE in $DATES; do
+                  OUT="output/${PFX}_${DATE}.json"
+                  echo "::group::${PLAT} near pass ${PASS} ${DATE}"
+                  python -m scraper."$MOD" --date "${DATE}" --out "${OUT}" || true
+                  python -m scraper.d1 push --data "${OUT}" || true
+                  echo "::endgroup::"
+                done
+                ;;
+            esac
+            T1=$(date +%s)
+            TOOK=$((T1 - T0))
+            SLEEP=$((INTERVAL_SECONDS - TOOK))
+            if [ "$SLEEP" -gt 0 ]; then
+              echo "pass ${PASS} took ${TOOK}s; sleeping ${SLEEP}s"
+              sleep "$SLEEP"
+            else
+              echo "pass ${PASS} took ${TOOK}s (over interval; no sleep)"
+            fi
+          done
+
+      - name: Chain the next loop run (ezlinks job only)
+        if: always() && matrix.platform == 'ezlinks'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run scrape-browser-near.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
