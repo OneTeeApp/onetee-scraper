@@ -73,6 +73,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          # Residential proxy for the cps matrix job (cps.golf challenges the
+          # data-center IP). Only browser_cps reads it; the other platforms
+          # ignore it. Unset = direct (unchanged).
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
         run: |
           PLAT="${{ matrix.platform }}"
           START=$(date +%s)

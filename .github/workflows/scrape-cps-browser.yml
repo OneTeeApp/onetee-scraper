@@ -49,6 +49,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          # Residential proxy so cps.golf's Cloudflare challenge clears from the
+          # data-center IP. Unset = direct (unchanged); browser_cps reads it.
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
         run: |
           # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
           # manual deep dispatch stretch to the full 30-day horizon. Browser
