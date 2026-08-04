@@ -81,9 +81,13 @@ jobs:
           # the real local today and left its evening slots stale in D1.
           # Scheduled runs cover days 3-7 (the near loop owns 0-2); a push that
           # changed the registry/scraper refreshes days 0-7 immediately.
-          # teeitup is EXCLUDED here (see --exclude below): kenna throttles the
-          # data-center plain scraper from day 3 out, so scrape-teeitup-browser.yml
-          # owns teeitup for days 3-30. The near tier still scrapes teeitup 0-2.
+          # teeitup is INCLUDED here again (2026-08-04). The "kenna throttles
+          # the data-center plain scraper from day 3 out" claim that once moved
+          # teeitup to a browser job was disproven by probe-kenna-impersonate:
+          # plain requests == curl_cffi, byte-for-byte, at every horizon. So the
+          # windowed plain mid tier owns teeitup days 3-7 like any other
+          # platform; scrape-teeitup-browser.yml is retired. The near loop
+          # (scrape-teeitup-browser-near.yml, also plain HTTP now) owns 0-2.
           START=3; DAYS=5
           if [ "${{ github.event_name }}" = "push" ]; then START=0; DAYS=8; fi
           mkdir -p output
@@ -104,7 +108,7 @@ jobs:
             OK=yes
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/4" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,totale \
               --out "${OUT}" || OK=no
             python -m scraper.d1 push --data "${OUT}" || OK=no
             [ "$OK" = "yes" ] && echo "${DATE}" >> output/.dates_done
