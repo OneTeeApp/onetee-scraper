@@ -47,6 +47,7 @@ import logging
 import os
 import pathlib
 import random
+import re
 import sys
 import threading
 import time
@@ -146,6 +147,12 @@ def _plain_proxies() -> dict | None:
     raw = os.environ.get("TEEITUP_PROXY", "").strip()
     if not raw:
         return None
+    # A secret pasted with a stray space or newline ANYWHERE in the URL (not
+    # just the ends, which .strip() handles) makes requests raise
+    # InvalidURL("URL can't contain control characters") and every fetch fails
+    # as a connection error — observed 2026-08-05 on the first Webshare secret.
+    # Proxy URLs never legitimately contain whitespace, so remove all of it.
+    raw = re.sub(r"\s+", "", raw)
     return {"http": raw, "https": raw}
 
 
