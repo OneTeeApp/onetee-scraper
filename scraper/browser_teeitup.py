@@ -199,6 +199,16 @@ def _run_plain(date: dt.date, courses: list, out_path: str) -> dict:
     """
     import concurrent.futures
 
+    # Shuffle the course order every run. kenna rate-limits per IP: at gentle
+    # pace one IP serves ~the first N courses of a pass and 429s the rest. If the
+    # order were fixed, the SAME tail courses would 429 on every pass and never
+    # fill in — a permanent gap. A fresh shuffle per process rotates which half
+    # lands, so the union across the loop's many passes covers the whole shard.
+    # (Only matters for the no-proxy/plain path; harmless otherwise.) Copy first
+    # so we never mutate the caller's/registry list order.
+    courses = list(courses)
+    random.shuffle(courses)
+
     proxies = _plain_proxies()
     try:
         conc = max(1, int(os.environ.get("TEEITUP_PLAIN_CONCURRENCY", "6")))
