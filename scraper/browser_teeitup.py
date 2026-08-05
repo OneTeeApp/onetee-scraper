@@ -46,11 +46,13 @@ import json
 import logging
 import os
 import pathlib
+import random
 import sys
+import threading
 import time
 import urllib.parse
 
-from .adapters.base import USER_AGENT
+from .adapters.base import USER_AGENT, TIMEOUT, make_session
 from .adapters.teeitup import TeeItUpAdapter, API_BASE
 from .aggregate import load_registry
 from .sharding import apply_shard, set_env_shard_count
@@ -99,6 +101,220 @@ async ([apiBase, alias, facilityIds, date]) => {
 _GAP_MS = 350
 
 
+# ===========================================================================
+# PLAIN-HTTP-THROUGH-PROXY transport (opt-in, default OFF).
+#
+# WHY (2026-08-05). The two earlier plain-HTTP attempts hit kenna from the
+# data-center runner IP and tripped its per-host burst 429 wall, so teeitup
+# stayed on the browser transport. The one lever those attempts never pulled is
+# the residential proxy: the browser transport already routes through
+# TEEITUP_PROXY and kenna does not block it. If kenna's throttle is keyed on the
+# CLIENT IP (not globally on its own host), then firing plain `requests` GETs
+# through the SAME rotating residential proxy — a fresh exit IP per connection —
+# spreads the fleet across many IPs and dodges the per-IP burst limit, at ~10x
+# the speed of Chromium (no browser install, no page.goto, no per-fetch page
+# overhead). That is the hypothesis this path tests.
+#
+# REVERSIBILITY. This whole path is gated behind TEEITUP_PLAIN_HTTP. Unset (the
+# default) → run() takes the untouched browser path exactly as before. Set it
+# (e.g. add `TEEITUP_PLAIN_HTTP: "1"` to a workflow's env) → run() uses this
+# transport instead, same entry point, same output doc, same _parse. To revert:
+# remove that one env line (or unset the var). No other code changes.
+#
+# It reuses TeeItUpAdapter._parse verbatim (same ownership/timezone/label logic
+# the browser path uses) and primes _FACILITIES[alias] before every _parse, so
+# _parse never makes a network call of its own — every kenna request goes
+# through the proxied session below, never the adapter's direct session.
+# ===========================================================================
+_PLAIN_OFF = {"", "0", "off", "false", "no"}
+
+
+def _plain_http_enabled() -> bool:
+    return os.environ.get("TEEITUP_PLAIN_HTTP", "").strip().lower() not in _PLAIN_OFF
+
+
+def _plain_proxies() -> dict | None:
+    """requests `proxies` dict from TEEITUP_PROXY, or None for a direct connect.
+
+    The base (un-pinned) DataImpulse username rotates the exit IP per new
+    connection, which is exactly what we want here: it scatters the fleet's
+    kenna calls across many residential IPs so no single IP trips the burst
+    limit. (The browser transport pins a sticky session per course to hold a
+    Cloudflare clearance cookie; kenna needs no such affinity — it is a bare
+    JSON API keyed only on the x-be-alias header — so rotation is a feature.)
+    """
+    raw = os.environ.get("TEEITUP_PROXY", "").strip()
+    if not raw:
+        return None
+    return {"http": raw, "https": raw}
+
+
+def _http_facilities(session, alias: str) -> dict:
+    """Plain-HTTP twin of FAC_JS — identical return shape so the loop below
+    handles browser and plain results with one code path."""
+    try:
+        r = session.get(f"{API_BASE}/alias/{alias}/facilities",
+                        headers={"x-be-alias": alias}, timeout=TIMEOUT)
+        if r.status_code != 200:
+            return {"status": r.status_code, "facilities": []}
+        j = r.json()
+        lst = j if isinstance(j, list) else (j.get("courses") or [])
+        return {"status": 200, "facilities": lst}
+    except Exception as e:  # noqa: BLE001 — mirror the JS catch
+        return {"status": -1, "error": str(e)[:120], "facilities": []}
+
+
+def _http_teetimes(session, alias: str, facility_ids: str, date_iso: str) -> dict:
+    """Plain-HTTP twin of TT_JS — identical return shape.
+
+    Reads the body as text first and only then parses, so a non-JSON throttle
+    page (kenna serves those on a 200) is reported as parse_failed rather than
+    silently collapsing to '0 slots' and deactivating real rows — the exact
+    trap the browser path documents.
+    """
+    try:
+        url = f"{API_BASE}/v2/tee-times?date={date_iso}"
+        if facility_ids:
+            url += "&facilityIds=" + urllib.parse.quote(str(facility_ids))
+        r = session.get(url, headers={"x-be-alias": alias}, timeout=TIMEOUT)
+        text = r.text
+        try:
+            j = json.loads(text)
+        except Exception:  # noqa: BLE001 — throttle interstitial on a 200
+            return {"status": r.status_code, "parse_failed": True,
+                    "bytes": len(text)}
+        blocks = j if isinstance(j, list) else [j]
+        n = sum(len((b or {}).get("teetimes") or []) for b in blocks)
+        return {"status": r.status_code, "blocks": blocks, "slots": n}
+    except Exception as e:  # noqa: BLE001
+        return {"status": -1, "error": str(e)[:120]}
+
+
+def _run_plain(date: dt.date, courses: list, out_path: str) -> dict:
+    """Fetch teeitup over plain HTTP through the residential proxy, concurrently.
+
+    Structurally a mirror of the browser loop below (same facilities-cache
+    rules, same _parse, same doc), with `page.evaluate` swapped for a proxied
+    `requests` GET and the single browser page swapped for a small thread pool.
+    """
+    import concurrent.futures
+
+    proxies = _plain_proxies()
+    try:
+        conc = max(1, int(os.environ.get("TEEITUP_PLAIN_CONCURRENCY", "6")))
+    except ValueError:
+        conc = 6
+    # A small per-request jitter so `conc` threads don't fire in lockstep and
+    # micro-burst kenna; tune with TEEITUP_PLAIN_GAP_MS (per-request, per-thread).
+    try:
+        gap_ms = max(0, int(os.environ.get("TEEITUP_PLAIN_GAP_MS", "0")))
+    except ValueError:
+        gap_ms = 0
+
+    log.info("teeitup plain-HTTP: %d courses for %s, conc=%d, proxy=%s",
+             len(courses), date, conc, "on" if proxies else "DIRECT")
+
+    adapter = TeeItUpAdapter()
+    fac_cache: dict[str, list] = {}
+    fac_lock = threading.Lock()
+    tl = threading.local()
+
+    def _session():
+        s = getattr(tl, "s", None)
+        if s is None:
+            s = make_session()
+            if proxies:
+                s.proxies.update(proxies)
+            tl.s = s
+        return s
+
+    def _one(c: dict) -> dict:
+        """-> {'tts': [...], 'error': {...}|None, 'throttled': bool, 'slug', 'slots'}"""
+        alias = c["ids"]["alias"]
+        fid = c["ids"].get("facility_id")
+        s = _session()
+        if gap_ms:
+            time.sleep(random.uniform(0, gap_ms / 1000.0))
+
+        # facilities: once per alias per run, cache SUCCESSES only (a failed
+        # call cached as [] would pin "no facilities" on the alias — no labels,
+        # state-tz fallback — for the whole run; same rule as the browser path).
+        with fac_lock:
+            known = alias in fac_cache
+        if not known:
+            fr = _http_facilities(s, alias)
+            got = fr.get("facilities") or []
+            if got or fr.get("status") == 200:
+                with fac_lock:
+                    fac_cache[alias] = got
+            else:
+                log.info("  %-40s facilities fetch failed (%s), not cached",
+                         c["slug"], fr.get("status"))
+        with fac_lock:
+            facilities = fac_cache.get(alias, [])
+
+        tr = _http_teetimes(s, alias, str(fid) if fid else "", date.isoformat())
+        status = tr.get("status")
+        if status != 200 or tr.get("parse_failed"):
+            note = ("throttle/parse" if tr.get("parse_failed")
+                    else f"status {status}" + (
+                        f" {tr.get('error')}" if tr.get("error") else ""))
+            log.info("  %-40s ERROR %s", c["slug"], note)
+            return {"tts": [], "throttled": True, "slug": c["slug"],
+                    "error": {"course": c["slug"], "platform": "teeitup",
+                              "error": f"plain {note}"}}
+
+        # Prime _FACILITIES (even empty) so _parse resolves fully offline and
+        # never falls back to the adapter's own (un-proxied) kenna session.
+        adapter._FACILITIES[alias] = facilities
+        try:
+            tts = adapter._parse(c, tr.get("blocks") or [])
+        except Exception as e:  # noqa: BLE001 — one course's parse fault
+            log.info("  %-40s PARSE-ERR %s", c["slug"], type(e).__name__)
+            return {"tts": [], "throttled": False, "slug": c["slug"],
+                    "error": {"course": c["slug"], "platform": "teeitup",
+                              "error": f"parse {type(e).__name__}: {e}"}}
+        log.info("  %-40s %d times (kenna %d slots)",
+                 c["slug"], len(tts), tr.get("slots", 0))
+        return {"tts": tts, "throttled": False, "slug": c["slug"],
+                "slots": tr.get("slots", 0), "error": None}
+
+    tee_times, errors = [], []
+    served = throttled = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=conc) as ex:
+        for res in ex.map(_one, courses):
+            if res.get("error"):
+                errors.append(res["error"])
+                if res.get("throttled"):
+                    throttled += 1
+            else:
+                tee_times.extend(res["tts"])
+                served += 1
+
+    log.info("teeitup plain-HTTP %s: served=%d throttled=%d of %d",
+             date, served, throttled, len(courses))
+    return _finish(date, len(courses), served, tee_times, errors, out_path)
+
+
+def _finish(date: dt.date, queried: int, served: int,
+            tee_times: list, errors: list, out_path: str) -> dict:
+    """Shared epilogue: assemble the doc, write it, return it (browser + plain
+    produce byte-identical shapes)."""
+    doc = {
+        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "date": date.isoformat(),
+        "courses_queried": queried,
+        "courses_ok": served,
+        "tee_times": [t.to_dict() for t in tee_times],
+        "errors": errors,
+    }
+    out = pathlib.Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(doc, indent=2))
+    log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
+    return doc
+
+
 def _load_origin(page, courses) -> str | None:
     """Open a live teeitup booking page to get a CORS-legitimate origin.
 
@@ -122,8 +338,9 @@ def _load_origin(page, courses) -> str | None:
 def run(date: dt.date, registry_path: str, out_path: str,
         shard: str | None = None, limit: int | None = None,
         only: set[str] | None = None) -> dict:
-    from playwright.sync_api import sync_playwright
-
+    """Entry point for both transports. Selects the teeitup course slice, then
+    dispatches to the plain-HTTP path when TEEITUP_PLAIN_HTTP is set, else the
+    (default, unchanged) headless-browser path."""
     registry = load_registry(registry_path)
     set_env_shard_count(shard)
     courses = [c for c in registry
@@ -133,6 +350,15 @@ def run(date: dt.date, registry_path: str, out_path: str,
     courses = apply_shard(courses, shard)
     if limit:
         courses = courses[:limit]
+
+    if _plain_http_enabled():
+        return _run_plain(date, courses, out_path)
+    return _run_browser(date, courses, out_path)
+
+
+def _run_browser(date: dt.date, courses: list, out_path: str) -> dict:
+    from playwright.sync_api import sync_playwright
+
     log.info("browser-fetching %d teeitup courses for %s", len(courses), date)
 
     adapter = TeeItUpAdapter()          # class caches are shared across courses
@@ -226,19 +452,7 @@ def run(date: dt.date, registry_path: str, out_path: str,
 
     log.info("teeitup browser %s: served=%d throttled=%d of %d",
              date, served, throttled, len(courses))
-    doc = {
-        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "date": date.isoformat(),
-        "courses_queried": len(courses),
-        "courses_ok": served,
-        "tee_times": [t.to_dict() for t in tee_times],
-        "errors": errors,
-    }
-    out = pathlib.Path(out_path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, indent=2))
-    log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
-    return doc
+    return _finish(date, len(courses), served, tee_times, errors, out_path)
 
 
 def main(argv: list[str] | None = None) -> int:
