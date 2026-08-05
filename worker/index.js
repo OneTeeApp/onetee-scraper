@@ -148,7 +148,8 @@ const displayName = (name, label) => {
 // Grace is date-aware, matched to how often each horizon is ACTUALLY
 // re-confirmed (grace must be >= the slowest healthy re-scrape interval for the
 // tier, or the guard hides real slots):
-//   days 0-2  (near tier, ~5-min plain + hourly browser): 90 min
+//   day 0     (today): 3 h   (see the 2026-08-04 part-2 note below)
+//   days 1-2  (near tier): 6 h
 //   days 3-7  (mid tier): 18 h
 //   days 8-30 (far tier, residential browser refreshes DAILY): 30 h
 // Missing freshness row = never scraped since this shipped = shown (cold-start
@@ -167,9 +168,23 @@ const displayName = (name, label) => {
 // 18 h covers the real cadence while still hiding a scraper that has been dead
 // most of a day; 3-7-day-out availability is stable enough that 18-h-old data
 // is safe to show.
-const FRESH_TIGHT_DAYS = 2, FRESH_TIGHT_MIN = 90;
-const FRESH_MID_DAYS = 7,   FRESH_MID_MIN = 18 * 60;
-const FRESH_FAR_MIN = 30 * 60;
+// 2026-08-04 (part 2): the near tier was ALSO too tight. The same browser
+// scrapers own days 0-2 (cps now ~39 tenants + Home/Configuration fetch,
+// teeitup its own near loop, ezlinks/clubcaddie/golfnow/...): one self-chaining
+// pass over days 0-2 takes well over the old 90-min grace, so days 1-2 for the
+// browser platforms routinely aged past 90 min and got HIDDEN — measured on CO:
+// ~25 courses (cattail-creek/flatirons/indian-peaks/indian-tree cps,
+// antler-creek/colorado-national/buffalo-run teeitup, arrowhead golfnow, ...)
+// showed on day 3 (18 h tier) but were blank on days 1-2. Split the near tier:
+//   day 0    (today): 3 h  — still tight (phantom-slot risk highest today, and
+//                            past-time pruning independently drops elapsed slots)
+//   days 1-2 (near):  6 h  — covers the real browser near-pass cadence
+// (day 0 is scraped FIRST each unshuffled pass so it's the freshest of the three,
+//  which is why 3 h is enough there while days 1-2 need 6 h.)
+const FRESH_TODAY_DAYS = 0, FRESH_TODAY_MIN = 3 * 60;   // day 0 (today)
+const FRESH_NEAR_DAYS = 2,  FRESH_NEAR_MIN = 6 * 60;     // days 1-2
+const FRESH_MID_DAYS = 7,   FRESH_MID_MIN = 18 * 60;     // days 3-7
+const FRESH_FAR_MIN = 30 * 60;                            // days 8-30
 const utc19 = (ms) => new Date(ms).toISOString().slice(0, 19);
 function freshnessFilter() {
   const now = Date.now();
@@ -180,20 +195,25 @@ function freshnessFilter() {
     b.setUTCDate(b.getUTCDate() + days);
     return b.toISOString().slice(0, 10);
   };
-  const tightBoundary = boundary(FRESH_TIGHT_DAYS);
-  const midBoundary = boundary(FRESH_MID_DAYS);
-  const tightCut = utc19(now - FRESH_TIGHT_MIN * 60000);
+  const todayBoundary = boundary(FRESH_TODAY_DAYS);   // today (day 0)
+  const nearBoundary = boundary(FRESH_NEAR_DAYS);     // today+2 (days 1-2)
+  const midBoundary = boundary(FRESH_MID_DAYS);       // today+7 (days 3-7)
+  const todayCut = utc19(now - FRESH_TODAY_MIN * 60000);
+  const nearCut = utc19(now - FRESH_NEAR_MIN * 60000);
   const midCut = utc19(now - FRESH_MID_MIN * 60000);
   const farCut = utc19(now - FRESH_FAR_MIN * 60000);
   // Hide the row iff a freshness record exists AND is stale for its date-tier.
+  // CASE WHENs are evaluated in order, so day 0 is caught before days 1-2, etc.
   const clause =
     "NOT EXISTS (SELECT 1 FROM sheet_freshness sf " +
     "WHERE sf.course_slug = tee_times.course_slug " +
     "AND sf.date = substr(tee_times.teetime,1,10) " +
     "AND substr(sf.last_ok_at,1,19) < CASE " +
     "WHEN substr(tee_times.teetime,1,10) <= ? THEN ? " +
+    "WHEN substr(tee_times.teetime,1,10) <= ? THEN ? " +
     "WHEN substr(tee_times.teetime,1,10) <= ? THEN ? ELSE ? END)";
-  return { clause, binds: [tightBoundary, tightCut, midBoundary, midCut, farCut] };
+  return { clause, binds: [todayBoundary, todayCut, nearBoundary, nearCut,
+                           midBoundary, midCut, farCut] };
 }
 let freshnessReady = false;
 async function ensureFreshnessTable(env) {
