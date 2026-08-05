@@ -1,0 +1,101 @@
+name: Probe no-proxy (datacenter rate-limit / Cloudflare test)
+
+# FREE experiment (2026-08-05): can we scrape WITHOUT the residential proxy?
+# The $5 residential proxy burns out in hours, so this measures how far a plain
+# datacenter connection gets on its own.
+#
+#  * teeitup: kenna rate-limits per IP (a single call works; the fleet from one
+#    IP 429s). This runs teeitup plain-HTTP with NO proxy, gently paced
+#    (concurrency=1, ~1.2s gap), one FAR date, across 4 shards = 4 separate
+#    runner IPs. It does NOT push to D1 — pure measurement. Reads out served vs
+#    429 vs connection-error per shard. If served >> 429, the far window is free.
+#  * cps: behind Cloudflare. This probes whether the cps JSON endpoints answer
+#    from a datacenter IP WITHOUT a challenge (200 JSON) or get blocked
+#    (403/503/challenge HTML). If they answer, cps could drop the proxy too.
+#
+# Manual only. Nothing here writes to D1 or touches production scraping.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  teeitup-noproxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]      # 4 shards = 4 distinct runner IPs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: teeitup plain-HTTP, NO proxy, gentle — one far date
+        env:
+          # TEEITUP_PROXY is deliberately UNSET → direct datacenter connection.
+          TEEITUP_PLAIN_HTTP: "1"
+          TEEITUP_PLAIN_CONCURRENCY: "1"     # single-flight per shard
+          TEEITUP_PLAIN_GAP_MS: "1200"       # ~0.6s avg jitter between courses
+        run: |
+          DATE=$(python -m scraper.dates --registry registry.json --days 15 | tail -1)
+          echo "probing FAR date ${DATE} shard ${{ matrix.shard }}/4 — NO PROXY, plain HTTP, gentle"
+          mkdir -p output
+          python -m scraper.browser_teeitup --date "${DATE}" \
+            --shard "${{ matrix.shard }}/4" --out "output/probe_${{ matrix.shard }}.json" || true
+          python - "output/probe_${{ matrix.shard }}.json" <<'PY'
+          import json, sys
+          from collections import Counter
+          d = json.load(open(sys.argv[1]))
+          errs = d.get("errors", [])
+          c = Counter()
+          for e in errs:
+              m = e.get("error", "")
+              if "429" in m: c["http_429"] += 1
+              elif "status -1" in m or "Max retries" in m: c["conn_error"] += 1
+              elif "403" in m: c["http_403"] += 1
+              elif "throttle/parse" in m: c["throttle_parse"] += 1
+              else: c["other"] += 1
+          print("PROBE_SUMMARY shard=%s queried=%d served=%d errors=%d breakdown=%s"
+                % (sys.argv[1], d.get("courses_queried", 0), d.get("courses_ok", 0),
+                   len(errs), dict(c)))
+          PY
+
+  cps-datacenter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Does cps answer from a datacenter IP without a Cloudflare challenge?
+        run: |
+          python - <<'PY'
+          import requests
+          UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+          tenants = ["cattailcreek", "fossiltrace", "indianpeaks",
+                     "emeraldgreens", "greenvalleyranch"]
+          for t in tenants:
+              url = f"https://{t}.cps.golf/onlineresweb/Home/Configuration"
+              try:
+                  r = requests.get(url, headers={"User-Agent": UA,
+                                   "Accept": "application/json"}, timeout=25)
+                  body = r.text[:400].lower()
+                  server = r.headers.get("server", "")
+                  challenged = (r.status_code in (403, 503)
+                                or "just a moment" in body
+                                or "challenge" in body
+                                or "cf-mitigated" in {k.lower() for k in r.headers})
+                  has_apikey = '"apikey"' in body
+                  print("CPS_PROBE %-16s status=%s server=%s challenged=%s apiKey=%s len=%d"
+                        % (t, r.status_code, server, challenged, has_apikey, len(r.text)))
+              except Exception as e:
+                  print("CPS_PROBE %-16s ERR %s" % (t, type(e).__name__))
+          PY
