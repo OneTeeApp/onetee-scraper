@@ -60,16 +60,15 @@ jobs:
           # Residential proxy so kenna doesn't block the data-center Chromium.
           # Unset = direct (unchanged); browser_teeitup passes it to launch(proxy=).
           TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
-          # CANARY (2026-08-05): plain-HTTP-through-proxy transport instead of
-          # headless Chromium. browser_teeitup fires kenna with plain `requests`
-          # GETs through the SAME residential proxy (rotating exit IP per
-          # connection) — ~10x faster, and the test of whether kenna's throttle
-          # is per-IP (rotation dodges it) or global-per-host (it won't). Enabled
-          # on THIS far job (days 3-30) first: if it 429-walls, those dates just
-          # go stale and self-heal — the near job (days 0-2, today) stays on the
-          # proven browser path. TO REVERT: delete this one line. TO WIDEN: add
-          # the same line to scrape-teeitup-browser-near.yml.
-          TEEITUP_PLAIN_HTTP: "1"
+          # NOTE: the plain-HTTP-through-proxy canary (TEEITUP_PLAIN_HTTP: "1")
+          # was tried here 2026-08-05 and REVERTED. Plain `requests` could not
+          # tunnel to kenna through the DataImpulse proxy — 100% ConnectionError
+          # ("Max retries exceeded ... phx-api-be-east-1b.kenna.io"), 0 rows,
+          # across all 28 far dates (run 30965931351). Chromium tunnels to the
+          # same proxy fine, so this is a plain-client/proxy transport gap, not a
+          # kenna throttle. The `_run_plain` path stays in browser_teeitup.py
+          # (inert with the toggle off) for a future, properly-debugged attempt
+          # — see claude/teeitup-plain-http-canary.md.
         run: |
           # Shuffle the date order: spreads which dates a short/interrupted run
           # covers so the union fills the 3-30 window over a few sweeps.
