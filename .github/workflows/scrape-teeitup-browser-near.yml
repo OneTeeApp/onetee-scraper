@@ -1,27 +1,26 @@
-name: Scrape TeeItUp near (days 0-2, self-chaining loop, browser transport)
+name: Scrape TeeItUp near (days 0-2, self-chaining loop, plain HTTP no proxy)
 
-# TRANSPORT DECISION (2026-08-04, after two plain-HTTP attempts).
-# probe-kenna-impersonate proved kenna has no per-CALL TLS-fingerprint throttle
-# (plain == curl_cffi for a few courses). BUT at full-fleet scale (365 teeitup
-# courses x 3 near dates) the data-center plain client trips kenna's per-host
-# BURST/RATE limit and gets a sustained wall of HTTP 429s. Gentling the pacing
-# (single-flight, 1.2s*shards gap) reduced but did NOT clear it: raccoon-creek's
-# single 2026-08-05 10:37 slot kept getting 429'd on its own date-call and, with
-# no prior D1 row, stayed 0 on the live site while kenna still served it.
+# TRANSPORT (2026-08-05). Plain HTTP straight to kenna from the runners, NO
+# proxy — same as the far job. The no-proxy probe (run 30972618625,
+# claude/noproxy-probe.md) proved the datacenter reaches kenna fine (zero
+# connection errors); kenna's only limit is a per-IP RATE limit (~53% of a
+# shard served per gentle pass, rest 429). The residential proxy was burning $5
+# in hours and is NOT needed — kenna doesn't block datacenter IPs.
 #
-# browser_teeitup fires kenna from INSIDE a live *.book.teeitup.com page
-# (page.evaluate → JS fetch, real Chromium, legitimate Origin/Referer). kenna
-# does not rate-limit that the way it does the bare data-center client — the
-# far browser job lands raccoon reliably at +4/+6/+16. So the NEAR window uses
-# the same browser transport. Accuracy beats the Chromium-install cost, which a
-# self-chaining loop amortises: Chromium installs ONCE per ~5.5h run, then the
-# loop does many browser passes, instead of installing on every 30-min cron fire.
+# HOW COVERAGE STILL HOLDS. Two things fill the ~half that 429s each pass:
+# (1) browser_teeitup's plain path shuffles course order per run, so the 429'd
+# tail rotates instead of being a permanent gap; (2) this is a self-chaining
+# LOOP doing many passes over ~5.5h, so the union across passes covers the whole
+# shard and each course refreshes every ~2 passes — well inside the near
+# freshness window (day0=3h, days1-2=6h). A 429 is an error record, so a course
+# keeps its existing D1 rows (shown) until a later pass refreshes it.
 #
 # CADENCE. Self-chaining (shard 0 dispatches the successor); the hourly cron is
-# only a crash backstop. This is what fixes the original reliability bug — the
-# 30-min GitHub cron that silently stopped firing and hid raccoon in the first
-# place. The plain near/mid/far tiers all EXCLUDE teeitup, and the browser far
-# job owns days 3-30, so days 0-2 have exactly one teeitup writer here.
+# only a crash backstop. The plain near/mid/far tiers all EXCLUDE teeitup, and
+# the far job owns days 3-30, so days 0-2 have exactly one teeitup writer here.
+#
+# To go higher-yield later, add a CHEAP unmetered DATACENTER proxy via
+# TEEITUP_PROXY (never residential).
 
 on:
   schedule:
@@ -43,8 +42,8 @@ concurrency:
   cancel-in-progress: false     # queued successor waits; never kill the loop
 
 env:
-  INTERVAL_SECONDS: 300         # min seconds per pass; a browser pass usually
-                                # exceeds this, so passes run back-to-back
+  INTERVAL_SECONDS: 300         # min seconds per pass; a plain pass (3 dates)
+                                # usually exceeds this, so passes run back-to-back
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
 
 jobs:
@@ -54,25 +53,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3]     # 4 shards = 4 free runner IPs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium (once per run)
-        run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
+      - name: Install deps
+        run: pip install requests      # plain HTTP only — no Chromium needed
 
-      - name: Loop shard ${{ matrix.shard }}/4 teeitup (browser) over days 0-2
+      - name: Loop shard ${{ matrix.shard }}/4 teeitup (plain HTTP) over days 0-2
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Residential proxy so kenna doesn't block the data-center Chromium.
-          # Unset = direct (unchanged); browser_teeitup passes it to launch(proxy=).
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          # NO TEEITUP_PROXY → direct datacenter connection (the point: free).
+          TEEITUP_PLAIN_HTTP: "1"
+          TEEITUP_PLAIN_CONCURRENCY: "1"   # single-flight per IP (gentle)
+          TEEITUP_PLAIN_GAP_MS: "1200"     # ~0.6s avg jitter between courses
         run: |
           START=$(date +%s)
           PASS=0
@@ -88,7 +86,7 @@ jobs:
             # scraper.dates (union of local todays across timezones).
             for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
               OUT="output/tun_${DATE}_s${{ matrix.shard }}.json"
-              echo "::group::teeitup near browser pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
+              echo "::group::teeitup near plain pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.browser_teeitup --date "${DATE}" \
                 --shard "${{ matrix.shard }}/4" --out "${OUT}" || true
               python -m scraper.d1 push --data "${OUT}" || true

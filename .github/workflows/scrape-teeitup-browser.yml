@@ -1,20 +1,23 @@
-name: Scrape TeeItUp via browser (days 3-30, every 2 hours)
+name: Scrape TeeItUp far (days 3-30, plain HTTP, NO proxy)
 
-# TRANSPORT NOTE (2026-08-04). This job uses the headless-Chromium transport
-# NOT because kenna fingerprint-throttles (it does not — probe-kenna-impersonate
-# proved plain `requests` == curl_cffi byte-for-byte per call). It uses the
-# browser because the browser's per-fetch page overhead paces kenna gently, and
-# kenna rate-limits the WHOLE teeitup fleet off one host when hit too fast. The
-# NEAR window (days 0-2) moved to a plain-HTTP loop for freshness
-# (scrape-teeitup-browser-near.yml); this job keeps the wider MID+FAR window
-# (days 3-30) on the browser so the two teeitup jobs together stay under kenna's
-# burst limit. If a future change proves plain HTTP can cover 3-30 without
-# tripping 429s, swap this to scraper.aggregate --platforms teeitup.
+# TRANSPORT (2026-08-05). Plain HTTP straight to kenna from the runners — NO
+# proxy. The no-proxy probe (run 30972618625, claude/noproxy-probe.md) showed
+# the datacenter reaches kenna fine (zero connection errors) and kenna's only
+# limit is a per-IP RATE limit: at gentle pace one runner IP serves ~53% of its
+# shard per pass and 429s the rest. So we DON'T pay for a proxy at all — we just
+# spread across more free runner IPs (8 shards = 8 IPs) and let the union across
+# passes fill the ~half that 429s each time. The plain path shuffles course
+# order per run so the 429'd tail rotates instead of being a permanent gap.
+#
+# The residential proxy is deliberately NOT passed here (it was burning $5 in
+# hours; residential is not needed — kenna doesn't block datacenter IPs, it
+# rate-limits per IP). To go faster/higher-yield later, add a CHEAP unmetered
+# DATACENTER proxy via TEEITUP_PROXY — never residential.
 #
 # OWNERSHIP. This job owns days 3-30 for teeitup; scrape-teeitup-browser-near.yml
 # owns days 0-2. scrape-far.yml, scrape.yml (mid) AND scrape-near.yml all EXCLUDE
-# teeitup, so no plain tier ever writes the same course_slug+date as a teeitup
-# job and clobbers it in D1, and nothing else contends on the kenna host.
+# teeitup, so no plain tier ever writes the same course_slug+date and clobbers
+# it in D1.
 
 on:
   schedule:
@@ -37,46 +40,36 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]   # 8 shards = 8 free runner IPs
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium
-        run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
+      - name: Install deps
+        run: pip install requests      # plain HTTP only — no Chromium needed
 
-      - name: Scrape far teeitup + push each date to D1
+      - name: Scrape far teeitup (plain HTTP, no proxy) + push each date to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Residential proxy so kenna doesn't block the data-center Chromium.
-          # Unset = direct (unchanged); browser_teeitup passes it to launch(proxy=).
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
-          # NOTE: the plain-HTTP-through-proxy canary (TEEITUP_PLAIN_HTTP: "1")
-          # was tried here 2026-08-05 and REVERTED. Plain `requests` could not
-          # tunnel to kenna through the DataImpulse proxy — 100% ConnectionError
-          # ("Max retries exceeded ... phx-api-be-east-1b.kenna.io"), 0 rows,
-          # across all 28 far dates (run 30965931351). Chromium tunnels to the
-          # same proxy fine, so this is a plain-client/proxy transport gap, not a
-          # kenna throttle. The `_run_plain` path stays in browser_teeitup.py
-          # (inert with the toggle off) for a future, properly-debugged attempt
-          # — see claude/teeitup-plain-http-canary.md.
+          # NO TEEITUP_PROXY → direct datacenter connection (the point: free).
+          TEEITUP_PLAIN_HTTP: "1"
+          TEEITUP_PLAIN_CONCURRENCY: "1"   # single-flight per IP (gentle)
+          TEEITUP_PLAIN_GAP_MS: "1200"     # ~0.6s avg jitter between courses
         run: |
-          # Shuffle the date order: spreads which dates a short/interrupted run
-          # covers so the union fills the 3-30 window over a few sweeps.
+          # Shuffle the date order too: spreads which dates a short/interrupted
+          # run covers so the union fills the 3-30 window over a few sweeps.
           for DATE in $(python -m scraper.dates --registry registry.json --start 3 --days 28 | shuf); do
             OUT="output/tu_${DATE}_s${{ matrix.shard }}.json"
-            echo "::group::teeitup browser ${DATE} shard ${{ matrix.shard }}"
+            echo "::group::teeitup plain ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.browser_teeitup --date "${DATE}" \
-              --shard "${{ matrix.shard }}/4" --out "${OUT}" || true
+              --shard "${{ matrix.shard }}/8" --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
           done
