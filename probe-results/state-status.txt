@@ -5,11 +5,11 @@ state  bookable  live  cover       silent    needs_ids experimental  unsupported
 -----------------------------------------------------------------------------------------------------------------------
 CO          180   129    72%            0            1            0            0            1           49           61
 AZ          204   185    91%            5            0            0            0            0           14           14
-VA          227   112    49%            1            0            0            4            0          110          102
+VA          227   113    50%            0            0            0            4            0          110          102
 FL          646   276    43%           57           30           11           72           21          179           10
 MD          119    67    56%            0            0            0           17            2           33            1
 -----------------------------------------------------------------------------------------------------------------------
-ALL        1376   769    56%           63           31           11           93           24          385          188
+ALL        1376   770    56%           62           31           11           93           24          385          188
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -18,7 +18,7 @@ ALL        1376   769    56%           63           31           11           93
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     52   AZ:1 FL:50 VA:1
+  silent       teeitup                     51   AZ:1 FL:50
   silent       courseco                     2   AZ:2
   silent       foreup                       2   AZ:1 FL:1
   silent       teesnap                      2   FL:2
@@ -161,11 +161,8 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Villa de Paz Golf Club                       teeitup        Phoenix
 
 ==========================================================================
-VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 112 live (49%)
+VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 113 live (50%)
 ==========================================================================
-
-  SILENT  (1) — believed scrapable, returning nothing
-     Ocean View Golf Course                       teeitup        Norfolk
 
   UNSUPPORTED  (4) — no adapter possible today
      Colonial Hills Golf Club                     other:tenfore  Forest
@@ -736,13 +733,13 @@ MD  —  119 bookable courses (120 in maryland_golf_courses_booking.csv, 1 priva
 ==========================================================================
 REGISTRY DRIFT (7) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  CO  Riverdale Dunes Golf Course                  teeitup        367 rows
-  CO  Riverdale Knolls Golf Course                 teeitup        307 rows
-  FL  Continental Country Club                     chronogolf     343 rows
-  FL  Providence Golf Club                         teeitup        1337 rows
+  CO  Riverdale Dunes Golf Course                  teeitup        363 rows
+  CO  Riverdale Knolls Golf Course                 teeitup        277 rows
+  FL  Continental Country Club                     chronogolf     344 rows
+  FL  Providence Golf Club                         teeitup        1468 rows
   FL  Willowbrook Golf Course                      teeitup        444 rows
-  MD  Fox Hollow Golf Course                       foreup         278 rows
-  MD  Rocky Point Golf Course                      foreup         316 rows
+  MD  Fox Hollow Golf Course                       foreup         277 rows
+  MD  Rocky Point Golf Course                      foreup         334 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (7) — serving tee times, not traceable to a CSV course
