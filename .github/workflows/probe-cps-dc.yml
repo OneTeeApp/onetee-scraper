@@ -1,0 +1,32 @@
+name: Probe cps datacenter-direct (which tenants clear Cloudflare?)
+
+# Read-only. Runs the FULL cps reservation flow (browser_cps FLOW_JS ported to
+# plain `requests`) straight from a datacenter runner IP, no proxy, no browser —
+# one keep-alive Session per tenant so all 5 requests share one IP (Cloudflare's
+# clearance is IP-bound). Tells us which cps tenants return real tee times from
+# the datacenter (movable off residential) vs which get a Cloudflare challenge
+# (still need the residential browser). Writes NOTHING to D1.
+#
+# NO proxy on purpose: cps Cloudflare is IP-bound, so a ROTATING proxy would
+# break the multi-request flow (that's the documented 19/27-403 failure). This
+# tests raw datacenter reachability; a sticky proxy is a separate later question.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: cps full flow, datacenter-direct, all tenants
+        run: |
+          python -m scraper.probe_cps_dc --date "$(python -m scraper.dates --registry registry.json --days 3 | tail -1)"
