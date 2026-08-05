@@ -1,0 +1,72 @@
+name: Probe Webshare rotating proxy (validate the per-IP wall is gone)
+
+# FREE-TIER VALIDATION (2026-08-05). Confirms a rotating datacenter proxy
+# clears kenna's ~50-request per-IP wall. Baseline (no proxy, run 30974375305):
+# one shard served its FIRST far date ~100% then 0 for every later date, because
+# a single runner IP walls after ~50 requests. This runs the SAME shard over 6
+# far dates but routes plain HTTP through the rotating proxy in secret
+# TEEITUP_DC_PROXY (Webshare's rotating endpoint = a new exit IP per request).
+# If rotation works, ALL 6 dates should serve ~100% instead of just the first.
+#
+# conc=1 + gap=1200 are kept identical to the no-proxy probe so the ONLY changed
+# variable is the proxy. No D1 push — pure measurement. If TEEITUP_DC_PROXY is
+# unset, this runs direct (reproduces the baseline: first date only).
+#
+# Manual only. Free tier is 10 IPs / 1GB — plenty for this ~6-date, one-shard
+# sample (~300 tiny JSON calls); NOT enough for the full fleet (that needs the
+# $2.99 100-IP tier).
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: teeitup plain HTTP via rotating proxy — one shard, 6 far dates
+        env:
+          TEEITUP_PLAIN_HTTP: "1"
+          TEEITUP_PLAIN_CONCURRENCY: "1"   # identical to the no-proxy baseline
+          TEEITUP_PLAIN_GAP_MS: "1200"     # identical to the no-proxy baseline
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}   # Webshare rotating endpoint
+        run: |
+          echo "proxy set? $([ -n "${TEEITUP_PROXY}" ] && echo YES || echo NO-DIRECT)"
+          # 6 far dates, days 3-8 (in order, NOT shuffled, so the per-date
+          # progression is legible: baseline = 100,~0,0,0,0,0).
+          i=0
+          for DATE in $(python -m scraper.dates --registry registry.json --start 3 --days 6); do
+            i=$((i+1))
+            OUT="output/wsp_${DATE}.json"
+            echo "::group::date ${i} ${DATE} (shard 0/8)"
+            python -m scraper.browser_teeitup --date "${DATE}" \
+              --shard "0/8" --out "${OUT}" || true
+            python - "${OUT}" "${DATE}" "${i}" <<'PY'
+          import json, sys
+          from collections import Counter
+          try:
+              d = json.load(open(sys.argv[1]))
+          except Exception:
+              print("WSPROBE date%s %s NO-OUTPUT" % (sys.argv[3], sys.argv[2])); raise SystemExit
+          errs = d.get("errors", [])
+          c = Counter()
+          for e in errs:
+              m = e.get("error", "")
+              if "429" in m: c["http_429"] += 1
+              elif "status -1" in m or "Max retries" in m: c["conn_error"] += 1
+              elif "403" in m: c["http_403"] += 1
+              else: c["other"] += 1
+          print("WSPROBE date%s %s served=%d of %d errors=%s"
+                % (sys.argv[3], sys.argv[2], d.get("courses_ok", 0),
+                   d.get("courses_queried", 0), dict(c)))
+          PY
+            echo "::endgroup::"
+          done
