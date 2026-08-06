@@ -26,6 +26,9 @@ import pathlib
 import sys
 import time
 import urllib.parse
+import uuid
+
+import requests
 
 from .adapters.base import USER_AGENT
 from .adapters.clubprophet import ClubProphetAdapter
@@ -242,6 +245,152 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
     return {"slug": course["slug"], "ok": False, "error": f"browser {last}"}
 
 
+# ===========================================================================
+# PLAIN-HTTP DATACENTER-DIRECT path for the cps tenants whose Cloudflare does
+# NOT challenge a datacenter IP (measured 2026-08-06, probe run 31057485748,
+# claude/cps-datacenter-probe.md: 14/36 tenants returned real tee times over
+# plain `requests` straight from the runner, no proxy, no browser). Those go
+# through this path — fast, free, and it revives tenants that were broken on the
+# browser+residential path (highlands-ridge, southern-dunes, musket-ridge, ...).
+# The other tenants stay on the browser path (Cloudflare challenges them; they
+# need a real browser and, for the hard ones, residential).
+#
+# NO proxy here on purpose: cps Cloudflare clearance is IP-bound and low volume
+# (17 courses), so a keep-alive Session per course (one runner IP for the whole
+# 5-request flow) is exactly right; rotation would break it. trust_env=False so
+# no ambient HTTP(S)_PROXY/dead residential secret can leak in.
+#
+# To pull a tenant back to the browser path, just remove it from this set.
+# ===========================================================================
+_DC_DIRECT_TENANTS = frozenset({
+    "emeraldgreens", "greenvalleyranch", "haymakerco", "indianpeaks",
+    "cityofwestminster", "redhawkridge", "dellago",
+    "stjamesbay", "wakullasandsfl", "southerndunes", "tanglewoodfl",
+    "musketridgemd", "oceancitygc",
+})
+# HELD BACK: "highlandsridgefl". Its North and South are two SEPARATE registry
+# courses sharing this ONE tenant, and both are UNPINNED (no course_ids), so the
+# flow returns the combined sheet and _teetimes would publish it under BOTH
+# slugs — duplication. Every other shared tenant here (oceancitygc,
+# cityofwestminster) pins course_ids per course, so it filters correctly.
+# FOLLOW-UP to move highlands-ridge to plain: pin the N/S course_ids in the
+# registry (discoverable from GetAllOptions.courseOptions), then add it back.
+_API = "/onlineres/onlineapi/api/v1/onlinereservation"
+_ZG = "00000000-0000-0000-0000-000000000000"
+
+
+def _plain_headers(w: str, token: str, apikey: str) -> dict:
+    h = {"client-id": "onlineresweb", "x-terminalid": "3", "x-websiteid": w or _ZG,
+         "x-ismobile": "false", "x-productid": "1", "x-componentid": "1",
+         "x-siteid": "1", "x-moduleid": "7", "x-timezoneid": "America/Denver",
+         "x-timezone-offset": "360", "x-requestid": str(uuid.uuid4()),
+         "Accept": "application/json", "User-Agent": USER_AGENT}
+    if token:
+        h["Authorization"] = "Bearer " + token
+    if apikey:
+        h["x-apiKey"] = apikey
+    return h
+
+
+def _plain_flow(session, tenant: str, wid: str, cids: str, date_str: str) -> dict:
+    """FLOW_JS ported to `requests` (datacenter-direct). Same return shape as
+    FLOW_JS so _teetimes/caller handling is identical: {status, stage, content,
+    parse_failed?}. Uses pinned wid/cids when present, else discovers them."""
+    base = f"https://{tenant}.cps.golf"
+    api = base + _API
+    token = apikey = ""
+    try:
+        cfg = session.get(base + "/onlineresweb/Home/Configuration", timeout=25)
+        if cfg.ok:
+            j = cfg.json()
+            if isinstance(j, dict):
+                apikey = j.get("apiKey") or ""
+                if not wid and j.get("websiteId") and j["websiteId"] != _ZG:
+                    wid = j["websiteId"]
+    except Exception:  # noqa: BLE001
+        pass
+    tstatus = -1
+    try:
+        tr = session.post(base + "/identityapi/myconnect/token/short",
+                          data="client_id=onlinereswebshortlived",
+                          headers={"Content-Type": "application/x-www-form-urlencoded"},
+                          timeout=25)
+        tstatus = tr.status_code
+        if tr.status_code == 200:
+            try:
+                token = tr.json().get("access_token") or ""
+            except ValueError:
+                pass
+    except Exception:  # noqa: BLE001
+        pass
+    if not token and not apikey:
+        return {"status": tstatus, "stage": "token", "content": []}
+    if not wid or not cids:
+        try:
+            dr = session.get(api + "/GetAllOptions/" + tenant,
+                             headers=_plain_headers(_ZG, token, apikey), timeout=25)
+            db = dr.json()
+        except ValueError:
+            return {"status": dr.status_code, "stage": "discover",
+                    "parse_failed": True, "content": []}
+        except Exception:  # noqa: BLE001
+            return {"status": -1, "stage": "discover", "content": []}
+        if not wid:
+            wid = db.get("webSiteId") or (db.get("reservationOptions") or {}).get("webSiteId") or ""
+        if not cids:
+            ids = [c.get("courseId") if c.get("courseId") is not None else c.get("id")
+                   for c in (db.get("courseOptions") or [])]
+            cids = ",".join(str(x) for x in ids if x is not None)
+    if not wid or not cids:
+        return {"status": 200, "stage": "discover", "content": [], "note": "no wid/cids"}
+    txid = str(uuid.uuid4())
+    hr = _plain_headers(wid, token, apikey)
+    hr["Content-Type"] = "application/json"
+    session.post(api + "/RegisterTransactionId", headers=hr,
+                 json={"transactionId": txid}, timeout=25)
+    url = (f"{api}/TeeTimes?searchDate={urllib.parse.quote(date_str)}&holes=0"
+           f"&numberOfPlayer=0&courseIds={cids}&searchTimeType=0&transactionId={txid}"
+           f"&teeOffTimeMin=0&teeOffTimeMax=23&isChangeTeeOffTime=true"
+           f"&teeSheetSearchView=5&classCode=R&defaultOnlineRate=N"
+           f"&isUseCapacityPricing=false&memberStoreId=1&searchType=1")
+    tt = session.get(url, headers=_plain_headers(wid, token, apikey), timeout=25)
+    try:
+        content = (tt.json() or {}).get("content") or []
+    except ValueError:
+        return {"status": tt.status_code, "stage": "teetimes",
+                "parse_failed": True, "content": []}
+    return {"status": tt.status_code, "stage": "teetimes", "content": content}
+
+
+def _scrape_one_course_plain(course: dict, date_str: str) -> dict:
+    """Plain-HTTP twin of _scrape_one_course for datacenter-direct tenants. Same
+    result-dict contract. Keep-alive Session (sticky runner IP), no proxy."""
+    ids = course["ids"]
+    tenant = ids["tenant"]
+    wid = ids.get("website_id") or ""
+    cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
+    last = None
+    for attempt in range(2):
+        s = requests.Session()
+        s.trust_env = False               # ignore any ambient/dead proxy env
+        s.headers.update({"User-Agent": USER_AGENT})
+        try:
+            r = _plain_flow(s, tenant, wid, cids, date_str)
+            last = f"{r.get('stage')} {r.get('status')}" + (
+                " parse_failed" if r.get("parse_failed") else "")
+            if r.get("status") == 200 and not r.get("parse_failed"):
+                return {"slug": course["slug"], "ok": True,
+                        "tts": _teetimes(course, r.get("content") or [])}
+            if r.get("stage") == "token" and r.get("status") in (401, 404):
+                break
+        except Exception as e:  # noqa: BLE001
+            last = f"{type(e).__name__}: {e}"[:120]
+        finally:
+            s.close()
+        time.sleep(1.5 * (attempt + 1))
+    return {"slug": course["slug"], "ok": False, "error": f"plain {last}"}
+
+
 def run(date: dt.date, registry_path: str, out_path: str,
         shard: str | None = None) -> dict:
     registry = load_registry(registry_path)
@@ -262,15 +411,22 @@ def run(date: dt.date, registry_path: str, out_path: str,
     # The work is almost all network + the 6s challenge wait, so the 2-core runner
     # is not the bottleneck. Default 6; tune via env without a code change.
     conc = max(1, int(os.environ.get("CPS_CONCURRENCY", "6")))
-    log.info("browser-fetching %d cps tenants for %s (%d concurrent)",
-             len(courses), date, conc)
+    n_plain = sum(1 for c in courses if c["ids"].get("tenant") in _DC_DIRECT_TENANTS)
+    log.info("cps: %d tenants for %s (%d concurrent) — %d plain-direct, %d browser",
+             len(courses), date, conc, n_plain, len(courses) - n_plain)
 
-    # Residential proxy so cps.golf's Cloudflare managed challenge clears from a
-    # data-center IP; same TEEITUP_PROXY secret as browser_teeitup, unset = direct.
-    # Sticky per-course session id is applied inside _proxy_launch_kwargs.
+    # Split by tenant: the datacenter-direct set goes over plain HTTP (no proxy,
+    # no browser); the rest keep the browser path (Cloudflare challenge + the
+    # residential TEEITUP_PROXY, unset = direct). Sticky per-course session id is
+    # applied inside _proxy_launch_kwargs for the browser path.
     tee_times, errors = [], []
     with concurrent.futures.ThreadPoolExecutor(max_workers=conc) as ex:
-        futs = [ex.submit(_scrape_one_course, c, date_str) for c in courses]
+        futs = [ex.submit(
+                    _scrape_one_course_plain
+                    if c["ids"].get("tenant") in _DC_DIRECT_TENANTS
+                    else _scrape_one_course,
+                    c, date_str)
+                for c in courses]
         for fut in concurrent.futures.as_completed(futs):
             res = fut.result()
             if res["ok"]:
