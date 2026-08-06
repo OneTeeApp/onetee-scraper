@@ -1,0 +1,71 @@
+name: Probe CPS tenants (isolated, single date, residential)
+
+# Isolated, low-bandwidth verification for specific Cloudflare-CHALLENGED
+# cps.golf tenants that have never captured a row in D1 (e.g. cattail-creek,
+# flatirons, mariana-butte). Pins were recertified correct from a real browser
+# (claude/cps-dark-audit-2026-08-06.md), so this reproduces the exact
+# headless-Chromium + residential-proxy condition to tell whether that path can
+# clear these tenants at all — WITHOUT running the full 16-tenant browser set.
+#
+# Scrapes ONLY the tenants in the `tenants` input, for ONE date, via CPS_TENANTS.
+# 3 tenants x 1 date is a few MB of residential bandwidth. Manual dispatch only.
+# browser_cps logs per-tenant results ("<slug>  N times" or "ERROR <reason>") to
+# the step log — read those to see whether the headless+residential path cleared
+# each tenant.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenants:
+        description: "comma-separated cps tenant ids (ids.tenant)"
+        default: "cattailcreek,flatironsgolf,marianabutte"
+      date:
+        description: "single date YYYY-MM-DD to scrape"
+        default: "2026-08-08"
+      push:
+        description: "push results to D1? (yes recovers them if it works)"
+        default: "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probe-cps-tenants
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Probe the listed tenants for one date
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          # Same metered residential proxy the browser job uses (US exit +
+          # asset-blocking are applied inside browser_cps). Unset = direct (403).
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          CPS_TENANTS: ${{ github.event.inputs.tenants }}
+        run: |
+          DATE="${{ github.event.inputs.date }}"
+          echo "probe date=${DATE} tenants=${CPS_TENANTS}"
+          python -m scraper.browser_cps --date "${DATE}" \
+            --out "output/probe_${DATE}.json"
+      - name: Push results to D1
+        if: ${{ github.event.inputs.push == 'yes' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          DATE="${{ github.event.inputs.date }}"
+          python -m scraper.d1 push --data "output/probe_${DATE}.json" || true
