@@ -472,6 +472,17 @@ def run(date: dt.date, registry_path: str, out_path: str,
     # (emerald-greens etc.) that used to be silently skipped are now scraped.
     courses = [c for c in registry
                if c["platform"] == "clubprophet" and c["ids"].get("tenant")]
+    # CPS_ONLY selects which tenant set to scrape so the two cost profiles can run
+    # on DIFFERENT cadences (see scrape-cps-browser.yml): the plain-direct set is
+    # free (plain HTTP, no proxy, no bandwidth) and can run FREQUENTLY, while the
+    # Cloudflare-challenged set goes through the METERED residential proxy and must
+    # run sparingly.  "plain" → only _DC_DIRECT_TENANTS; "browser" → only the rest;
+    # unset/anything else → both (original behaviour).
+    _only = os.environ.get("CPS_ONLY", "").strip().lower()
+    if _only == "plain":
+        courses = [c for c in courses if c["ids"].get("tenant") in _DC_DIRECT_TENANTS]
+    elif _only == "browser":
+        courses = [c for c in courses if c["ids"].get("tenant") not in _DC_DIRECT_TENANTS]
     courses = apply_shard(courses, shard)
     date_str = date.strftime("%a %b %d %Y")
 
