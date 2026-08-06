@@ -258,15 +258,32 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
                 # tenants (run 31078775653: "Page.goto: Timeout 22000ms").
                 page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
                           wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(8000)  # let the managed challenge clear
+                # Wait for Cloudflare's managed challenge to ACTUALLY clear, not
+                # a fixed sleep. cps.golf sets the `cf_clearance` cookie only
+                # once the JS challenge completes; before that the page-load and
+                # token stages succeed but the heavier TeeTimes DATA api 403s
+                # (run 31082099844 from a stable US IP: 119 teetimes_403, 7
+                # discover_403 — the flow reached cps fine, the challenge just
+                # wasn't settled). Poll up to ~24s for the cookie, then a short
+                # extra settle. If it never appears we still try (best-effort,
+                # not a hard gate) — some tenants aren't challenged at all.
+                for _ in range(12):
+                    page.wait_for_timeout(2000)
+                    try:
+                        cookies = page.context.cookies()
+                    except Exception:  # noqa: BLE001
+                        cookies = []
+                    if any(c.get("name") == "cf_clearance" for c in cookies):
+                        break
+                page.wait_for_timeout(1500)
                 r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
                 last = f"{r.get('stage')} {r.get('status')}" + (
                     " parse_failed" if r.get("parse_failed") else "")
                 if r.get("status") == 200 and not r.get("parse_failed"):
                     tts = _teetimes(course, r.get("content") or [])
                     return {"slug": course["slug"], "ok": True, "tts": tts}
-                # A wrong/dead tenant token endpoint 404s (or 401s) identically on
-                # every attempt — retrying just burns another goto + 6s challenge
+                # A wrong/dead tenant token endpoint 404s (or 401s) identically
+                # on every attempt — retrying just burns another goto + challenge
                 # wait. Stop now; the fix is the registry subdomain, not a retry.
                 if r.get("stage") == "token" and r.get("status") in (401, 404):
                     break
