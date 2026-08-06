@@ -192,10 +192,21 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
             if session:
                 host = (pu.hostname or "").lower()
                 if "webshare" in host:
-                    base = re.sub(r"-rotate$", "", user)   # normalise away rotating flag
-                    if not re.search(r"-\d{4,}$", base):   # not already session-pinned
-                        num = int(hashlib.md5(session.encode()).hexdigest()[:8], 16) % 1000000
-                        user = f"{base}-{num}"
+                    # Webshare residential country+sticky format is
+                    # {username}-{country}-{session_id}. FORCE a US exit: this
+                    # plan's default country is BRAZIL (diag 31081627529:
+                    # `exit country: br`), and cps.golf's Cloudflare heavily
+                    # challenges Brazilian residential IPs — the token/teetimes
+                    # 403s that kept 19/20 tenants dark on 2026-08-06. A US exit
+                    # was verified live: `{base}-us-{sid}` returned 96.43.121.90
+                    # and held it across two requests (sticky ✓). The Webshare
+                    # username is alphanumeric with no internal hyphen, so the
+                    # base is everything before the first hyphen (strips any
+                    # -rotate / -{cc} / -{sid} the secret already carries).
+                    base = user.split("-", 1)[0]
+                    cc = os.environ.get("CPS_PROXY_COUNTRY", "us").lower()
+                    num = int(hashlib.md5(session.encode()).hexdigest()[:8], 16) % 1000000
+                    user = f"{base}-{cc}-{num}"
                 elif "sessid." not in user:
                     user = f"{user};sessid.{session}"
             proxy["username"] = user
@@ -231,17 +242,23 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
     cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
     last = None
     with sync_playwright() as pw:
-        for attempt in range(3):
+        # 4 attempts (was 3): each launches a FRESH sticky session = a fresh
+        # residential exit IP, so a course flagged/challenged on one IP or
+        # dropped by a flaky tunnel gets more independent tries. Residential
+        # exits are slow and sometimes drop mid-connect (ERR_TUNNEL_CONNECTION_
+        # FAILED / ERR_CONNECTION_CLOSED, observed 2026-08-06 run 31078775653),
+        # so a dead attempt costs a retry, not the course.
+        for attempt in range(4):
             sid = f"{course['slug']}-{attempt}"
             browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
-                # 22s (was 35s): a real cps tenant serves the challenge page well
-                # under this; the only things that hit 35s were dead/slow tenants,
-                # so the long timeout was pure wasted wall-time x3 attempts.
+                # 45s (was 22s): a residential exit is much slower than the old
+                # datacenter path, and 22s was timing out the goto on healthy
+                # tenants (run 31078775653: "Page.goto: Timeout 22000ms").
                 page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
-                          wait_until="domcontentloaded", timeout=22000)
-                page.wait_for_timeout(6000)  # let the managed challenge clear
+                          wait_until="domcontentloaded", timeout=45000)
+                page.wait_for_timeout(8000)  # let the managed challenge clear
                 r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
                 last = f"{r.get('stage')} {r.get('status')}" + (
                     " parse_failed" if r.get("parse_failed") else "")
