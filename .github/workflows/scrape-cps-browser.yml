@@ -1,27 +1,31 @@
-name: Scrape CPS via browser (0-6 hourly, 0-30 daily)
+name: Scrape CPS via browser (0-6 every 6h, 0-30 daily)
 
 # Club Prophet (cps.golf) tenants whose WAF blocks the plain HTTP client's TLS
 # fingerprint from datacenter IPs are fetched with a real headless Chromium,
 # which clears the WAF (verified: Flatirons/Fossil 200 via browser vs 403 via
-# requests). Runs hourly — these are not as time-sensitive as same-day slots,
-# and spinning up Chromium every 5 min would be wasteful. The plain scraper
-# excludes clubprophet, so this job solely owns those course_slugs in D1.
+# requests). The plain scraper excludes clubprophet, so this job solely owns
+# those course_slugs in D1.
+#
+# CADENCE IS DELIBERATELY LOW (2026-08-06): the challenged tenants go through a
+# METERED residential proxy and browser page-loads are heavy. Running hourly,
+# plus a full scrape on every code push, exhausted the Webshare residential plan
+# in a day (402 Payment Required). So: near tier (days 0-6) every 6h, deep
+# (0-30) once daily, and NO push trigger — code/registry changes are picked up
+# by the next scheduled run (each run checks out latest main). Use
+# workflow_dispatch to force a run. browser_cps also blocks image/media/font
+# requests to cut residential bandwidth per page ~10x. Raise cadence only if
+# bandwidth allows, or after splitting the free plain-direct tenants onto their
+# own frequent job.
 
 on:
   schedule:
-    - cron: "37 * * * *"
+    - cron: "37 */6 * * *"   # near tier (days 0-6): 00:37, 06:37, 12:37, 18:37 UTC
+    - cron: "7 10 * * *"     # deep (days 0-30): once daily at 10:07 UTC (DEEP gate = hour 10)
   workflow_dispatch:
     inputs:
       deep:
         description: "Scrape the full 0-30 day horizon"
         default: "no"
-  push:
-    branches: [main]
-    paths:
-      - "registry.json"
-      - "scraper/browser_cps.py"
-      - "scraper/adapters/clubprophet.py"
-      - ".github/workflows/scrape-cps-browser.yml"
 
 permissions:
   contents: read
