@@ -40,8 +40,15 @@ from .sharding import apply_shard, set_env_shard_count
 log = logging.getLogger("teetime")
 
 # The anonymous flow, run inside the page (real browser TLS + tenant origin).
+#
+# MULTI-DATE (2026-08-06): auth is established ONCE per browser session — one
+# Cloudflare clear (the goto), one token/apiKey, one wid/cids discovery — then
+# EVERY date reuses it via a cheap JSON TeeTimes call. The residential page-load
+# is the expensive, metered part; batching makes it a per-TENANT cost instead of
+# per-(tenant,date). Near (days 0-2) drops from 3 page-loads to 1; deep (0-30)
+# from 31 to 1. Returns {stage, status, results:[{date, status, content|parse_failed}]}.
 FLOW_JS = r"""
-async ([tenant, wid, cids, date]) => {
+async ([tenant, wid, cids, dates]) => {
   const base = "https://" + tenant + ".cps.golf";
   const api = base + "/onlineres/onlineapi/api/v1/onlinereservation";
   const ZG = "00000000-0000-0000-0000-000000000000";
@@ -65,13 +72,19 @@ async ([tenant, wid, cids, date]) => {
       if (!wid && cfg.websiteId && cfg.websiteId !== ZG) wid = cfg.websiteId;
     }
   } catch (e) {}
-  const tr = await fetch(base + "/identityapi/myconnect/token/short",
-    {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
-     body:"client_id=onlinereswebshortlived"});
-  if (tr.status === 200) { try { token = (await tr.json()).access_token || ""; } catch (e) {} }
+  const mintToken = async () => {
+    const tr = await fetch(base + "/identityapi/myconnect/token/short",
+      {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
+       body:"client_id=onlinereswebshortlived"});
+    let t = "";
+    if (tr.status === 200) { try { t = (await tr.json()).access_token || ""; } catch (e) {} }
+    return {status: tr.status, token: t};
+  };
+  let tk = await mintToken();
+  token = tk.token;
   // Fail at the token stage ONLY when neither auth is available (a truly
   // unsupported/dead tenant). The apiKey variant reaches here with token "".
-  if (!token && !apiKey) return {status: tr.status, stage: "token", content: []};
+  if (!token && !apiKey) return {stage: "token", status: tk.status, results: []};
   const H = (w) => { const h = {"client-id":"onlineresweb",
     "x-terminalid":"3", "x-websiteid": w || ZG, "x-ismobile":"false", "x-productid":"1",
     "x-componentid":"1", "x-siteid":"1", "x-moduleid":"7",
@@ -89,8 +102,8 @@ async ([tenant, wid, cids, date]) => {
     const dtext = await dr.text();
     let db;
     try { db = JSON.parse(dtext); }
-    catch (e) { return {status: dr.status, stage: "discover", parse_failed: true,
-                        bytes: dtext.length}; }
+    catch (e) { return {stage: "discover", status: dr.status, parse_failed: true,
+                        bytes: dtext.length, results: []}; }
     if (!wid) wid = db.webSiteId || (db.reservationOptions && db.reservationOptions.webSiteId) || "";
     if (!cids) {
       const ids = (db.courseOptions || []).map(c => c.courseId != null ? c.courseId : c.id)
@@ -98,25 +111,42 @@ async ([tenant, wid, cids, date]) => {
       cids = ids.join(",");
     }
   }
-  if (!wid || !cids) return {status: 200, stage: "discover", content: [], note: "no wid/cids"};
-  const txid = crypto.randomUUID();
-  await fetch(api + "/RegisterTransactionId", {method:"POST",
-    headers:{...H(wid), "Content-Type":"application/json"},
-    body:JSON.stringify({transactionId:txid})});
-  const url = api + `/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0`
-    + `&numberOfPlayer=0&courseIds=${cids}&searchTimeType=0&transactionId=${txid}`
-    + `&teeOffTimeMin=0&teeOffTimeMax=23&isChangeTeeOffTime=true&teeSheetSearchView=5`
-    + `&classCode=R&defaultOnlineRate=N&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
-  const tt = await fetch(url, {headers:H(wid)});
-  // Report a non-JSON body AS a failure (same fix as browser_golfnow): a WAF
-  // interstitial served with status 200 used to become "0 tee times, success",
-  // skipping the remaining attempts and deactivating the tenant's real rows.
-  const text = await tt.text();
-  let content;
-  try { content = (JSON.parse(text)).content || []; }
-  catch (e) { return {status: tt.status, stage: "teetimes", parse_failed: true,
-                      bytes: text.length}; }
-  return {status: tt.status, stage: "teetimes", content};
+  if (!wid || !cids) return {stage: "discover", status: 200, results: [], note: "no wid/cids"};
+  const teeOne = async (date) => {
+    const txid = crypto.randomUUID();
+    await fetch(api + "/RegisterTransactionId", {method:"POST",
+      headers:{...H(wid), "Content-Type":"application/json"},
+      body:JSON.stringify({transactionId:txid})});
+    const url = api + `/TeeTimes?searchDate=${encodeURIComponent(date)}&holes=0`
+      + `&numberOfPlayer=0&courseIds=${cids}&searchTimeType=0&transactionId=${txid}`
+      + `&teeOffTimeMin=0&teeOffTimeMax=23&isChangeTeeOffTime=true&teeSheetSearchView=5`
+      + `&classCode=R&defaultOnlineRate=N&isUseCapacityPricing=false&memberStoreId=1&searchType=1`;
+    return await fetch(url, {headers:H(wid)});
+  };
+  // One cheap TeeTimes call per date, reusing the cleared session. Report a
+  // non-JSON body AS a per-date failure (same fix as browser_golfnow): a WAF
+  // interstitial served with status 200 must not become "0 tee times, success".
+  const results = [];
+  for (const date of dates) {
+    try {
+      let tt = await teeOne(date);
+      // The short-lived Bearer token can lapse across a long (deep, 31-date)
+      // loop; a 401 mid-loop -> re-mint once and retry just this date.
+      if (tt.status === 401 && !apiKey) {
+        const rt = await mintToken();
+        if (rt.token) { token = rt.token; tt = await teeOne(date); }
+      }
+      const text = await tt.text();
+      let content;
+      try { content = (JSON.parse(text)).content || []; }
+      catch (e) { results.push({date: date, status: tt.status, parse_failed: true,
+                                bytes: text.length}); continue; }
+      results.push({date: date, status: tt.status, content: content});
+    } catch (e) {
+      results.push({date: date, status: -1, error: String(e)});
+    }
+  }
+  return {stage: "teetimes", status: 200, results: results};
 }
 """
 
@@ -218,21 +248,23 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
     return kwargs
 
 
-def _scrape_one_course(course: dict, date_str: str) -> dict:
-    """Scrape ONE cps tenant end-to-end in its OWN Playwright instance.
+def _scrape_one_course(course: dict, dates: list) -> dict:
+    """Scrape ONE cps tenant for ALL `dates` in its OWN Playwright instance.
 
     This is the unit of the thread pool in run(). A sync_playwright object is not
-    shareable across threads, so each worker opens its own here (one driver per
-    course, reused across the ≤3 attempts). Returns a result dict the caller
-    aggregates: {"slug", "ok", and "tts" on success or "error" on failure}.
+    shareable across threads, so each worker opens its own here. Returns
+    {"slug", "dates": {iso: {"ok", "tts"|"error"}}} — one entry per requested date.
 
-    Fresh browser per attempt: Cloudflare's managed JS challenge is issued per
-    browsing context and auto-clears in ~6s; a clean context that waits it out
-    clears the tenant WAF far more reliably than a reused page (2/16 -> 13/13 in
-    testing) — the same legit auto-clear used for EZLinks, no challenge-solving.
-    Sticky proxy session per course+attempt pins ONE residential IP for the whole
-    token->register->TeeTimes flow (keeps Cloudflare's IP-bound clearance cookie
-    valid), with a fresh IP on each retry.
+    ONE Cloudflare clear per session, ALL dates: the managed JS challenge is
+    cleared once by the goto+cf_clearance poll, then FLOW_JS fetches every date's
+    TeeTimes over the already-authorized (and cheap, JSON) API. This makes the
+    expensive metered residential page-load a per-tenant cost, not per-(tenant,
+    date) — the single biggest residential-bandwidth reduction (near 3->1 loads,
+    deep 31->1). Fresh sticky proxy session per attempt pins ONE residential IP
+    for the whole flow (Cloudflare's clearance cookie is IP-bound), fresh IP per
+    retry. A retry re-solves the challenge (a full page-load), so we only retry
+    when the session never reached the TeeTimes stage OR cleared but no date
+    succeeded — a per-date success is kept even if a sibling date failed.
     """
     from playwright.sync_api import sync_playwright
 
@@ -240,29 +272,31 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
     tenant = ids["tenant"]
     wid = ids.get("website_id") or ""
     cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
+    # cps searchDate wants the human "%a %b %d %Y" form (correct weekday); map it
+    # back to the ISO key the caller aggregates by.
+    isos = [d.isoformat() for d in dates]
+    humans = [d.strftime("%a %b %d %Y") for d in dates]
+    human2iso = dict(zip(humans, isos))
+    resolved: dict = {iso: None for iso in isos}
     last = None
     with sync_playwright() as pw:
-        # 4 attempts (was 3): each launches a FRESH sticky session = a fresh
-        # residential exit IP, so a course flagged/challenged on one IP or
-        # dropped by a flaky tunnel gets more independent tries. Residential
-        # exits are slow and sometimes drop mid-connect (ERR_TUNNEL_CONNECTION_
-        # FAILED / ERR_CONNECTION_CLOSED, observed 2026-08-06 run 31078775653),
-        # so a dead attempt costs a retry, not the course.
+        # 4 attempts: each launches a FRESH sticky session = a fresh residential
+        # exit IP, so a course flagged/challenged on one IP or dropped by a flaky
+        # tunnel gets more independent tries. Residential exits are slow and
+        # sometimes drop mid-connect (ERR_TUNNEL_CONNECTION_FAILED /
+        # ERR_CONNECTION_CLOSED), so a dead attempt costs a retry, not the course.
         for attempt in range(4):
             sid = f"{course['slug']}-{attempt}"
             browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
                 # Residential bandwidth is METERED and full SPA page-loads are
-                # heavy — three 35-min browser runs exhausted the Webshare
-                # residential plan (diag 31107270159: "Tunnel connection failed:
-                # 402 Payment Required" even on a 1-byte ipify fetch). cps.golf's
-                # Cloudflare managed challenge needs only HTML + JS to clear, and
-                # the reservation API is JSON; images / media / fonts are pure
-                # waste on the metered link. Abort them so the plan's bandwidth
-                # lasts ~an order of magnitude longer. (Scripts, XHR/fetch, the
-                # document and stylesheets are kept — the challenge JS needs
-                # them.) CPS_KEEP_ASSETS=1 disables this if a tenant ever breaks.
+                # heavy. cps.golf's Cloudflare managed challenge needs only HTML +
+                # JS to clear, and the reservation API is JSON; images / media /
+                # fonts are pure waste on the metered link. Abort them so the
+                # plan's bandwidth lasts ~an order of magnitude longer. (Scripts,
+                # XHR/fetch, document and stylesheets are kept — the challenge JS
+                # needs them.) CPS_KEEP_ASSETS=1 disables this if a tenant breaks.
                 if os.environ.get("CPS_KEEP_ASSETS") != "1":
                     def _block_heavy(route):
                         try:
@@ -273,20 +307,14 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
                         except Exception:  # noqa: BLE001
                             pass
                     page.route("**/*", _block_heavy)
-                # 45s (was 22s): a residential exit is much slower than the old
-                # datacenter path, and 22s was timing out the goto on healthy
-                # tenants (run 31078775653: "Page.goto: Timeout 22000ms").
+                # 45s: a residential exit is much slower than the datacenter path.
                 page.goto(f"https://{tenant}.cps.golf/onlineresweb/search-teetime",
                           wait_until="domcontentloaded", timeout=45000)
-                # Wait for Cloudflare's managed challenge to ACTUALLY clear, not
-                # a fixed sleep. cps.golf sets the `cf_clearance` cookie only
-                # once the JS challenge completes; before that the page-load and
-                # token stages succeed but the heavier TeeTimes DATA api 403s
-                # (run 31082099844 from a stable US IP: 119 teetimes_403, 7
-                # discover_403 — the flow reached cps fine, the challenge just
-                # wasn't settled). Poll up to ~24s for the cookie, then a short
-                # extra settle. If it never appears we still try (best-effort,
-                # not a hard gate) — some tenants aren't challenged at all.
+                # Wait for Cloudflare's managed challenge to ACTUALLY clear, not a
+                # fixed sleep. cps.golf sets `cf_clearance` only once the JS
+                # challenge completes; before that TeeTimes 403s. Poll up to ~24s
+                # for the cookie, then a short settle. Best-effort (not a hard
+                # gate) — some tenants aren't challenged at all.
                 for _ in range(12):
                     page.wait_for_timeout(2000)
                     try:
@@ -296,14 +324,32 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
                     if any(c.get("name") == "cf_clearance" for c in cookies):
                         break
                 page.wait_for_timeout(1500)
-                r = page.evaluate(FLOW_JS, [tenant, wid, cids, date_str])
+                r = page.evaluate(FLOW_JS, [tenant, wid, cids, humans])
                 last = f"{r.get('stage')} {r.get('status')}" + (
                     " parse_failed" if r.get("parse_failed") else "")
-                if r.get("status") == 200 and not r.get("parse_failed"):
-                    tts = _teetimes(course, r.get("content") or [])
-                    return {"slug": course["slug"], "ok": True, "tts": tts}
-                # A wrong/dead tenant token endpoint 404s (or 401s) identically
-                # on every attempt — retrying just burns another goto + challenge
+                results = r.get("results") or []
+                any_ok = False
+                for item in results:
+                    iso = human2iso.get(item.get("date"))
+                    if iso is None:
+                        continue
+                    if item.get("status") == 200 and not item.get("parse_failed"):
+                        resolved[iso] = {"ok": True,
+                                         "tts": _teetimes(course, item.get("content") or [])}
+                        any_ok = True
+                    elif resolved[iso] is None or not resolved[iso].get("ok"):
+                        # Keep a prior attempt's success; otherwise record the miss.
+                        pf = " parse_failed" if item.get("parse_failed") else ""
+                        resolved[iso] = {"ok": False,
+                                         "error": f"teetimes {item.get('status')}{pf}"}
+                # Accept once the cleared session produced at least one date and
+                # every date is resolved; a per-date 403 among successes is not
+                # worth another full page-load. If NO date cleared, fall through
+                # to a fresh-IP retry (the old per-date retry behaviour).
+                if any_ok and all(resolved[i] is not None for i in isos):
+                    break
+                # A wrong/dead tenant token endpoint 404s (or 401s) identically on
+                # every attempt — retrying just burns another goto + challenge
                 # wait. Stop now; the fix is the registry subdomain, not a retry.
                 if r.get("stage") == "token" and r.get("status") in (401, 404):
                     break
@@ -314,7 +360,10 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
             finally:
                 browser.close()
             time.sleep(2 * (attempt + 1))    # brief backoff before a fresh try
-    return {"slug": course["slug"], "ok": False, "error": f"browser {last}"}
+    for iso in isos:
+        if resolved[iso] is None:
+            resolved[iso] = {"ok": False, "error": f"browser {last}"}
+    return {"slug": course["slug"], "dates": resolved}
 
 
 # ===========================================================================
@@ -434,39 +483,44 @@ def _plain_flow(session, tenant: str, wid: str, cids: str, date_str: str) -> dic
     return {"status": tt.status_code, "stage": "teetimes", "content": content}
 
 
-def _scrape_one_course_plain(course: dict, date_str: str) -> dict:
-    """Plain-HTTP twin of _scrape_one_course for datacenter-direct tenants. Same
-    result-dict contract. Keep-alive Session (sticky runner IP), no proxy."""
+def _scrape_one_course_plain(course: dict, dates: list) -> dict:
+    """Plain-HTTP twin of _scrape_one_course for datacenter-direct tenants, for
+    ALL `dates`. Same multi-date contract: {"slug", "dates": {iso: {...}}}. Plain
+    is free (no proxy, no metered bandwidth), so each date runs its own short
+    token->TeeTimes flow over a keep-alive Session (sticky runner IP)."""
     ids = course["ids"]
     tenant = ids["tenant"]
     wid = ids.get("website_id") or ""
     cids = ",".join(str(x) for x in (ids.get("course_ids") or []))
-    last = None
-    for attempt in range(2):
-        s = requests.Session()
-        s.trust_env = False               # ignore any ambient/dead proxy env
-        s.headers.update({"User-Agent": USER_AGENT})
-        try:
-            r = _plain_flow(s, tenant, wid, cids, date_str)
-            last = f"{r.get('stage')} {r.get('status')}" + (
-                " parse_failed" if r.get("parse_failed") else "")
-            if r.get("status") == 200 and not r.get("parse_failed"):
-                return {"slug": course["slug"], "ok": True,
-                        "tts": _teetimes(course, r.get("content") or [])}
-            if r.get("stage") == "token" and r.get("status") in (401, 404):
-                break
-        except Exception as e:  # noqa: BLE001
-            last = f"{type(e).__name__}: {e}"[:120]
-        finally:
-            s.close()
-        time.sleep(1.5 * (attempt + 1))
-    return {"slug": course["slug"], "ok": False, "error": f"plain {last}"}
+    resolved: dict = {}
+    for d in dates:
+        iso = d.isoformat()
+        date_str = d.strftime("%a %b %d %Y")
+        last = None
+        got = None
+        for attempt in range(2):
+            s = requests.Session()
+            s.trust_env = False           # ignore any ambient/dead proxy env
+            s.headers.update({"User-Agent": USER_AGENT})
+            try:
+                r = _plain_flow(s, tenant, wid, cids, date_str)
+                last = f"{r.get('stage')} {r.get('status')}" + (
+                    " parse_failed" if r.get("parse_failed") else "")
+                if r.get("status") == 200 and not r.get("parse_failed"):
+                    got = {"ok": True, "tts": _teetimes(course, r.get("content") or [])}
+                    break
+                if r.get("stage") == "token" and r.get("status") in (401, 404):
+                    break
+            except Exception as e:  # noqa: BLE001
+                last = f"{type(e).__name__}: {e}"[:120]
+            finally:
+                s.close()
+            time.sleep(1.5 * (attempt + 1))
+        resolved[iso] = got or {"ok": False, "error": f"plain {last}"}
+    return {"slug": course["slug"], "dates": resolved}
 
 
-def run(date: dt.date, registry_path: str, out_path: str,
-        shard: str | None = None) -> dict:
-    registry = load_registry(registry_path)
-    set_env_shard_count(shard)
+def _select_courses(registry: list, shard: str | None) -> list:
     # course_ids is NO LONGER required — FLOW_JS discovers wid+cids in-browser
     # via GetAllOptions when they aren't pinned, so the ~14 unpinned cps tenants
     # (emerald-greens etc.) that used to be silently skipped are now scraped.
@@ -493,67 +547,104 @@ def run(date: dt.date, registry_path: str, out_path: str,
         _keep = {t.strip().lower() for t in _tenants.split(",") if t.strip()}
         courses = [c for c in courses
                    if (c["ids"].get("tenant") or "").lower() in _keep]
-    courses = apply_shard(courses, shard)
-    date_str = date.strftime("%a %b %d %Y")
+    return apply_shard(courses, shard)
 
-    # CONCURRENCY. The old loop launched one browser at a time and waited ~6s per
-    # tenant for the managed challenge, so 27 tenants x 3 near dates ran ~30-50
-    # min. Each tenant is an independent flow against its own cps.golf host, so we
-    # fan out over a thread pool — each worker owns its own sync_playwright (see
-    # _scrape_one_course). Wall time drops to ~ceil(n / CPS_CONCURRENCY) waves.
-    # The work is almost all network + the 6s challenge wait, so the 2-core runner
-    # is not the bottleneck. Default 6; tune via env without a code change.
+
+def run(dates, registry_path: str, out_paths_by_iso: dict,
+        shard: str | None = None) -> list:
+    """Scrape every selected cps tenant for ALL `dates` in ONE session per tenant,
+    then emit ONE aggregate doc PER date (d1.sync's contract is single-date:
+    per-date deactivation + per-(course,date) freshness stamping). `dates` is a
+    list[dt.date]; `out_paths_by_iso` maps each date's ISO string to its output
+    file. Returns the list of written paths.
+
+    Batching the dates into one browser session (not one process/browser per
+    date, as the workflow used to loop) is the core residential-cost cut: the
+    metered Cloudflare page-load happens once per tenant instead of once per
+    (tenant, date) — near 3->1, deep 31->1.
+    """
+    registry = load_registry(registry_path)
+    set_env_shard_count(shard)
+    courses = _select_courses(registry, shard)
+
+    # CONCURRENCY. Each tenant is an independent flow against its own cps.golf
+    # host, so we fan out over a thread pool — each worker owns its own
+    # sync_playwright (see _scrape_one_course). The work is almost all network +
+    # the challenge wait, so the 2-core runner is not the bottleneck. Default 6.
     conc = max(1, int(os.environ.get("CPS_CONCURRENCY", "6")))
     n_plain = sum(1 for c in courses if c["ids"].get("tenant") in _DC_DIRECT_TENANTS)
-    log.info("cps: %d tenants for %s (%d concurrent) — %d plain-direct, %d browser",
-             len(courses), date, conc, n_plain, len(courses) - n_plain)
+    dlist = list(dates)
+    log.info("cps: %d tenants x %d dates (%d concurrent) — %d plain-direct, %d browser",
+             len(courses), len(dlist), conc, n_plain, len(courses) - n_plain)
 
     # Split by tenant: the datacenter-direct set goes over plain HTTP (no proxy,
     # no browser); the rest keep the browser path (Cloudflare challenge + the
-    # residential TEEITUP_PROXY, unset = direct). Sticky per-course session id is
-    # applied inside _proxy_launch_kwargs for the browser path.
-    tee_times, errors = [], []
+    # residential TEEITUP_PROXY, unset = direct). Both scrape ALL dates per call.
+    per_course: dict = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=conc) as ex:
         futs = [ex.submit(
                     _scrape_one_course_plain
                     if c["ids"].get("tenant") in _DC_DIRECT_TENANTS
                     else _scrape_one_course,
-                    c, date_str)
+                    c, dlist)
                 for c in courses]
         for fut in concurrent.futures.as_completed(futs):
             res = fut.result()
-            if res["ok"]:
-                tee_times.extend(res["tts"])
-                log.info("  %-34s %d times", res["slug"], len(res["tts"]))
-            else:
-                errors.append({"course": res["slug"], "platform": "clubprophet",
-                               "error": res["error"]})
-                log.info("  %-34s ERROR %s", res["slug"], res["error"])
+            per_course[res["slug"]] = res["dates"]
+            ok_n = sum(1 for v in res["dates"].values() if v.get("ok"))
+            log.info("  %-34s %d/%d dates ok", res["slug"], ok_n, len(dlist))
 
-    doc = {
-        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "date": date.isoformat(),
-        "courses_queried": len(courses),
-        "courses_ok": len(courses) - len(errors),
-        "tee_times": [t.to_dict() for t in tee_times],
-        "errors": errors,
-    }
-    out = pathlib.Path(out_path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, indent=2))
-    log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
-    return doc
+    # One aggregate doc per date, so scraper.d1 push reconciles each date cleanly.
+    written = []
+    for d in dlist:
+        iso = d.isoformat()
+        tee_times, errors = [], []
+        for c in courses:
+            entry = per_course.get(c["slug"], {}).get(iso)
+            if entry and entry.get("ok"):
+                tee_times.extend(entry["tts"])
+            else:
+                errors.append({"course": c["slug"], "platform": "clubprophet",
+                               "error": (entry or {}).get("error", "no result")})
+        doc = {
+            "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "date": iso,
+            "courses_queried": len(courses),
+            "courses_ok": len(courses) - len(errors),
+            "tee_times": [t.to_dict() for t in tee_times],
+            "errors": errors,
+        }
+        out = pathlib.Path(out_paths_by_iso[iso])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(doc, indent=2))
+        written.append(str(out))
+        log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
+    return written
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Browser-based cps.golf fetcher")
+    # Single date (back-compat: writes ONE doc to --out).
     p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=1)).isoformat())
+    p.add_argument("--out", default="output/cps.json")
+    # Multi-date (preferred): ONE browser session per tenant covers all dates;
+    # writes output/<out-prefix>_<iso>.json per date. Cuts residential page-loads.
+    p.add_argument("--dates", help="comma-separated ISO dates (YYYY-MM-DD)")
+    p.add_argument("--out-dir", default="output")
+    p.add_argument("--out-prefix", default="cps")
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--shard", help="i/N — process a 1/N slice")
-    p.add_argument("--out", default="output/cps.json")
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
-    run(dt.date.fromisoformat(a.date), a.registry, a.out, a.shard)
+    if a.dates:
+        dates = [dt.date.fromisoformat(s.strip()) for s in a.dates.split(",") if s.strip()]
+        out_by_iso = {d.isoformat(): f"{a.out_dir}/{a.out_prefix}_{d.isoformat()}.json"
+                      for d in dates}
+    else:
+        d = dt.date.fromisoformat(a.date)
+        dates = [d]
+        out_by_iso = {d.isoformat(): a.out}
+    run(dates, a.registry, out_by_iso, a.shard)
     return 0
 
 
