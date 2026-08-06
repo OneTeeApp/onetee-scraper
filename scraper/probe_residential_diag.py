@@ -107,6 +107,44 @@ def main() -> int:
         print("DIAGR sticky verdict: STICKY SYNTAX REJECTED by proxy (as-is works, mangled fails)",
               flush=True)
 
+    # --- stage 2b: FORMAT SHOOTOUT — which sticky username actually holds an IP? ---
+    # Webshare residential sticky format is {username}-{country}-{session_id}; the
+    # current secret is "{base}-rotate" with NO country segment, and the prod
+    # code appends only "-{id}". Detect the exit country, then test each
+    # candidate username TWICE and report which returns the SAME IP both times
+    # (= real sticky). base is the username minus any -rotate flag.
+    base = re.sub(r"-(?:rotate|\d{4,})$", "", base_user)
+    # detect the exit country of a proxied request (through the as-is secret)
+    cc = None
+    try:
+        r = requests.get("http://ip-api.com/json/", timeout=25, proxies=plain,
+                         headers={"User-Agent": UA})
+        cc = (r.json().get("countryCode") or "").lower() or None
+        print(f"DIAGR exit country (as-is): {cc or 'unknown'}", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"DIAGR exit country: EXC {type(e).__name__}: {str(e)[:200]}", flush=True)
+    # fixed session id so both fetches of a candidate SHOULD share an IP
+    SID = "778899"
+    candidates = [("{base}-{sid}", f"{base}-{SID}")]
+    if cc:
+        candidates.append(("{base}-{cc}-{sid}", f"{base}-{cc}-{SID}"))
+    candidates.append(("{base}-us-{sid}", f"{base}-us-{SID}"))
+    pw_raw = urllib.parse.unquote(pu.password or "")
+    for label, uname in candidates:
+        u = (f"{pu.scheme}://{urllib.parse.quote(uname, safe='')}:"
+             f"{urllib.parse.quote(pw_raw, safe='')}@{pu.hostname}"
+             + (f":{pu.port}" if pu.port else ""))
+        px = {"http": u, "https": u}
+        a = _ip(px, f"fmt[{label}] #1")
+        b = _ip(px, f"fmt[{label}] #2")
+        if a and b:
+            print(f"DIAGR fmt[{label}] verdict: "
+                  f"{'STICKY ✓ (same IP)' if a == b else 'not sticky (IP changed)'}",
+                  flush=True)
+        elif not a:
+            print(f"DIAGR fmt[{label}] verdict: REJECTED (no connection)", flush=True)
+    print("DIAGR --- pick the STICKY ✓ format above for browser_cps ---", flush=True)
+
     # --- stage 3: real Chromium via the exact prod path ---
     print("DIAGR --- chromium stage ---", flush=True)
     try:
