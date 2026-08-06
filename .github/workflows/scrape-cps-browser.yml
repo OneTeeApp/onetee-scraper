@@ -1,43 +1,98 @@
-name: Scrape CPS via browser (0-6 every 6h, 0-30 daily)
+name: Scrape CPS (plain tenants hourly, residential tenants sparingly)
 
-# Club Prophet (cps.golf) tenants whose WAF blocks the plain HTTP client's TLS
-# fingerprint from datacenter IPs are fetched with a real headless Chromium,
-# which clears the WAF (verified: Flatirons/Fossil 200 via browser vs 403 via
-# requests). The plain scraper excludes clubprophet, so this job solely owns
-# those course_slugs in D1.
+# Club Prophet (cps.golf). Two cost profiles, split onto TWO cadences so the free
+# set stays fresh without burning the metered residential proxy:
 #
-# CADENCE IS DELIBERATELY LOW (2026-08-06): the challenged tenants go through a
-# METERED residential proxy and browser page-loads are heavy. Running hourly,
-# plus a full scrape on every code push, exhausted the Webshare residential plan
-# in a day (402 Payment Required). So: near tier (days 0-6) every 6h, deep
-# (0-30) once daily, and NO push trigger — code/registry changes are picked up
-# by the next scheduled run (each run checks out latest main). Use
-# workflow_dispatch to force a run. browser_cps also blocks image/media/font
-# requests to cut residential bandwidth per page ~10x. Raise cadence only if
-# bandwidth allows, or after splitting the free plain-direct tenants onto their
-# own frequent job.
+#   * PLAIN-DIRECT tenants (_DC_DIRECT_TENANTS in browser_cps): plain HTTP, no
+#     proxy, no browser, NO bandwidth cost. cps.golf's Cloudflare does not
+#     challenge them from a datacenter IP. These carry the near-term inventory,
+#     so they run HOURLY (near, days 0-6) + a daily deep (0-30). CPS_ONLY=plain.
+#
+#   * BROWSER/CHALLENGED tenants (the rest): Cloudflare challenges them, so they
+#     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY). Full
+#     SPA page-loads are bandwidth-heavy — running them hourly (and a scrape on
+#     every code push) exhausted the Webshare residential plan in a day (402
+#     Payment Required, 2026-08-06). So they run SPARINGLY: near (0-6) every 6h +
+#     a daily deep. CPS_ONLY=browser. browser_cps also blocks image/media/font
+#     requests (~10x less bandwidth/page) and forces a US exit.
+#
+# NO push trigger: code/registry changes are picked up by the next scheduled run
+# (each checks out latest main). Use workflow_dispatch (set: plain|browser|all)
+# to force a run. The plain scraper excludes clubprophet, so this workflow solely
+# owns those course_slugs in D1; the two jobs own disjoint tenant sets, so they
+# never write the same slug.
 
 on:
   schedule:
-    - cron: "37 */6 * * *"   # near tier (days 0-6): 00:37, 06:37, 12:37, 18:37 UTC
-    - cron: "7 10 * * *"     # deep (days 0-30): once daily at 10:07 UTC (DEEP gate = hour 10)
+    - cron: "37 * * * *"     # PLAIN, near (0-6): hourly  — free, keeps near-term fresh
+    - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
+    - cron: "23 */6 * * *"   # BROWSER, near (0-6): every 6h — metered residential, sparing
+    - cron: "7 10 * * *"     # BROWSER, deep (0-30): daily  — metered residential
   workflow_dispatch:
     inputs:
+      set:
+        description: "which tenants: plain | browser | all"
+        default: "all"
       deep:
-        description: "Scrape the full 0-30 day horizon"
+        description: "full 0-30 day horizon?"
         default: "no"
 
 permissions:
   contents: read
 
-concurrency:
-  group: scrape-cps-browser
-  cancel-in-progress: false
-
 jobs:
-  scrape:
+  # -------- FREE plain-direct tenants: hourly near + daily deep, no Chromium ----
+  plain:
+    if: >-
+      (github.event_name == 'schedule' &&
+        (github.event.schedule == '37 * * * *' || github.event.schedule == '17 8 * * *'))
+      || (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.set == 'plain' || github.event.inputs.set == 'all'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: scrape-cps-plain
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install requests      # plain HTTP only — no Chromium, no proxy
+      - name: Scrape plain-direct cps tenants + push each date to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          CPS_ONLY: plain            # only _DC_DIRECT_TENANTS (no proxy, no bandwidth)
+        run: |
+          DEEP=no
+          [ "${{ github.event.schedule }}" = "17 8 * * *" ] && DEEP=yes
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+          LAST=6
+          [ "$DEEP" = "yes" ] && LAST=30
+          # Dates from scraper.dates (union of local todays across covered TZs).
+          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+            echo "::group::cps plain ${DATE}"
+            python -m scraper.browser_cps --date "${DATE}" \
+              --out "output/cps_${DATE}.json" || true
+            python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
+            echo "::endgroup::"
+          done
+
+  # -------- CHALLENGED tenants: every-6h near + daily deep, Chromium + residential --
+  browser:
+    if: >-
+      (github.event_name == 'schedule' &&
+        (github.event.schedule == '23 */6 * * *' || github.event.schedule == '7 10 * * *'))
+      || (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.set == 'browser' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
     timeout-minutes: 170
+    concurrency:
+      group: scrape-cps-browser
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,28 +102,21 @@ jobs:
         run: |
           pip install requests playwright
           python -m playwright install --with-deps chromium
-
-      - name: Scrape + push each date to D1 (tiered horizon)
+      - name: Scrape challenged cps tenants (residential) + push each date to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Residential proxy so cps.golf's Cloudflare challenge clears from the
-          # data-center IP. Unset = direct (unchanged); browser_cps reads it.
+          CPS_ONLY: browser          # only the Cloudflare-challenged tenants
+          # METERED residential proxy — browser_cps forces a US exit + blocks
+          # image/media/font to conserve bandwidth. Unset = direct (would 403).
           TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
         run: |
-          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
-          # manual deep dispatch stretch to the full 30-day horizon. Browser
-          # scrapes are too slow to loop at the near tier's cadence, so daily
-          # is the far-tier freshness for these platforms.
           DEEP=no
-          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          [ "${{ github.event.schedule }}" = "7 10 * * *" ] && DEEP=yes
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=6
           [ "$DEEP" = "yes" ] && LAST=30
-          # Dates from scraper.dates (union of local todays across covered
-          # timezones), not `date -u`: after ~5pm Mountain the UTC date is
-          # already tomorrow and a UTC "today" skips the real one.
           for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
             echo "::group::cps browser ${DATE}"
             python -m scraper.browser_cps --date "${DATE}" \
