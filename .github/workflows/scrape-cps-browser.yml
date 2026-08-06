@@ -6,13 +6,13 @@ name: Scrape CPS (plain tenants hourly, residential tenants sparingly)
 #   * PLAIN-DIRECT tenants (_DC_DIRECT_TENANTS in browser_cps): plain HTTP, no
 #     proxy, no browser, NO bandwidth cost. cps.golf's Cloudflare does not
 #     challenge them from a datacenter IP. These carry the near-term inventory,
-#     so they run HOURLY (near, days 0-6) + a daily deep (0-30). CPS_ONLY=plain.
+#     so they run HOURLY (near, days 0-3) + a daily deep (0-30). CPS_ONLY=plain.
 #
 #   * BROWSER/CHALLENGED tenants (the rest): Cloudflare challenges them, so they
 #     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY). Full
 #     SPA page-loads are bandwidth-heavy — running them hourly (and a scrape on
 #     every code push) exhausted the Webshare residential plan in a day (402
-#     Payment Required, 2026-08-06). So they run SPARINGLY: near (0-6) every 6h +
+#     Payment Required, 2026-08-06). So they run SPARINGLY: near (0-3) every 6h +
 #     a daily deep. CPS_ONLY=browser. browser_cps also blocks image/media/font
 #     requests (~10x less bandwidth/page) and forces a US exit.
 #
@@ -24,9 +24,9 @@ name: Scrape CPS (plain tenants hourly, residential tenants sparingly)
 
 on:
   schedule:
-    - cron: "37 * * * *"     # PLAIN, near (0-6): hourly  — free, keeps near-term fresh
+    - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free, keeps near-term fresh
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
-    - cron: "23 */6 * * *"   # BROWSER, near (0-6): every 6h — metered residential, sparing
+    - cron: "23 */6 * * *"   # BROWSER, near (0-3): every 6h — metered residential, sparing
     - cron: "7 10 * * *"     # BROWSER, deep (0-30): daily  — metered residential
   workflow_dispatch:
     inputs:
@@ -70,7 +70,7 @@ jobs:
           DEEP=no
           [ "${{ github.event.schedule }}" = "17 8 * * *" ] && DEEP=yes
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
-          LAST=6
+          LAST=3
           [ "$DEEP" = "yes" ] && LAST=30
           # Dates from scraper.dates (union of local todays across covered TZs).
           for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
@@ -115,7 +115,7 @@ jobs:
           DEEP=no
           [ "${{ github.event.schedule }}" = "7 10 * * *" ] && DEEP=yes
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
-          LAST=6
+          LAST=3
           [ "$DEEP" = "yes" ] && LAST=30
           for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
             echo "::group::cps browser ${DATE}"
