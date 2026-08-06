@@ -483,6 +483,16 @@ def run(date: dt.date, registry_path: str, out_path: str,
         courses = [c for c in courses if c["ids"].get("tenant") in _DC_DIRECT_TENANTS]
     elif _only == "browser":
         courses = [c for c in courses if c["ids"].get("tenant") not in _DC_DIRECT_TENANTS]
+    # CPS_TENANTS: optional comma-separated tenant allowlist for isolated probes —
+    # scrape ONLY these tenants (e.g. verify a specific never-captured tenant
+    # without running the whole challenged set and its residential bandwidth).
+    # Composes with CPS_ONLY as an intersection. Matched against ids.tenant,
+    # case-insensitive. Unset = no restriction (original behaviour).
+    _tenants = os.environ.get("CPS_TENANTS", "").strip()
+    if _tenants:
+        _keep = {t.strip().lower() for t in _tenants.split(",") if t.strip()}
+        courses = [c for c in courses
+                   if (c["ids"].get("tenant") or "").lower() in _keep]
     courses = apply_shard(courses, shard)
     date_str = date.strftime("%a %b %d %Y")
 
