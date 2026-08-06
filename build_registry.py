@@ -169,6 +169,23 @@ EXTRA_IDS = {
                             "course_ids": [1]},
     "williamsburg national golf club":
         {"website_id": "ffa2bdfb-f752-4d47-b541-08d87f6a4174", "course_ids": [1, 2]},
+    # Four FL Club Prophet tenants, ids captured 2026-08-06 via the same
+    # anonymous flow on each tenant's own origin (post-Cloudflare, in a real
+    # browser). Highlands Ridge N/S share ONE tenant (highlandsridgefl) and were
+    # both unpinned, so the plain flow would have published the combined sheet
+    # under both slugs — these pins are what let the tenant move to the free
+    # datacenter-direct set in browser_cps. Oriole confirmed serving (41 slots,
+    # Sat 2026-08-08). Crane Lakes' GetAllOptions returns EMPTY courseOptions,
+    # so discovery can never pin it — but courseIds=1 with this websiteId
+    # returns the real sheet (67 slots, Sat 2026-08-08, "Crane Lakes" label).
+    "highlands ridge golf club - north course":
+        {"website_id": "dfc45eee-2f31-4681-997d-08db8480dd15", "course_ids": [1]},
+    "highlands ridge golf club - south course":
+        {"website_id": "dfc45eee-2f31-4681-997d-08db8480dd15", "course_ids": [2]},
+    "oriole golf club":
+        {"website_id": "18dda4e6-5af0-4b47-ef1e-08daa629da2f", "course_ids": [1]},
+    "crane lakes golf & country club":
+        {"website_id": "f197d475-3ab5-47d9-ded6-08db675c16b2", "course_ids": [1]},
 
     # Two AZ TeeItUp courses whose kenna alias is nothing like their booking
     # host — found 2026-07-27 by reading each booking page's OWN /alias/ call
