@@ -592,7 +592,20 @@ def run(dates, registry_path: str, out_paths_by_iso: dict,
             res = fut.result()
             per_course[res["slug"]] = res["dates"]
             ok_n = sum(1 for v in res["dates"].values() if v.get("ok"))
-            log.info("  %-34s %d/%d dates ok", res["slug"], ok_n, len(dlist))
+            if ok_n < len(dlist):
+                # Surface WHY dates failed (the error string, not just the count),
+                # so a dark tenant's failure mode is visible in the run log:
+                # "teetimes 403" = Cloudflare challenge not cleared (IP/proxy),
+                # "browser <exc>" = page-load/tunnel failure, "teetimes 400" =
+                # bad request, etc. Sample the first slot's status too.
+                errs = {}
+                for iso_k, v in res["dates"].items():
+                    if not v.get("ok"):
+                        errs[v.get("error") or "?"] = errs.get(v.get("error") or "?", 0) + 1
+                detail = "; ".join(f"{e} x{n}" for e, n in sorted(errs.items()))[:160]
+                log.info("  %-34s %d/%d dates ok  FAIL: %s", res["slug"], ok_n, len(dlist), detail)
+            else:
+                log.info("  %-34s %d/%d dates ok", res["slug"], ok_n, len(dlist))
 
     # One aggregate doc per date, so scraper.d1 push reconciles each date cleanly.
     written = []
