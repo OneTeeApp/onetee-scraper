@@ -21,8 +21,10 @@ import concurrent.futures
 import datetime as dt
 import json
 import logging
+import hashlib
 import os
 import pathlib
+import re
 import sys
 import time
 import urllib.parse
@@ -156,19 +158,22 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
     proxy clears it. Playwright's Chromium ignores HTTPS_PROXY on its own, so the
     proxy MUST be passed to launch(proxy=). TEEITUP_PROXY is the shared secret.
 
-    STICKY SESSION (session=): when given, append DataImpulse's `;sessid.<id>`
-    to the proxy username so every request in ONE course's flow egresses a
-    single residential IP for ~30 min. This is the fix for the 2026-08-04
-    finding that 19/27 cps tenants 403'd at the TeeTimes stage through the
-    plain rotating proxy while the exact flow returned 200 from a real
-    residential browser: cps.golf's Cloudflare binds its clearance cookie to
-    the IP, and a rotating proxy that egresses page.goto on one IP and the
-    TeeTimes fetch on another invalidates the cookie -> 403. A per-course sticky
-    session pins the IP within the flow; a FRESH session per attempt also hands
-    each retry a new IP, which dodges an individually-flagged address. Format
-    per DataImpulse docs: `login__cr.us;sessid.<id>` (docs.dataimpulse.com/
-    proxies/parameters/session-id). If the operator already pinned a sessid in
-    the secret we leave it alone.
+    STICKY SESSION (session=): when given, pin ONE residential IP for every
+    request in a course's flow, because cps.golf's Cloudflare binds its
+    clearance cookie to the IP (a rotating proxy that egresses page.goto on one
+    IP and the TeeTimes fetch on another invalidates the cookie -> 403, the
+    2026-08-04 19/27 failure). A FRESH session per attempt also hands each retry
+    a new IP and gives concurrent courses distinct IPs.
+
+    The sticky-session SYNTAX is provider-specific, so this is provider-aware:
+      * Webshare residential (host contains 'webshare'): append a NUMERIC id to
+        the username -> `{user}-{sid}` (their format is `{username}-{cc}-{id}`;
+        same id = same exit IP for the dashboard session timer, so set that
+        timer to a few minutes). Any trailing `-rotate` is stripped first so a
+        rotating endpoint in the secret still becomes sticky here.
+      * DataImpulse (default): append `;sessid.<id>` (docs.dataimpulse.com/
+        proxies/parameters/session-id).
+    If a session id already looks present we leave the username alone.
     """
     kwargs = {"args": ["--no-sandbox"]}
     url = os.environ.get("TEEITUP_PROXY", "").strip()
@@ -178,8 +183,15 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
         proxy = {"server": server}
         if pu.username:
             user = urllib.parse.unquote(pu.username)
-            if session and "sessid." not in user:
-                user = f"{user};sessid.{session}"
+            if session:
+                host = (pu.hostname or "").lower()
+                if "webshare" in host:
+                    base = re.sub(r"-rotate$", "", user)   # normalise away rotating flag
+                    if not re.search(r"-\d{4,}$", base):   # not already session-pinned
+                        num = int(hashlib.md5(session.encode()).hexdigest()[:8], 16) % 1000000
+                        user = f"{base}-{num}"
+                elif "sessid." not in user:
+                    user = f"{user};sessid.{session}"
             proxy["username"] = user
         if pu.password:
             proxy["password"] = urllib.parse.unquote(pu.password)
