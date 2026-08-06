@@ -1,26 +1,26 @@
-name: Scrape TeeItUp near (days 0-2, self-chaining loop, plain HTTP no proxy)
+name: Scrape TeeItUp near (days 0-2, self-chaining loop, plain HTTP via proxy)
 
-# TRANSPORT (2026-08-05). Plain HTTP straight to kenna from the runners, NO
-# proxy — same as the far job. The no-proxy probe (run 30972618625,
-# claude/noproxy-probe.md) proved the datacenter reaches kenna fine (zero
-# connection errors); kenna's only limit is a per-IP RATE limit (~53% of a
-# shard served per gentle pass, rest 429). The residential proxy was burning $5
-# in hours and is NOT needed — kenna doesn't block datacenter IPs.
+# TRANSPORT (2026-08-06). Plain HTTP to kenna through the Webshare ROTATING
+# DATACENTER proxy in secret TEEITUP_DC_PROXY — same as the far job. A new exit
+# IP per request means kenna's per-IP rate limit (~50 req/IP, its only limit)
+# never binds; probe-webshare.yml run #4 (31069125299) served 46/46 on all 6
+# probed dates with ZERO errors. The residential proxy was burning $5 in hours
+# and is NOT needed — kenna doesn't block datacenter IPs. History:
+# claude/noproxy-verify-log.md.
 #
-# HOW COVERAGE STILL HOLDS. Two things fill the ~half that 429s each pass:
-# (1) browser_teeitup's plain path shuffles course order per run, so the 429'd
-# tail rotates instead of being a permanent gap; (2) this is a self-chaining
-# LOOP doing many passes over ~5.5h, so the union across passes covers the whole
-# shard and each course refreshes every ~2 passes — well inside the near
-# freshness window (day0=3h, days1-2=6h). A 429 is an error record, so a course
-# keeps its existing D1 rows (shown) until a later pass refreshes it.
+# COVERAGE. With rotation every pass should serve ~the whole shard (no more
+# 429'd half). The shuffle + self-chaining loop remain as belt-and-braces: if
+# the secret is unset/dead we fall back to direct, where (1) the per-run course
+# shuffle rotates the 429'd tail and (2) the union across ~5.5h of passes still
+# covers the shard within the near freshness window (day0=3h, days1-2=6h). A
+# 429 is an error record, so a course keeps its existing D1 rows until a later
+# pass refreshes it.
 #
 # CADENCE. Self-chaining (shard 0 dispatches the successor); the hourly cron is
 # only a crash backstop. The plain near/mid/far tiers all EXCLUDE teeitup, and
 # the far job owns days 3-30, so days 0-2 have exactly one teeitup writer here.
 #
-# To go higher-yield later, add a CHEAP unmetered DATACENTER proxy via
-# TEEITUP_PROXY (never residential).
+# TEEITUP_DC_PROXY must be the ROTATING endpoint, never a direct proxy IP.
 
 on:
   schedule:
@@ -67,10 +67,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # NO TEEITUP_PROXY → direct datacenter connection (the point: free).
+          # Webshare rotating datacenter endpoint — new exit IP per request.
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
           TEEITUP_PLAIN_HTTP: "1"
-          TEEITUP_PLAIN_CONCURRENCY: "1"   # single-flight per IP (gentle)
-          TEEITUP_PLAIN_GAP_MS: "1200"     # ~0.6s avg jitter between courses
+          TEEITUP_PLAIN_CONCURRENCY: "4"   # rotation spreads IPs; keep bursts modest
+          TEEITUP_PLAIN_GAP_MS: "150"      # small jitter so we don't micro-burst kenna
         run: |
           START=$(date +%s)
           PASS=0

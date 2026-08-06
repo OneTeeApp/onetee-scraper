@@ -1,18 +1,17 @@
-name: Scrape TeeItUp far (days 3-30, plain HTTP, NO proxy)
+name: Scrape TeeItUp far (days 3-30, plain HTTP via rotating datacenter proxy)
 
-# TRANSPORT (2026-08-05). Plain HTTP straight to kenna from the runners — NO
-# proxy. The no-proxy probe (run 30972618625, claude/noproxy-probe.md) showed
-# the datacenter reaches kenna fine (zero connection errors) and kenna's only
-# limit is a per-IP RATE limit: at gentle pace one runner IP serves ~53% of its
-# shard per pass and 429s the rest. So we DON'T pay for a proxy at all — we just
-# spread across more free runner IPs (8 shards = 8 IPs) and let the union across
-# passes fill the ~half that 429s each time. The plain path shuffles course
-# order per run so the 429'd tail rotates instead of being a permanent gap.
+# TRANSPORT (2026-08-06). Plain HTTP to kenna through the Webshare ROTATING
+# DATACENTER proxy in secret TEEITUP_DC_PROXY — a new exit IP per request, so
+# kenna's per-IP rate limit (~50 req/IP, its only limit) never binds. Validated
+# by probe-webshare.yml run #4 (31069125299): 6 far dates, 46/46 served on
+# every date, ZERO errors (the no-proxy baseline served only the first date per
+# shard per run). History: claude/noproxy-verify-log.md.
 #
-# The residential proxy is deliberately NOT passed here (it was burning $5 in
-# hours; residential is not needed — kenna doesn't block datacenter IPs, it
-# rate-limits per IP). To go faster/higher-yield later, add a CHEAP unmetered
-# DATACENTER proxy via TEEITUP_PROXY — never residential.
+# Residential is deliberately NOT used here (it was burning $5 in hours and is
+# not needed — kenna doesn't block datacenter IPs, it rate-limits per IP).
+# TEEITUP_DC_PROXY must be the ROTATING endpoint, never a direct proxy IP. If
+# the secret is unset, this falls back to a direct connection (per-IP wall
+# returns → partial coverage, not zero).
 #
 # OWNERSHIP. This job owns days 3-30 for teeitup; scrape-teeitup-browser-near.yml
 # owns days 0-2. scrape-far.yml, scrape.yml (mid) AND scrape-near.yml all EXCLUDE
@@ -58,10 +57,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # NO TEEITUP_PROXY → direct datacenter connection (the point: free).
+          # Webshare rotating datacenter endpoint — new exit IP per request.
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
           TEEITUP_PLAIN_HTTP: "1"
-          TEEITUP_PLAIN_CONCURRENCY: "1"   # single-flight per IP (gentle)
-          TEEITUP_PLAIN_GAP_MS: "1200"     # ~0.6s avg jitter between courses
+          TEEITUP_PLAIN_CONCURRENCY: "4"   # rotation spreads IPs; keep bursts modest
+          TEEITUP_PLAIN_GAP_MS: "150"      # small jitter so we don't micro-burst kenna
         run: |
           # Shuffle the date order too: spreads which dates a short/interrupted
           # run covers so the union fills the 3-30 window over a few sweeps.
