@@ -1,0 +1,28 @@
+name: Probe proxy diagnostic (why does TEEITUP_DC_PROXY fail?)
+
+# Read-only. One GET through the proxy to a neutral IP-echo and one to kenna,
+# printing the FULL exception (prod probes truncate it). Separates "proxy
+# misconfigured" (fails even to a neutral site → Webshare auth/endpoint) from
+# "kenna blocks the proxy's IPs" (neutral works, kenna fails). Credentials are
+# masked in output.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: proxy diagnostic
+        env:
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
+        run: python -m scraper.probe_proxy_diag
