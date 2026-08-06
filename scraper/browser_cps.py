@@ -253,6 +253,26 @@ def _scrape_one_course(course: dict, date_str: str) -> dict:
             browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
+                # Residential bandwidth is METERED and full SPA page-loads are
+                # heavy — three 35-min browser runs exhausted the Webshare
+                # residential plan (diag 31107270159: "Tunnel connection failed:
+                # 402 Payment Required" even on a 1-byte ipify fetch). cps.golf's
+                # Cloudflare managed challenge needs only HTML + JS to clear, and
+                # the reservation API is JSON; images / media / fonts are pure
+                # waste on the metered link. Abort them so the plan's bandwidth
+                # lasts ~an order of magnitude longer. (Scripts, XHR/fetch, the
+                # document and stylesheets are kept — the challenge JS needs
+                # them.) CPS_KEEP_ASSETS=1 disables this if a tenant ever breaks.
+                if os.environ.get("CPS_KEEP_ASSETS") != "1":
+                    def _block_heavy(route):
+                        try:
+                            if route.request.resource_type in ("image", "media", "font"):
+                                route.abort()
+                            else:
+                                route.continue_()
+                        except Exception:  # noqa: BLE001
+                            pass
+                    page.route("**/*", _block_heavy)
                 # 45s (was 22s): a residential exit is much slower than the old
                 # datacenter path, and 22s was timing out the goto on healthy
                 # tenants (run 31078775653: "Page.goto: Timeout 22000ms").
