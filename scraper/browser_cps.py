@@ -279,14 +279,14 @@ _DC_DIRECT_TENANTS = frozenset({
     "cityofwestminster", "redhawkridge", "dellago",
     "stjamesbay", "wakullasandsfl", "southerndunes", "tanglewoodfl",
     "musketridgemd", "oceancitygc",
+    # 2026-08-06: highlandsridgefl joined once its N/S course_ids were pinned
+    # in the registry (North=1, South=2, from GetAllOptions.courseOptions) —
+    # it had been HELD BACK because both slugs were unpinned on ONE shared
+    # tenant, so the combined sheet would have published under both slugs.
+    # oriolegc joined after its busy-date check (41 slots, Sat 2026-08-08):
+    # the first plain probe had only ever seen it date-empty.
+    "highlandsridgefl", "oriolegc",
 })
-# HELD BACK: "highlandsridgefl". Its North and South are two SEPARATE registry
-# courses sharing this ONE tenant, and both are UNPINNED (no course_ids), so the
-# flow returns the combined sheet and _teetimes would publish it under BOTH
-# slugs — duplication. Every other shared tenant here (oceancitygc,
-# cityofwestminster) pins course_ids per course, so it filters correctly.
-# FOLLOW-UP to move highlands-ridge to plain: pin the N/S course_ids in the
-# registry (discoverable from GetAllOptions.courseOptions), then add it back.
 _API = "/onlineres/onlineapi/api/v1/onlinereservation"
 _ZG = "00000000-0000-0000-0000-000000000000"
 
