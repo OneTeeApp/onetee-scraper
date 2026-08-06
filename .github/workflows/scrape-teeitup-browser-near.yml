@@ -1,4 +1,4 @@
-name: Scrape TeeItUp near (days 0-2, self-chaining loop, plain HTTP via proxy)
+name: Scrape TeeItUp near (days 0-3, self-chaining loop, plain HTTP via proxy)
 
 # TRANSPORT (2026-08-06). Plain HTTP to kenna through the Webshare ROTATING
 # DATACENTER proxy in secret TEEITUP_DC_PROXY — same as the far job. A new exit
@@ -18,7 +18,8 @@ name: Scrape TeeItUp near (days 0-2, self-chaining loop, plain HTTP via proxy)
 #
 # CADENCE. Self-chaining (shard 0 dispatches the successor); the hourly cron is
 # only a crash backstop. The plain near/mid/far tiers all EXCLUDE teeitup, and
-# the far job owns days 3-30, so days 0-2 have exactly one teeitup writer here.
+# the far job owns days 3-30; the day-3 overlap is idempotent (d1.sync
+# reconciles per course_slug+date), so near now covers 0-3 for fresher day-3.
 #
 # TEEITUP_DC_PROXY must be the ROTATING endpoint, never a direct proxy IP.
 
@@ -62,7 +63,7 @@ jobs:
       - name: Install deps
         run: pip install requests      # plain HTTP only — no Chromium needed
 
-      - name: Loop shard ${{ matrix.shard }}/4 teeitup (plain HTTP) over days 0-2
+      - name: Loop shard ${{ matrix.shard }}/4 teeitup (plain HTTP) over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -83,9 +84,9 @@ jobs:
             fi
             PASS=$((PASS + 1))
             T0=$(date +%s)
-            # Only days 0-2 (scraper.dates --days 3). Dates come from
+            # Days 0-3 (scraper.dates --days 4). Dates come from
             # scraper.dates (union of local todays across timezones).
-            for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
+            for DATE in $(python -m scraper.dates --registry registry.json --days 4); do
               OUT="output/tun_${DATE}_s${{ matrix.shard }}.json"
               echo "::group::teeitup near plain pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.browser_teeitup --date "${DATE}" \

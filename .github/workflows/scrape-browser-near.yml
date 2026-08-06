@@ -1,6 +1,6 @@
-name: Scrape browser platforms near (days 0-2, self-chaining loop)
+name: Scrape browser platforms near (days 0-3, self-chaining loop)
 
-# WHY (2026-08-04). The near window (days 0-2) for the headless-browser
+# WHY (2026-08-04). The near window (days 0-3) for the headless-browser
 # platforms was being HIDDEN, not missing. Each of these platforms — ezlinks,
 # clubcaddie, cps (ClubProphet), golfnow, supersaas, golfwithaccess — is
 # excluded from the fast plain near tier (scrape-near.yml) and scraped only by
@@ -14,7 +14,7 @@ name: Scrape browser platforms near (days 0-2, self-chaining loop)
 # +2 showed (scraped ~1h earlier) while +1 was hidden — same course, same run.
 #
 # FIX. A self-chaining loop (same pattern as scrape-near.yml and the teeitup
-# near loop) that re-scrapes ONLY days 0-2 for every browser platform, in
+# near loop) that re-scrapes ONLY days 0-3 for every browser platform, in
 # parallel matrix jobs, fast enough to keep each near date's freshness stamp
 # under 90 min. A 3-day pass per platform runs in well under 90 min (the hourly
 # jobs do 7 days), and reliability comes from SELF-CHAINING (the ezlinks job
@@ -68,7 +68,7 @@ jobs:
           pip install requests playwright
           python -m playwright install --with-deps chromium
 
-      - name: Loop ${{ matrix.platform }} over days 0-2
+      - name: Loop ${{ matrix.platform }} over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -99,14 +99,14 @@ jobs:
             T0=$(date +%s)
             mkdir -p output
             # Days 0-2 only; dates from scraper.dates (union of local todays).
-            DATES=$(python -m scraper.dates --registry registry.json --days 3)
+            DATES=$(python -m scraper.dates --registry registry.json --days 4)
             case "$PLAT" in
               clubcaddie)
                 # clubcaddie takes a RANGE in one widget-load-per-course call and
                 # writes output/cc_<date>.json per date.
                 D0=$(echo "$DATES" | head -1)
                 echo "::group::clubcaddie near pass ${PASS}"
-                python -m scraper.browser_clubcaddie --date "$D0" --days 3 --out-dir output || true
+                python -m scraper.browser_clubcaddie --date "$D0" --days 4 --out-dir output || true
                 for DATE in $DATES; do
                   python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
                 done

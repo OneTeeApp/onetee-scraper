@@ -1,4 +1,4 @@
-name: Scrape near tier (days 0-2, 5-minute loop)
+name: Scrape near tier (days 0-3, 5-minute loop)
 
 # The near tier wants a 5-minute cadence, and GitHub's cron scheduler cannot
 # deliver that — this repo has already measured a `*/5` cron firing about
@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: Loop shard ${{ matrix.shard }}/4 over days 0-2
+      - name: Loop shard ${{ matrix.shard }}/4 over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -74,7 +74,7 @@ jobs:
             fi
             PASS=$((PASS + 1))
             T0=$(date +%s)
-            for DATE in $(python -m scraper.dates --registry registry.json --days 3); do
+            for DATE in $(python -m scraper.dates --registry registry.json --days 4); do
               OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
               echo "::group::pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.aggregate --date "${DATE}" --workers 10 \
