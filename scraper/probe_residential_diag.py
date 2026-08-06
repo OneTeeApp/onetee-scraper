@@ -66,6 +66,10 @@ def main() -> int:
     if not raw:
         print("DIAGR no TEEITUP_PROXY set — nothing to test", flush=True)
         return 0
+    if "://" not in raw:
+        print("DIAGR NOTE: secret has no scheme — normalising to http:// "
+              "(same as prod code since the 2026-08-06 fix)", flush=True)
+        raw = "http://" + raw
     pu = urllib.parse.urlparse(raw)
     print(f"DIAGR proxy={_masked(raw)} host-has-webshare={'webshare' in (pu.hostname or '').lower()}",
           flush=True)

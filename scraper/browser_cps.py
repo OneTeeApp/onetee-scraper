@@ -176,7 +176,13 @@ def _proxy_launch_kwargs(session: str | None = None) -> dict:
     If a session id already looks present we leave the username alone.
     """
     kwargs = {"args": ["--no-sandbox"]}
-    url = os.environ.get("TEEITUP_PROXY", "").strip()
+    url = re.sub(r"\s+", "", os.environ.get("TEEITUP_PROXY", ""))
+    # Accept a secret pasted in the provider's bare `user:pass@host:port` form
+    # (no scheme). urlparse then reads the USERNAME as the scheme — observed
+    # 2026-08-06 (diag run 31078013717): every launch failed with
+    # ERR_NO_SUPPORTED_PROXIES because "jrjqocbe-rotate" parsed as the scheme.
+    if url and "://" not in url:
+        url = "http://" + url
     if url:
         pu = urllib.parse.urlparse(url)
         server = f"{pu.scheme}://{pu.hostname}" + (f":{pu.port}" if pu.port else "")
@@ -279,14 +285,14 @@ _DC_DIRECT_TENANTS = frozenset({
     "cityofwestminster", "redhawkridge", "dellago",
     "stjamesbay", "wakullasandsfl", "southerndunes", "tanglewoodfl",
     "musketridgemd", "oceancitygc",
-    # 2026-08-06: highlandsridgefl joined once its N/S course_ids were pinned
-    # in the registry (North=1, South=2, from GetAllOptions.courseOptions) —
-    # it had been HELD BACK because both slugs were unpinned on ONE shared
-    # tenant, so the combined sheet would have published under both slugs.
-    # oriolegc joined after its busy-date check (41 slots, Sat 2026-08-08):
-    # the first plain probe had only ever seen it date-empty.
-    "highlandsridgefl", "oriolegc",
 })
+# HELD BACK: "highlandsridgefl". Its North and South are two SEPARATE registry
+# courses sharing this ONE tenant, and both are UNPINNED (no course_ids), so the
+# flow returns the combined sheet and _teetimes would publish it under BOTH
+# slugs — duplication. Every other shared tenant here (oceancitygc,
+# cityofwestminster) pins course_ids per course, so it filters correctly.
+# FOLLOW-UP to move highlands-ridge to plain: pin the N/S course_ids in the
+# registry (discoverable from GetAllOptions.courseOptions), then add it back.
 _API = "/onlineres/onlineapi/api/v1/onlinereservation"
 _ZG = "00000000-0000-0000-0000-000000000000"
 

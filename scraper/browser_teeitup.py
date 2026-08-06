@@ -153,6 +153,13 @@ def _plain_proxies() -> dict | None:
     # as a connection error — observed 2026-08-05 on the first Webshare secret.
     # Proxy URLs never legitimately contain whitespace, so remove all of it.
     raw = re.sub(r"\s+", "", raw)
+    # And accept a secret pasted in the provider's bare `user:pass@host:port`
+    # form (no scheme): requests would otherwise treat the username as the URL
+    # scheme and raise InvalidProxyURL/InvalidURL on every fetch — observed
+    # 2026-08-06 on the refunded Webshare residential secret (diag run
+    # 31078013717).
+    if "://" not in raw:
+        raw = "http://" + raw
     return {"http": raw, "https": raw}
 
 
