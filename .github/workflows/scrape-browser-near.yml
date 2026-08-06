@@ -73,10 +73,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Residential proxy for the cps matrix job (cps.golf challenges the
-          # data-center IP). Only browser_cps reads it; the other platforms
-          # ignore it. Unset = direct (unchanged).
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          # cps: PLAIN-DIRECT tenants ONLY in this continuous loop, and NO
+          # residential proxy. The Cloudflare-CHALLENGED cps tenants use the
+          # METERED residential proxy + full browser page-loads; running them in
+          # this back-to-back self-chaining loop burned ~100 MB/MIN of
+          # residential bandwidth once the proxy was topped up + the US-exit fix
+          # made the page-loads actually succeed (2026-08-06). They are scraped
+          # SPARINGLY by scrape-cps-browser.yml's `browser` job (every 6h)
+          # instead. The free plain-direct cps tenants cost zero bandwidth and
+          # stay in this loop to hold their <90-min near freshness. The plain
+          # path uses no proxy regardless, so TEEITUP_PROXY is intentionally NOT
+          # passed here; other platforms in the matrix never read it.
+          CPS_ONLY: plain
         run: |
           PLAT="${{ matrix.platform }}"
           START=$(date +%s)
