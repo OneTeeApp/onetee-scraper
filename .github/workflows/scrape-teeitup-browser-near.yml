@@ -54,7 +54,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]     # 4 shards = 4 free runner IPs
+        shard: [0, 1]     # 2 shards (was 4). The ROTATING datacenter proxy gives
+                          # a new exit IP PER REQUEST, so per-IP rate limits never
+                          # bind regardless of shard count — 4 runner IPs bought
+                          # nothing. Halving to 2 frees 2 continuously-pinned
+                          # hosted runners (the pool was starved — see the
+                          # scrape-browser-near.yml 2026-08-06 note). Each shard
+                          # now covers 1/2 the courses per pass (~2x pass time,
+                          # still minutes, well inside the 3h/6h near grace).
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -63,7 +70,7 @@ jobs:
       - name: Install deps
         run: pip install requests      # plain HTTP only — no Chromium needed
 
-      - name: Loop shard ${{ matrix.shard }}/4 teeitup (plain HTTP) over days 0-3
+      - name: Loop shard ${{ matrix.shard }}/2 teeitup (plain HTTP) over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,7 +97,7 @@ jobs:
               OUT="output/tun_${DATE}_s${{ matrix.shard }}.json"
               echo "::group::teeitup near plain pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.browser_teeitup --date "${DATE}" \
-                --shard "${{ matrix.shard }}/4" --out "${OUT}" || true
+                --shard "${{ matrix.shard }}/2" --out "${OUT}" || true
               python -m scraper.d1 push --data "${OUT}" || true
               echo "::endgroup::"
             done

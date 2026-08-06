@@ -5,22 +5,23 @@ name: Scrape browser platforms near (days 0-3, self-chaining loop)
 # clubcaddie, cps (ClubProphet), golfnow, supersaas, golfwithaccess — is
 # excluded from the fast plain near tier (scrape-near.yml) and scraped only by
 # its own hourly + shuffled browser job. The read-path freshness guard hides
-# near-date (0-2) slots whose sheet_freshness stamp is older than 90 min; the
-# hourly browser cadence + GitHub cron flakiness + the date shuffle routinely
-# let near dates age past 90 min, so validly-scraped Wednesday/near availability
-# vanished from the site. Measured on CO for 2026-08-05: ~39 online-bookable
-# courses (ezlinks ~14, clubcaddie ~11, golfnow/cps/etc.) showed "not available"
-# while their next-day sheets were still in D1, just stale-stamped. aurora-hills
-# +2 showed (scraped ~1h earlier) while +1 was hidden — same course, same run.
+# near-date slots whose sheet_freshness stamp is older than its grace (day0 3h,
+# days1-2 6h); the hourly browser cadence + GitHub cron flakiness routinely let
+# near dates age past grace, so validly-scraped near availability vanished.
 #
-# FIX. A self-chaining loop (same pattern as scrape-near.yml and the teeitup
-# near loop) that re-scrapes ONLY days 0-3 for every browser platform, in
-# parallel matrix jobs, fast enough to keep each near date's freshness stamp
-# under 90 min. A 3-day pass per platform runs in well under 90 min (the hourly
-# jobs do 7 days), and reliability comes from SELF-CHAINING (the ezlinks job
-# dispatches the successor), not GitHub cron. The existing per-platform browser
-# jobs keep owning the wider horizon (days 3-30); their harmless overlap on
-# 0-2 is idempotent in D1 (push reconciles per course_slug+date).
+# FIX. A self-chaining loop that re-scrapes days 0-3 for every browser platform,
+# fast enough to keep each near date's freshness stamp inside grace. Reliability
+# comes from SELF-CHAINING (the loop dispatches its successor), not GitHub cron.
+#
+# 2026-08-06 — SEQUENTIAL, one job (was a 6-way parallel matrix). The matrix
+# pinned 6 GitHub-hosted runners CONTINUOUSLY (each job self-chains for ~5.5h),
+# which — together with the teeitup near loop and the plain near loop — starved
+# the account's hosted-runner pool: scheduled maintenance, the cps residential
+# browser job, and ad-hoc runs failed to acquire a runner ("The job was not
+# acquired by Runner of type hosted"). Looping the 6 platforms SEQUENTIALLY in a
+# single job holds ONE runner instead of six; a full 6-platform pass over days
+# 0-3 still finishes in ~15-25 min, far inside the 3h/6h freshness grace, so
+# near stays fresh at a fraction of the runner cost.
 
 on:
   schedule:
@@ -39,14 +40,14 @@ on:
 
 permissions:
   contents: read
-  actions: write             # the ezlinks job chains the next run
+  actions: write             # the loop chains the next run
 
 concurrency:
   group: scrape-browser-near
   cancel-in-progress: false     # queued successor waits; never kill the loop
 
 env:
-  INTERVAL_SECONDS: 300         # min seconds per pass; a browser pass usually
+  INTERVAL_SECONDS: 300         # min seconds per pass; a sequential browser pass
                                 # exceeds this, so passes run back-to-back
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
 
@@ -54,10 +55,6 @@ jobs:
   loop:
     runs-on: ubuntu-latest
     timeout-minutes: 335
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [ezlinks, clubcaddie, cps, golfnow, supersaas, golfwithaccess]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -68,25 +65,20 @@ jobs:
           pip install requests playwright
           python -m playwright install --with-deps chromium
 
-      - name: Loop ${{ matrix.platform }} over days 0-3
+      - name: Loop ALL browser platforms sequentially over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # cps: PLAIN-DIRECT tenants ONLY in this continuous loop, and NO
-          # residential proxy. The Cloudflare-CHALLENGED cps tenants use the
-          # METERED residential proxy + full browser page-loads; running them in
-          # this back-to-back self-chaining loop burned ~100 MB/MIN of
-          # residential bandwidth once the proxy was topped up + the US-exit fix
-          # made the page-loads actually succeed (2026-08-06). They are scraped
-          # SPARINGLY by scrape-cps-browser.yml's `browser` job (every 6h)
-          # instead. The free plain-direct cps tenants cost zero bandwidth and
-          # stay in this loop to hold their <90-min near freshness. The plain
-          # path uses no proxy regardless, so TEEITUP_PROXY is intentionally NOT
-          # passed here; other platforms in the matrix never read it.
+          # cps: PLAIN-DIRECT tenants ONLY here, NO residential proxy. The
+          # Cloudflare-CHALLENGED cps tenants use the METERED residential proxy
+          # and are scraped by scrape-cps-browser.yml's `browser` job instead;
+          # TEEITUP_PROXY is intentionally NOT passed here. The plain path uses no
+          # proxy regardless. cps uses the batched --dates interface (one session
+          # per tenant covers all near dates).
           CPS_ONLY: plain
         run: |
-          PLAT="${{ matrix.platform }}"
+          PLATFORMS="ezlinks clubcaddie cps golfnow supersaas golfwithaccess"
           START=$(date +%s)
           PASS=0
           while true; do
@@ -98,37 +90,48 @@ jobs:
             PASS=$((PASS + 1))
             T0=$(date +%s)
             mkdir -p output
-            # Days 0-2 only; dates from scraper.dates (union of local todays).
+            # Days 0-3; dates from scraper.dates (union of local todays).
             DATES=$(python -m scraper.dates --registry registry.json --days 4)
-            case "$PLAT" in
-              clubcaddie)
-                # clubcaddie takes a RANGE in one widget-load-per-course call and
-                # writes output/cc_<date>.json per date.
-                D0=$(echo "$DATES" | head -1)
-                echo "::group::clubcaddie near pass ${PASS}"
-                python -m scraper.browser_clubcaddie --date "$D0" --days 4 --out-dir output || true
-                for DATE in $DATES; do
-                  python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
-                done
-                echo "::endgroup::"
-                ;;
-              *)
-                case "$PLAT" in
-                  ezlinks)         MOD=browser_ezlinks;        PFX=ez  ;;
-                  cps)             MOD=browser_cps;            PFX=cps ;;
-                  golfnow)         MOD=browser_golfnow;        PFX=gn  ;;
-                  supersaas)       MOD=browser_supersaas;      PFX=ss  ;;
-                  golfwithaccess)  MOD=browser_golfwithaccess; PFX=gwa ;;
-                esac
-                for DATE in $DATES; do
-                  OUT="output/${PFX}_${DATE}.json"
-                  echo "::group::${PLAT} near pass ${PASS} ${DATE}"
-                  python -m scraper."$MOD" --date "${DATE}" --out "${OUT}" || true
-                  python -m scraper.d1 push --data "${OUT}" || true
+            CSV=$(echo "$DATES" | paste -sd, -)
+            for PLAT in $PLATFORMS; do
+              case "$PLAT" in
+                clubcaddie)
+                  # clubcaddie takes a RANGE in one widget-load-per-course call
+                  # and writes output/cc_<date>.json per date.
+                  D0=$(echo "$DATES" | head -1)
+                  echo "::group::clubcaddie near pass ${PASS}"
+                  python -m scraper.browser_clubcaddie --date "$D0" --days 4 --out-dir output || true
+                  for DATE in $DATES; do
+                    python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
+                  done
                   echo "::endgroup::"
-                done
-                ;;
-            esac
+                  ;;
+                cps)
+                  # Batched: one Chromium session per tenant covers all dates.
+                  echo "::group::cps (plain) near pass ${PASS}"
+                  python -m scraper.browser_cps --dates "$CSV" --out-dir output --registry registry.json || true
+                  for DATE in $DATES; do
+                    python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
+                  done
+                  echo "::endgroup::"
+                  ;;
+                *)
+                  case "$PLAT" in
+                    ezlinks)         MOD=browser_ezlinks;        PFX=ez  ;;
+                    golfnow)         MOD=browser_golfnow;        PFX=gn  ;;
+                    supersaas)       MOD=browser_supersaas;      PFX=ss  ;;
+                    golfwithaccess)  MOD=browser_golfwithaccess; PFX=gwa ;;
+                  esac
+                  for DATE in $DATES; do
+                    OUT="output/${PFX}_${DATE}.json"
+                    echo "::group::${PLAT} near pass ${PASS} ${DATE}"
+                    python -m scraper."$MOD" --date "${DATE}" --out "${OUT}" || true
+                    python -m scraper.d1 push --data "${OUT}" || true
+                    echo "::endgroup::"
+                  done
+                  ;;
+              esac
+            done
             T1=$(date +%s)
             TOOK=$((T1 - T0))
             SLEEP=$((INTERVAL_SECONDS - TOOK))
@@ -140,8 +143,8 @@ jobs:
             fi
           done
 
-      - name: Chain the next loop run (ezlinks job only)
-        if: always() && matrix.platform == 'ezlinks'
+      - name: Chain the next loop run
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

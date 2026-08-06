@@ -1,20 +1,24 @@
-name: Scrape CPS (plain tenants hourly, residential tenants sparingly)
+name: Scrape CPS (plain tenants hourly, residential tenants every 2h)
 
 # Club Prophet (cps.golf). Two cost profiles, split onto TWO cadences so the free
 # set stays fresh without burning the metered residential proxy:
 #
 #   * PLAIN-DIRECT tenants (_DC_DIRECT_TENANTS in browser_cps): plain HTTP, no
 #     proxy, no browser, NO bandwidth cost. cps.golf's Cloudflare does not
-#     challenge them from a datacenter IP. These carry the near-term inventory,
-#     so they run HOURLY (near, days 0-3) + a daily deep (0-30). CPS_ONLY=plain.
+#     challenge them from a datacenter IP. These run HOURLY (near, days 0-3) +
+#     a daily deep (0-30). CPS_ONLY=plain.
 #
 #   * BROWSER/CHALLENGED tenants (the rest): Cloudflare challenges them, so they
-#     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY). Full
-#     SPA page-loads are bandwidth-heavy — running them hourly (and a scrape on
-#     every code push) exhausted the Webshare residential plan in a day (402
-#     Payment Required, 2026-08-06). So they run SPARINGLY: near (0-3) every 6h +
-#     a daily deep. CPS_ONLY=browser. browser_cps also blocks image/media/font
-#     requests (~10x less bandwidth/page) and forces a US exit.
+#     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY).
+#     browser_cps now scrapes ALL dates in ONE browser session per tenant — the
+#     expensive Cloudflare page-load happens ONCE per tenant, not once per
+#     (tenant,date), so near (0-3) dropped from 4 page-loads/tenant to 1 and deep
+#     (0-30) from 31 to 1. That makes a TIGHTER cadence affordable: near now runs
+#     every 2 h (the read-path day-0 freshness grace is 3 h, so a challenged
+#     tenant's today sheet finally stays LIVE instead of aging out between the old
+#     6-h runs) at ~16 page-loads/run — FEWER daily page-loads than the old 6-h ×
+#     4-dates scheme, and full tenant coverage each run. CPS_ONLY=browser.
+#     browser_cps also blocks image/media/font and forces a US exit.
 #
 # NO push trigger: code/registry changes are picked up by the next scheduled run
 # (each checks out latest main). Use workflow_dispatch (set: plain|browser|all)
@@ -26,7 +30,7 @@ on:
   schedule:
     - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free, keeps near-term fresh
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
-    - cron: "23 */6 * * *"   # BROWSER, near (0-3): every 6h — metered residential, sparing
+    - cron: "23 */2 * * *"   # BROWSER, near (0-3): every 2h — metered, day-0 grace is 3h
     - cron: "7 10 * * *"     # BROWSER, deep (0-30): daily  — metered residential
   workflow_dispatch:
     inputs:
@@ -72,24 +76,24 @@ jobs:
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=3
           [ "$DEEP" = "yes" ] && LAST=30
-          # Dates from scraper.dates (union of local todays across covered TZs).
-          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
-            echo "::group::cps plain ${DATE}"
-            python -m scraper.browser_cps --date "${DATE}" \
-              --out "output/cps_${DATE}.json" || true
-            python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
-            echo "::endgroup::"
+          # ALL dates in ONE invocation (one session per tenant). Dates from
+          # scraper.dates (union of local todays across covered TZs), comma-joined.
+          DATES=$(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | paste -sd, -)
+          echo "cps plain dates: ${DATES}"
+          python -m scraper.browser_cps --dates "${DATES}" --out-dir output --registry registry.json || true
+          for f in output/cps_*.json; do
+            [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
           done
 
-  # -------- CHALLENGED tenants: every-6h near + daily deep, Chromium + residential --
+  # -------- CHALLENGED tenants: every-2h near + daily deep, Chromium + residential --
   browser:
     if: >-
       (github.event_name == 'schedule' &&
-        (github.event.schedule == '23 */6 * * *' || github.event.schedule == '7 10 * * *'))
+        (github.event.schedule == '23 */2 * * *' || github.event.schedule == '7 10 * * *'))
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'browser' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    timeout-minutes: 120
     concurrency:
       group: scrape-cps-browser
       cancel-in-progress: false
@@ -117,10 +121,11 @@ jobs:
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=3
           [ "$DEEP" = "yes" ] && LAST=30
-          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
-            echo "::group::cps browser ${DATE}"
-            python -m scraper.browser_cps --date "${DATE}" \
-              --out "output/cps_${DATE}.json" || true
-            python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
-            echo "::endgroup::"
+          # ALL dates in ONE invocation → ONE Cloudflare page-load per tenant for
+          # the whole horizon (the residential-bandwidth win).
+          DATES=$(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | paste -sd, -)
+          echo "cps browser dates: ${DATES}"
+          python -m scraper.browser_cps --dates "${DATES}" --out-dir output --registry registry.json || true
+          for f in output/cps_*.json; do
+            [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
           done
