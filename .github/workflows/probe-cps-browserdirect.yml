@@ -1,0 +1,72 @@
+name: Probe cps browser-direct (no proxy — how many clear Cloudflare free?)
+
+# Read-only. Runs browser_cps with NO proxy: the 15 datacenter-direct tenants go
+# plain (as in prod), and the ~26 browser-path tenants run a REAL headless
+# Chromium straight from the runner IP (no residential). Tests whether a real
+# browser clears cps.golf's Cloudflare managed challenge from a datacenter IP
+# (the module's own history says it did for flatirons/fossil). Whatever clears
+# here is FREE; only the rest need a residential top-up. Writes NOTHING to D1 —
+# the summary step just tallies the output doc.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: browser_cps, NO proxy (browser-direct), one near date
+        env:
+          CPS_CONCURRENCY: "6"
+          # TEEITUP_PROXY deliberately UNSET → browser-direct (datacenter IP).
+        run: |
+          DATE="$(python -m scraper.dates --registry registry.json --days 3 | tail -1)"
+          echo "browser-direct probe date ${DATE}"
+          python -m scraper.browser_cps --date "${DATE}" --out output/cps.json || true
+      - name: Summarize browser-path clears vs fails
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import scraper.browser_cps as b
+          reg = json.load(open("registry.json"))
+          courses = [c for c in reg.get("courses", []) if isinstance(c, dict)
+                     and c.get("platform") == "clubprophet" and c["ids"].get("tenant")]
+          slug2tenant = {c["slug"]: c["ids"]["tenant"] for c in courses}
+          try:
+              doc = json.load(open("output/cps.json"))
+          except Exception as e:
+              print("CPSBD NO-OUTPUT", type(e).__name__); raise SystemExit
+          from collections import Counter
+          served = Counter()
+          for t in doc.get("tee_times", []):
+              served[t.get("course_slug")] += 1
+          err = {e.get("course"): e.get("error", "") for e in doc.get("errors", [])}
+          # browser-path courses = tenant NOT in the plain-direct set
+          browser_slugs = sorted(s for s, t in slug2tenant.items()
+                                 if t not in b._DC_DIRECT_TENANTS)
+          clear = fail = 0
+          for s in browser_slugs:
+              n = served.get(s, 0)
+              if n > 0:
+                  clear += 1
+                  print(f"CPSBD CLEAR  {s:40s} teetimes={n}")
+              else:
+                  fail += 1
+                  e = err.get(s, "no rows")
+                  chal = "CHALLENGED" if ("403" in e or "503" in e or "challenge" in e.lower()) else "fail"
+                  print(f"CPSBD {chal:10s} {s:40s} {e[:60]}")
+          print(f"CPSBD DONE browser-path: clear={clear} fail={fail} of {len(browser_slugs)}")
+          PY
