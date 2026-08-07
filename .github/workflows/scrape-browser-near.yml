@@ -36,6 +36,7 @@ on:
       - "scraper/browser_golfnow.py"
       - "scraper/browser_supersaas.py"
       - "scraper/browser_golfwithaccess.py"
+      - "scraper/browser_tenfore.py"
       - ".github/workflows/scrape-browser-near.yml"
 
 permissions:
@@ -78,7 +79,7 @@ jobs:
           # per tenant covers all near dates).
           CPS_ONLY: plain
         run: |
-          PLATFORMS="ezlinks clubcaddie cps golfnow supersaas golfwithaccess"
+          PLATFORMS="ezlinks clubcaddie cps tenfore golfnow supersaas golfwithaccess"
           START=$(date +%s)
           PASS=0
           while true; do
@@ -112,6 +113,17 @@ jobs:
                   python -m scraper.browser_cps --dates "$CSV" --out-dir output --registry registry.json || true
                   for DATE in $DATES; do
                     python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
+                  done
+                  echo "::endgroup::"
+                  ;;
+                tenfore)
+                  # Batched: ONE Chromium session mints a reCAPTCHA token in-page
+                  # and queries the swan.tenfore.golf JSON API for every course x
+                  # date (host-global API — no per-course navigation).
+                  echo "::group::tenfore near pass ${PASS}"
+                  python -m scraper.browser_tenfore --dates "$CSV" --out-dir output --registry registry.json || true
+                  for DATE in $DATES; do
+                    python -m scraper.d1 push --data "output/tenfore_${DATE}.json" || true
                   done
                   echo "::endgroup::"
                   ;;
