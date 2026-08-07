@@ -27,7 +27,7 @@ jobs:
       - name: Run plain flow against indiantree (datacenter-direct)
         run: |
           python - <<'PY'
-          import datetime as dt
+          import datetime as dt, sys
           from scraper.aggregate import load_registry
           from scraper.browser_cps import _scrape_one_course_plain
           reg = load_registry("registry.json")
@@ -39,13 +39,24 @@ jobs:
                 [d.isoformat() for d in dates])
           res = _scrape_one_course_plain(course, dates)
           total = 0
+          per = []
           for iso, r in res["dates"].items():
               if r.get("ok"):
                   n = len(r.get("tts") or [])
                   total += n
+                  per.append(f"{iso}=OK:{n}")
                   print(f"  {iso}  OK  rows={n}")
               else:
+                  per.append(f"{iso}=FAIL")
                   print(f"  {iso}  FAIL  {r.get('error')}")
-          print("VERDICT:", "PLAIN WORKS (promote to _DC_DIRECT_TENANTS)"
-                if total > 0 else "PLAIN BLOCKED (keep residential; speed up cadence)")
+          works = total > 0
+          # Emit a workflow annotation (renders in the Annotations panel) AND encode
+          # the verdict in the exit code so the RUN STATUS alone is the answer:
+          #   run success => PLAIN WORKS (promote indiantree to _DC_DIRECT_TENANTS)
+          #   run failure => PLAIN BLOCKED (keep residential; speed up cadence)
+          lvl = "notice" if works else "error"
+          print(f"::{lvl} title=CPS_PLAIN_VERDICT::indiantree plain total_rows={total} "
+                f"verdict={'WORKS' if works else 'BLOCKED'} [{', '.join(per)}]")
+          print("VERDICT:", "PLAIN WORKS" if works else "PLAIN BLOCKED")
+          sys.exit(0 if works else 1)
           PY
