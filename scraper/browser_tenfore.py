@@ -22,6 +22,7 @@ import argparse
 import datetime as dt
 import json
 import logging
+import os
 import pathlib
 import sys
 
@@ -58,6 +59,48 @@ async ({gid, dFrom, dTo, players, holes, siteKey, action, appid}) => {
   } catch (e) { return {ok:false, err:"fetch:"+String(e).slice(0,60)}; }
 }
 """
+
+
+# --- anti-detection --------------------------------------------------------
+# TenFore's priced endpoint is reCAPTCHA Enterprise (score-based). Default
+# headless Chromium scores low (navigator.webdriver=true, automation flags,
+# HeadlessChrome UA) and tokens get rejected -> empty results. These flags +
+# init script remove the obvious "I am a bot" tells so the score clears.
+_STEALTH_ARGS = [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-blink-features=AutomationControlled",
+]
+_STEALTH_JS = r"""
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+window.chrome = window.chrome || {runtime: {}};
+Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+"""
+
+
+def _launch_kwargs() -> dict:
+    """chromium.launch kwargs. Routes through a residential proxy if TENFORE_PROXY
+    (or TEEITUP_PROXY as a fallback) is set — a residential exit scores much higher
+    on reCAPTCHA than a GitHub datacenter IP. No proxy by default (free path)."""
+    import re
+    kwargs = {"args": list(_STEALTH_ARGS)}
+    raw = re.sub(r"\s+", "", os.environ.get("TENFORE_PROXY", "")
+                 or os.environ.get("TEEITUP_PROXY", ""))
+    if raw:
+        import urllib.parse
+        if "://" not in raw:
+            raw = "http://" + raw
+        pu = urllib.parse.urlparse(raw)
+        server = f"{pu.scheme}://{pu.hostname}" + (f":{pu.port}" if pu.port else "")
+        proxy = {"server": server}
+        if pu.username:
+            proxy["username"] = urllib.parse.unquote(pu.username)
+        if pu.password:
+            proxy["password"] = urllib.parse.unquote(pu.password)
+        kwargs["proxy"] = proxy
+        log.info("tenfore: routing Chromium through proxy %s", server)
+    return kwargs
 
 
 def _select_courses(registry: list, shard: str | None) -> list:
@@ -108,9 +151,18 @@ def run(dates: list[dt.date], registry_path: str,
     if courses:
         boot_vanity = (courses[0].get("ids") or {}).get("vanity") or "needwood"
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(args=["--no-sandbox"])
+            browser = pw.chromium.launch(**_launch_kwargs())
             try:
-                page = browser.new_page(user_agent=USER_AGENT)
+                # a realistic context scores far better on reCAPTCHA Enterprise
+                # than a bare headless page
+                ctx = browser.new_context(
+                    user_agent=USER_AGENT,
+                    locale="en-US",
+                    timezone_id="America/New_York",
+                    viewport={"width": 1366, "height": 850},
+                )
+                ctx.add_init_script(_STEALTH_JS)
+                page = ctx.new_page()
                 page.goto(f"https://fox.tenfore.golf/{boot_vanity}",
                           wait_until="domcontentloaded", timeout=45000)
                 # wait for grecaptcha enterprise to be executable
@@ -118,7 +170,14 @@ def run(dates: list[dt.date], registry_path: str,
                     "() => window.grecaptcha && "
                     "(window.grecaptcha.enterprise||window.grecaptcha).execute",
                     timeout=45000)
-                page.wait_for_timeout(1500)
+                # human-ish warmup: a mouse move + settle lifts the reCAPTCHA score
+                try:
+                    page.mouse.move(400, 300)
+                    page.mouse.move(700, 450)
+                    page.mouse.wheel(0, 600)
+                except Exception:  # noqa: BLE001
+                    pass
+                page.wait_for_timeout(3000)
 
                 for c in courses:
                     gid = (c["ids"] or {}).get("golf_course_id")
