@@ -1,19 +1,12 @@
-name: Probe TenFore (isolated, fast — validate headless reCAPTCHA)
+name: Probe TenFore (isolated, fast — plain /api/TeeSheet)
 
-# TenFore's priced endpoint is reCAPTCHA Enterprise; the only open question is
-# whether HEADLESS Chromium on a GitHub runner scores high enough for valid
-# tokens. The scrape-browser-near loop buries tenfore behind slow platforms
-# (ezlinks/clubcaddie/cps), so it can take ~40+ min to even reach it. This
-# workflow runs ONLY browser_tenfore, in isolation, so we get a clean yes/no in
-# ~5 min. Optional use_proxy routes Chromium through the residential exit
-# (TEEITUP_PROXY) — the fallback if the free datacenter path is score-blocked.
+# TenFore is now a PLAIN-HTTP adapter: it reads the OPEN /api/TeeSheet endpoint
+# (no reCAPTCHA) instead of the gated Search. This probe runs ONLY the tenfore
+# platform through the normal aggregator, pushes to D1, and prints counts — a
+# fast, isolated check that plain HTTP to swan.tenfore.golf works from a runner.
 
 on:
-  workflow_dispatch:
-    inputs:
-      use_proxy:
-        description: "route through residential proxy? yes|no"
-        default: "no"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -21,34 +14,24 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium + Xvfb
-        run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
-          sudo apt-get update && sudo apt-get install -y xvfb
-      - name: Run TenFore (near dates) + push to D1
+      - name: Install deps (plain HTTP only)
+        run: pip install requests
+      - name: Scrape tenfore (plain) + push to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Only set when use_proxy=yes; browser_tenfore reads TENFORE_PROXY.
-          TENFORE_PROXY: ${{ github.event.inputs.use_proxy == 'yes' && secrets.TEEITUP_PROXY || '' }}
         run: |
-          DATES=$(python -m scraper.dates --registry registry.json --days 4 | paste -sd, -)
-          echo "tenfore probe dates: ${DATES} (use_proxy=${{ github.event.inputs.use_proxy }})"
-          # xvfb-run gives real headful Chromium a virtual display -> reCAPTCHA
-          # Enterprise treats it as a real browser (browser_tenfore goes headful
-          # when DISPLAY is set).
-          xvfb-run -a python -m scraper.browser_tenfore --dates "${DATES}" --out-dir output --registry registry.json
-          echo "===== output summary ====="
-          for f in output/tenfore_*.json; do
-            [ -e "$f" ] || continue
-            python -c "import json,sys; d=json.load(open('$f')); print('$f', 'tee_times=', len(d['tee_times']), 'errors=', len(d['errors'])); [print('   ERR', e['course'], e['error'][:120]) for e in d['errors'][:5]]"
-            python -m scraper.d1 push --data "$f" || true
+          for DATE in $(python -m scraper.dates --registry registry.json --days 4); do
+            OUT="output/tenfore_${DATE}.json"
+            python -m scraper.aggregate --date "${DATE}" --workers 6 \
+              --platforms tenfore --registry registry.json --out "${OUT}" || true
+            python -c "import json,sys; d=json.load(open('${OUT}')); print('${OUT}', 'tee_times=', len(d['tee_times']), 'errors=', len(d['errors'])); [print('   ERR', e['course'], str(e.get('error'))[:120]) for e in d['errors'][:6]]" || true
+            python -m scraper.d1 push --data "${OUT}" || true
           done
