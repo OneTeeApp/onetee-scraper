@@ -24,6 +24,7 @@
  */
 
 import DIRECTORY from "./directory.gen.js";
+import REVALIDATE_IDS from "./revalidate-ids.gen.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*", // tighten to https://www.oneteeapp.com later
@@ -225,6 +226,101 @@ async function ensureFreshnessTable(env) {
   freshnessReady = true;
 }
 
+// --- Live click-time re-validation -----------------------------------------
+// At click time the frontend asks: is THIS slot still bookable at the source
+// RIGHT NOW? We re-hit the booking source live and answer open | gone | unknown.
+//
+// SAFETY CONTRACT: return "gone" ONLY when we positively confirm the slot is
+// absent from a successfully-fetched sheet. Any error, timeout, missing ids, or
+// not-yet-implemented platform => "unknown". The frontend treats anything other
+// than "gone" as "proceed to booking" (today's behavior), so re-validation can
+// NEVER block a valid booking and can be rolled out one platform at a time.
+//
+// Only the PLAIN (datacenter-reachable) platforms are checkable from a Worker.
+// The Cloudflare-challenged / browser platforms (teeitup, cps-challenged incl.
+// Indian Tree, ezlinks, golfnow, clubcaddie, ...) are 403 from a datacenter IP,
+// so they are not in REVALIDATE_IDS and always answer "unknown" — they rely on
+// the scrape freshness guard instead.
+const REVAL_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+const REVAL_TIMEOUT_MS = 4500;   // keep the click snappy; slow source => unknown
+
+// Each revalidator returns a Set of bookable "YYYY-MM-DD HH:MM" local strings
+// for `date`, or null on ANY failure (=> unknown). `ids` is the registry handle.
+const REVALIDATORS = {
+  // TenFore: one open GET to /api/TeeSheet (no auth, no reCAPTCHA). Bookable =
+  // availableSlots>0 AND not an all-"Block" slot (matches scraper/adapters/tenfore.py).
+  async tenfore(ids, date, signal) {
+    const gid = ids.golf_course_id;
+    if (!gid) return null;
+    const u = `https://swan.tenfore.golf/api/TeeSheet?golfCourseId=${encodeURIComponent(gid)}` +
+              `&startDate=${date}&endDate=${date}`;
+    const r = await fetch(u, { signal, headers: {
+      "x-tenfore-appid": "23", "Origin": "https://fox.tenfore.golf",
+      "Referer": "https://fox.tenfore.golf/", "Accept": "application/json",
+      "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const set = new Set();
+    for (const t of ((j && j.teeTimes) || [])) {
+      const iso = String(t.dateScheduled || "").slice(0, 16); // YYYY-MM-DDTHH:MM
+      if (iso.slice(0, 10) !== date) continue;
+      if (!(typeof t.availableSlots === "number" && t.availableSlots > 0)) continue;
+      const cs = t.teeTimeCustomers || [];
+      if (cs.length && cs.every((c) => (c.teeTimeCustomerTypeName || "").includes("Block"))) continue;
+      set.add(iso.replace("T", " "));
+    }
+    return set;
+  },
+  // foreUP: one GET to the anonymous booking/times API (api_key=no_limits).
+  async foreup(ids, date, signal) {
+    const cid = ids.course_id;
+    if (!cid) return null;
+    const [Y, M, D] = date.split("-");
+    let u = `https://foreupsoftware.com/index.php/api/booking/times?time=all` +
+            `&date=${M}-${D}-${Y}&holes=all&players=0&api_key=no_limits` +
+            `&course_id=${encodeURIComponent(cid)}`;
+    if (ids.schedule_id) u += `&schedule_id=${encodeURIComponent(ids.schedule_id)}`;
+    const r = await fetch(u, { signal, headers: {
+      "Accept": "application/json", "X-Requested-With": "XMLHttpRequest",
+      "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!Array.isArray(j)) return null;
+    const set = new Set();
+    for (const t of j) {
+      if (!(t && typeof t.available_spots === "number" && t.available_spots > 0)) continue;
+      const tm = String(t.time || "").slice(0, 16); // "YYYY-MM-DD HH:MM"
+      if (tm.slice(0, 10) === date) set.add(tm);
+    }
+    return set;
+  },
+};
+
+async function handleRevalidate(url) {
+  const p = url.searchParams;
+  const course = p.get("course");          // venue_id (what /api hands out)
+  const teetime = p.get("teetime");        // "YYYY-MM-DDTHH:MM:SS" (course-local)
+  if (!course || !teetime || teetime.length < 16) {
+    return json({ status: "unknown", reason: "missing course/teetime" });
+  }
+  const handle = REVALIDATE_IDS[course];
+  if (!handle) return json({ status: "unknown", reason: "not revalidatable" });
+  const rev = REVALIDATORS[handle.p];
+  if (!rev) return json({ status: "unknown", reason: `no revalidator: ${handle.p}` });
+  const date = teetime.slice(0, 10);
+  const wantHM = teetime.slice(0, 16).replace("T", " ");   // "YYYY-MM-DD HH:MM"
+  let set = null;
+  try {
+    set = await rev(handle.i, date, AbortSignal.timeout(REVAL_TIMEOUT_MS));
+  } catch (e) { /* timeout / network / parse => unknown */ }
+  if (!set) return json({ status: "unknown", reason: "source unavailable", platform: handle.p });
+  // Only a POSITIVE miss on a good sheet is "gone".
+  return json({ status: set.has(wantHM) ? "open" : "gone",
+                platform: handle.p, checked: wantHM });
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -237,6 +333,10 @@ export default {
     try { await ensureFreshnessTable(env); } catch (e) { /* non-fatal */ }
 
     try {
+      if (url.pathname === "/api/revalidate") {
+        return handleRevalidate(url);
+      }
+
       if (url.pathname === "/api/health") {
         const r = await env.DB.prepare(
           "SELECT COUNT(*) AS total, SUM(active) AS active FROM tee_times").first();
@@ -394,7 +494,7 @@ export default {
 
       return json({ error: "not found",
                     routes: ["/api/health", "/api/courses", "/api/tee-times",
-                             "/api/directory"] }, 404);
+                             "/api/directory", "/api/revalidate"] }, 404);
     } catch (e) {
       return json({ error: String(e) }, 500);
     }
