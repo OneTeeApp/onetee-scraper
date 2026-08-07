@@ -604,7 +604,11 @@ const REVALIDATORS = {
       if (m[3].toUpperCase() === "P") h += 12;
       set.add(`${date} ${String(h).padStart(2, "0")}:${m[2]}`);
     }
-    return set;
+    // Empty parse => we did NOT read a real sheet (these hosts serve the Worker
+    // a JS-shell/challenge page that still contains "searchmatrix"). Treat as
+    // unknown, never "gone". A real booked-slot catch still works: a populated
+    // sheet missing one time yields a non-empty set.
+    return set.size ? set : null;
   },
   // TeeQuest: two skins. v2 has structured attributes; legacy is a form POST.
   async teequest(ids, date, signal) {
@@ -642,7 +646,7 @@ const REVALIDATORS = {
           break;   // handled this tag
         }
       }
-      return anyOk ? set : null;
+      return set.size ? set : null;   // empty parse => unknown, never false-gone
     }
     // legacy: GET shell for the offered course tags, POST search per tag,
     // collect .time-container times. false-open is safe, so we don't parse the
@@ -690,7 +694,7 @@ const REVALIDATORS = {
         set.add(`${date} ${String(h).padStart(2, "0")}:${m[2]}`);
       }
     }
-    return anyOk ? set : null;
+    return set.size ? set : null;   // empty parse => unknown, never false-gone
   },
 };
 // Per-isolate caches (best-effort; isolates are short-lived).
