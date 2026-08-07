@@ -296,7 +296,67 @@ const REVALIDATORS = {
     }
     return set;
   },
+  // Chronogolf (Lightspeed): 3-call chain — club -> affiliation + course_ids,
+  // then marketplace teetimes per course. Discovery (club_id/aff/course_ids) is
+  // stable, so cache it per-isolate. Union bookable times across sub-courses:
+  // "open if the slot is bookable on ANY of the club's courses" is conservative
+  // (a false "open" just proceeds; we never fabricate a "gone"). Mirrors
+  // scraper/adapters/chronogolf.py (nb_holes=18, out_of_capacity = full).
+  async chronogolf(ids, date, signal) {
+    const B = "https://www.chronogolf.com";
+    const key = ids.club_id || ids.slug;
+    if (!key) return null;
+    let disc = CG_DISC.get(String(key));
+    if (!disc) {
+      const cr = await fetch(`${B}/private_api/clubs/${encodeURIComponent(key)}`,
+        { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+      if (!cr.ok) return null;
+      const club = await cr.json();
+      const clubId = club && club.id;
+      const aff = club && club.settings && club.settings.default_affiliation_type_id;
+      // unclaimed directory listing (online_booking_enabled=false) or no public
+      // affiliation => not bookable through Chronogolf; treat as unknown.
+      if (!clubId || !aff || club.online_booking_enabled === false) return null;
+      let courseIds = Array.isArray(ids.course_ids) && ids.course_ids.length ? ids.course_ids : null;
+      if (!courseIds) {
+        const csr = await fetch(`${B}/private_api/clubs/${clubId}/courses`,
+          { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+        if (!csr.ok) return null;
+        const cj = await csr.json();
+        const arr = Array.isArray(cj) ? cj : (cj.courses || []);
+        courseIds = arr.filter((c) => c.online_booking_enabled).map((c) => c.id);
+      }
+      if (!courseIds || !courseIds.length) return null;
+      disc = { clubId, aff, courseIds };
+      CG_DISC.set(String(key), disc);
+    }
+    const results = await Promise.all(disc.courseIds.map(async (cid) => {
+      const u = `${B}/marketplace/clubs/${disc.clubId}/teetimes?date=${date}` +
+                `&course_id=${encodeURIComponent(cid)}` +
+                `&affiliation_type_ids[]=${encodeURIComponent(disc.aff)}&nb_holes=18`;
+      try {
+        const r = await fetch(u, { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+        if (!r.ok) return null;
+        const j = await r.json();
+        return Array.isArray(j) ? j : null;
+      } catch (e) { return null; }
+    }));
+    let anyOk = false;
+    const set = new Set();
+    for (const slots of results) {
+      if (!slots) continue;
+      anyOk = true;
+      for (const s of slots) {
+        if (s.out_of_capacity) continue;
+        const st = String(s.start_time || "").slice(0, 5); // "HH:MM"
+        if (st) set.add(`${s.date || date} ${st}`);
+      }
+    }
+    return anyOk ? set : null;   // all teetimes calls failed => unknown (safe)
+  },
 };
+// Chronogolf discovery cache (per isolate): slug/club_id -> {clubId, aff, courseIds}.
+const CG_DISC = new Map();
 
 async function handleRevalidate(url) {
   const p = url.searchParams;
