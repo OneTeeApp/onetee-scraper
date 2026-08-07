@@ -1,0 +1,76 @@
+name: Watchdog — revive dead self-chaining near loops
+
+# WHY (2026-08-06). The near-window loops (scrape-teeitup-browser-near,
+# scrape-browser-near) run on "self-chain is primary, hourly cron is only a
+# backstop": each job loops for ~5.25h and dispatches its own successor at the
+# end. On 2026-08-06 a GitHub Actions incident (~17:40 UTC) killed BOTH at once —
+# the self-chain successor never dispatched AND the cron backstop never fired — so
+# the loops stayed dead ~7h until a human re-dispatched them, and ~157 teeitup
+# courses' near dates (days 0-2, incl. tomorrow) aged out of the freshness window
+# and went dark on the site. This watchdog closes that single point of failure.
+#
+# HOW. Every 15 min it asks, per loop: does it have ANY active run (status not
+# "completed" — i.e. queued / in_progress / waiting / requested)? A HEALTHY loop
+# always does: it runs for hours and, under its cancel-in-progress:false
+# concurrency group, queues its successor before the current job ends, so there is
+# never a gap with zero active runs. ZERO active runs therefore means the loop is
+# DEAD, and the watchdog re-dispatches it. A redundant dispatch is safe: the
+# loop's concurrency group makes an extra run just queue as the successor — it can
+# never create two overlapping loops.
+#
+# This does NOT change the loop architecture; it only observes and revives.
+#
+# LIMITATION. The watchdog is itself a GitHub-cron workflow, so a long enough
+# Actions incident can suppress it too. It shrinks the dead-loop window from
+# "until a human notices" (7h on 2026-08-06) to "one cron tick after the incident
+# clears" — the best a purely in-GitHub guard can do. A truly incident-proof
+# guard would live off GitHub (external heartbeat), which is a bigger change.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 min — near grace is 3h/6h, so this revives
+                             # a dead loop long before its dates age out
+  workflow_dispatch: {}
+
+permissions:
+  actions: write             # list runs + dispatch the loop workflows
+
+concurrency:
+  group: watchdog-near-loops
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Revive any self-chaining near loop with no active run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # The self-chaining near loops guarded here. (The plain near tier and
+          # the far/cps-browser jobs are plain cron short-jobs — idle between
+          # runs by design — so the "no active run" test does not apply to them;
+          # a missed cron there just resumes next tick.)
+          LOOPS="scrape-teeitup-browser-near.yml scrape-browser-near.yml"
+          for WF in $LOOPS; do
+            # "active" = any recent run whose status is not completed
+            # (queued | in_progress | waiting | requested | pending).
+            ACTIVE=$(gh run list --repo "$REPO" --workflow "$WF" --limit 15 \
+                       --json status \
+                       --jq '[.[] | select(.status != "completed")] | length' \
+                     2>/dev/null || echo "err")
+            if [ "$ACTIVE" = "err" ]; then
+              echo "::warning::could not query runs for $WF — skipping this tick"
+              continue
+            fi
+            if [ "$ACTIVE" -eq 0 ]; then
+              echo "::warning::$WF has NO active run — reviving"
+              gh workflow run "$WF" --repo "$REPO" --ref main \
+                && echo "revived $WF" \
+                || echo "::error::dispatch failed for $WF (next tick will retry)"
+            else
+              echo "$WF alive ($ACTIVE active run(s))"
+            fi
+          done
