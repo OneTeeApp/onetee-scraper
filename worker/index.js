@@ -354,9 +354,243 @@ const REVALIDATORS = {
     }
     return anyOk ? set : null;   // all teetimes calls failed => unknown (safe)
   },
+  // GolfBack: one anonymous POST. localDateTime is the club wall-clock (the
+  // dateTime field is UTC-labelled and must NOT be used). isAvailable=false =>
+  // not bookable; courseId must match the uuid we asked for.
+  async golfback(ids, date, signal) {
+    const uuid = ids.course_uuid;
+    if (!uuid) return null;
+    const r = await fetch(
+      `https://api.golfback.com/api/v1/courses/${uuid}/date/${date}/teetimes`,
+      { method: "POST", signal, body: JSON.stringify({ sessionId: null }),
+        headers: { "Content-Type": "application/json", "Accept": "application/json",
+          "Origin": "https://golfback.com", "Referer": "https://golfback.com/",
+          "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const rows = (j && j.data) || [];
+    if (!Array.isArray(rows)) return null;
+    const set = new Set();
+    for (const row of rows) {
+      if (!row || row.isAvailable === false) continue;
+      if (row.courseId && row.courseId !== uuid) continue;
+      const local = String(row.localDateTime || "");
+      if (local.slice(0, 10) === date) set.add(local.slice(0, 10) + " " + local.slice(11, 16));
+    }
+    return set;
+  },
+  // MemberSports: POST per configurationTypeId (sweep config_ids). A slot is
+  // bookable if any item is not booking-blocked/hidden and has an open seat.
+  async membersports(ids, date, signal) {
+    const clubId = ids.club_id ? parseInt(ids.club_id, 10) : null;
+    if (!clubId) return null;
+    const cfgs = (Array.isArray(ids.config_ids) && ids.config_ids.length)
+      ? ids.config_ids.map(Number) : [0];
+    const want = (Array.isArray(ids.course_ids) && ids.course_ids.length)
+      ? new Set(ids.course_ids.map(Number)) : null;
+    const set = new Set();
+    let anyOk = false;
+    for (const cfg of cfgs) {
+      let j;
+      try {
+        const r = await fetch("https://api.membersports.com/api/v1/golfclubs/onlineBookingTeeTimes",
+          { method: "POST", signal, headers: {
+              "Content-Type": "application/json", "Accept": "application/json",
+              "x-api-key": "A9814038-9E19-4683-B171-5A06B39147FC",
+              "Origin": "https://app.membersports.com",
+              "Referer": "https://app.membersports.com/", "User-Agent": REVAL_UA },
+            body: JSON.stringify({ configurationTypeId: cfg, date: date,
+              golfClubGroupId: 0, golfClubId: clubId, golfCourseId: 0, groupSheetTypeId: 0 }) });
+        if (!r.ok) continue;
+        j = await r.json();
+      } catch (e) { continue; }
+      if (!Array.isArray(j)) continue;
+      anyOk = true;
+      for (const row of j) {
+        const tm = row && row.teeTime;
+        if (tm == null) continue;
+        const ok = (row.items || []).some((it) => {
+          if (!it) return false;
+          if (want && !want.has(Number(it.golfCourseId))) return false;
+          if (it.bookingNotAllowed || it.hide) return false;
+          return (4 - (Number(it.playerCount) || 0)) > 0;
+        });
+        if (!ok) continue;
+        const hh = Math.floor(tm / 60), mm = tm % 60;
+        set.add(`${date} ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
+      }
+    }
+    return anyOk ? set : null;
+  },
+  // CourseCo (Total-e Integrated): one GET to the per-tenant gateway. Origin
+  // must match the tenant host (hazard 1). Time is "HH:MM:SS:mmm".
+  async courseco(ids, date, signal) {
+    const tenant = ids.tenant, gateway = ids.gateway, cid = ids.course_id;
+    if (!tenant || !gateway || !cid) return null;
+    const host = `https://${tenant}.totaleintegrated.net`;
+    const qs = new URLSearchParams({
+      IsInitTeeTimeRequest: "false", TeeTimeDate: date, CourseID: cid,
+      StartTime: "05:00", EndTime: "21:00", NumOfPlayers: "0", Holes: "-1",
+      IsNineHole: "-1", StartPrice: "0", EndPrice: "", CartIncluded: "false",
+      SpecialsOnly: "0", IsClosest: "0", PlayerIDs: "", DateFilterChange: "false",
+      DateFilterChangeNoSearch: "false", SearchByGroups: "true", IsPrepaidOnly: "0",
+      CourseFavoritesChecked: "true", QueryStringFilters: "null" });
+    const r = await fetch(
+      `https://${gateway}-gateway.totaleintegrated.net/Booking/Teetimes?${qs}`,
+      { signal, headers: { "Origin": host, "Referer": host + "/",
+          "Accept": "application/json, text/plain, */*", "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const rows = (j && j.TeeTimeData) || [];
+    if (!Array.isArray(rows)) return null;
+    const set = new Set();
+    for (const s of rows) {
+      if (s.CourseID && String(s.CourseID) !== String(cid)) continue;
+      let day = date;
+      const dm = String(s.TTDate || "").match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (dm) day = `${dm[3]}-${dm[1]}-${dm[2]}`;
+      const parts = String(s.Time || "").split(":");
+      if (parts.length >= 2) {
+        set.add(`${day} ${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`);
+      }
+    }
+    return set;
+  },
+  // rGuest (Agilysys): mint anonymous token -> (courses if not pinned) ->
+  // getAvailableTeeSlots per course. 501 = empty sheet (a valid "no rows").
+  async rguest(ids, date, signal) {
+    const tenant = ids.tenant, prop = ids.property;
+    if (!tenant || !prop) return null;
+    const B = "https://book.rguest.com";
+    const G = `${B}/wbe-golf-service/golf/tenants/${tenant}/propertyId/${prop}`;
+    const tz = ids.timezone || "America/Phoenix";
+    const tkey = tenant + "/" + prop;
+    let tok = RG_TOK.get(tkey);
+    if (!tok || tok.exp < Date.now()) {
+      const tr = await fetch(
+        `${B}/wbe-admin-service/generatetoken/v2/tenants/${tenant}/propertyId/${prop}/appName/NA`,
+        { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+      if (!tr.ok) return null;
+      const tj = await tr.json();
+      if (!tj || !tj.token) return null;
+      tok = { token: tj.token, exp: Date.now() + 40 * 60 * 1000 };
+      RG_TOK.set(tkey, tok);
+    }
+    const headers = { "Authorization": "Bearer " + tok.token, "timeZone": tz,
+      "propertyDTTM": `${date}T00:00:00`, "Accept": "application/json, text/plain, */*",
+      "User-Agent": REVAL_UA };
+    let courseIds = ids.course_id != null ? [Number(ids.course_id)] : null;
+    if (!courseIds) {
+      const cr = await fetch(`${G}/getAvailableCourses?appName=golf`, { signal, headers });
+      if (!cr.ok) return null;
+      const cj = await cr.json();
+      courseIds = ((cj && cj.availableCourses) || []).map((c) => c.id).filter((x) => x != null);
+    }
+    if (!courseIds.length) return null;
+    const set = new Set();
+    let anyOk = false;
+    const results = await Promise.all(courseIds.map(async (cid) => {
+      const p = new URLSearchParams({ fromDate: date, toDate: date, courseId: String(cid),
+        playerTypeId: "0", holes: "0", appName: "golf", dateTime: `${date}T00:00:00` });
+      try {
+        const r = await fetch(`${G}/getAvailableTeeSlots?${p}`, { signal, headers });
+        if (r.status === 501) return [];          // empty sheet, a valid answer
+        if (!r.ok) return null;
+        const j = await r.json();
+        return (j && j.availableTeeSlots) || [];
+      } catch (e) { return null; }
+    }));
+    for (const groups of results) {
+      if (groups === null) continue;
+      anyOk = true;
+      for (const g of groups) {
+        for (const s of (g.slots || [])) {
+          if (!(typeof s.availability === "number" && s.availability > 0)) continue;
+          const t = String(s.scheduleDateTime || "");
+          if (t.slice(0, 10) === date) set.add(t.slice(0, 10) + " " + t.slice(11, 16));
+        }
+      }
+    }
+    return anyOk ? set : null;
+  },
+  // Teesnap: homepage window.courses (bracket-matched) unless ids pinned, then
+  // teetimes-day per course. ?course= resolves GLOBALLY, so only pinned or
+  // this-tenant-owned ids are used (see scraper/adapters/teesnap.py).
+  async teesnap(ids, date, signal) {
+    const sub = ids.subdomain;
+    if (!sub) return null;
+    const B = `https://${sub}.teesnap.net`;
+    let courseIds = (Array.isArray(ids.teesnap_course_ids) && ids.teesnap_course_ids.length)
+      ? ids.teesnap_course_ids.map(Number) : null;
+    if (!courseIds) {
+      courseIds = TS_DISC.get(sub) || null;
+      if (!courseIds) {
+        const hr = await fetch(B + "/", { signal, headers: { "Accept": "text/html", "User-Agent": REVAL_UA } });
+        if (!hr.ok) return null;
+        courseIds = tsParseCourses(await hr.text());
+        if (courseIds.length) TS_DISC.set(sub, courseIds);
+      }
+    }
+    if (!courseIds || !courseIds.length) return null;
+    const set = new Set();
+    let anyOk = false;
+    const results = await Promise.all(courseIds.map(async (cid) => {
+      const p = new URLSearchParams({ course: String(cid), date: date, players: "1", holes: "18", addons: "off" });
+      try {
+        const r = await fetch(`${B}/customer-api/teetimes-day?${p}`,
+          { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+        if (!r.ok) return null;
+        const j = await r.json();
+        return ((j && j.teeTimes) || {}).teeTimes || [];
+      } catch (e) { return null; }
+    }));
+    for (const slots of results) {
+      if (slots === null) continue;
+      anyOk = true;
+      for (const slot of slots) {
+        const times = [];
+        for (const sec of (slot.teeOffSections || [])) {
+          const t = (sec.turnTo && sec.turnTo.time) || sec.time;
+          if (t) times.push(t);
+        }
+        if (!times.length && slot.teeTime) times.push(slot.teeTime);
+        for (const t of times) {
+          const iso = String(t).slice(0, 16);   // "YYYY-MM-DDTHH:MM"
+          if (iso.slice(0, 10) === date) set.add(iso.replace("T", " "));
+        }
+      }
+    }
+    return anyOk ? set : null;
+  },
 };
-// Chronogolf discovery cache (per isolate): slug/club_id -> {clubId, aff, courseIds}.
-const CG_DISC = new Map();
+// Per-isolate caches (best-effort; isolates are short-lived).
+const CG_DISC = new Map();   // chronogolf: slug/club_id -> {clubId, aff, courseIds}
+const RG_TOK = new Map();    // rguest: tenant/prop -> {token, exp}
+const TS_DISC = new Map();   // teesnap: subdomain -> [course ids]
+
+// Teesnap: the TOP-LEVEL ids of `window.courses = [...]` (bracket-matched +
+// JSON-parsed, never regexed — a course object embeds its parent property's own
+// id). Enabled, non-deleted only. [] on any parse failure.
+function tsParseCourses(html) {
+  const m = html.match(/window\.courses\s*=\s*/);
+  if (!m) return [];
+  const start = html.indexOf("[", m.index + m[0].length);
+  if (start < 0) return [];
+  let depth = 0, i = start, inStr = false, esc = false;
+  for (; i < html.length; i++) {
+    const ch = html[i];
+    if (inStr) { if (esc) esc = false; else if (ch === "\\") esc = true; else if (ch === '"') inStr = false; }
+    else if (ch === '"') inStr = true;
+    else if (ch === "[" || ch === "{") depth++;
+    else if (ch === "]" || ch === "}") { depth--; if (depth === 0) break; }
+  }
+  let arr;
+  try { arr = JSON.parse(html.slice(start, i + 1)); } catch (e) { return []; }
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((c) => c && typeof c.id === "number" && !c.deleted_at &&
+                    c.enabled !== false && (c.key != null || c.name != null))
+            .map((c) => c.id);
+}
 
 async function handleRevalidate(url) {
   const p = url.searchParams;
