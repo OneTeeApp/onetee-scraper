@@ -36,7 +36,6 @@ on:
       - "scraper/browser_golfnow.py"
       - "scraper/browser_supersaas.py"
       - "scraper/browser_golfwithaccess.py"
-      - "scraper/browser_tenfore.py"
       - ".github/workflows/scrape-browser-near.yml"
 
 permissions:
@@ -65,9 +64,6 @@ jobs:
         run: |
           pip install requests playwright
           python -m playwright install --with-deps chromium
-          # xvfb: tenfore runs REAL headful Chromium (reCAPTCHA Enterprise blocks
-          # headless); the tenfore step runs under xvfb-run.
-          sudo apt-get update && sudo apt-get install -y xvfb
 
       - name: Loop ALL browser platforms sequentially over days 0-3
         env:
@@ -82,7 +78,11 @@ jobs:
           # per tenant covers all near dates).
           CPS_ONLY: plain
         run: |
-          PLATFORMS="ezlinks clubcaddie cps tenfore golfnow supersaas golfwithaccess"
+          # tenfore is NOT here: it is now a PLAIN-HTTP adapter (OPEN /api/TeeSheet,
+          # no reCAPTCHA) scraped by the plain near/mid/far tiers via
+          # scraper.aggregate. Keeping it here too would double-write its slugs and
+          # clobber the plain tier's rows — the plain tier is the SOLE owner.
+          PLATFORMS="ezlinks clubcaddie cps golfnow supersaas golfwithaccess"
           START=$(date +%s)
           PASS=0
           while true; do
@@ -116,17 +116,6 @@ jobs:
                   python -m scraper.browser_cps --dates "$CSV" --out-dir output --registry registry.json || true
                   for DATE in $DATES; do
                     python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
-                  done
-                  echo "::endgroup::"
-                  ;;
-                tenfore)
-                  # Batched: ONE Chromium session mints a reCAPTCHA token in-page
-                  # and queries the swan.tenfore.golf JSON API for every course x
-                  # date (host-global API — no per-course navigation).
-                  echo "::group::tenfore near pass ${PASS}"
-                  xvfb-run -a python -m scraper.browser_tenfore --dates "$CSV" --out-dir output --registry registry.json || true
-                  for DATE in $DATES; do
-                    python -m scraper.d1 push --data "output/tenfore_${DATE}.json" || true
                   done
                   echo "::endgroup::"
                   ;;
