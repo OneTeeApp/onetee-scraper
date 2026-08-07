@@ -29,7 +29,13 @@ PATTERNS = {
     # sat at needs_ids with the club id sitting in plain sight in its URL.
     "chronogolf": re.compile(r"chronogolf\.(?:com|ca)/(?:[a-z]{2}/)?club/([a-z0-9-]+)"),
     "clubcaddie": re.compile(r"apimanager-(cc\d+)\.clubcaddie\.com/webapi/view/([a-z]+)"),
-    "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)(?:/(\d+))?(?:/(\d+))?"),
+    "membersports": re.compile(r"app\.membersports\.com/(?:tee-times|book-tee-time|book-linked-clubs-tee-time|custom)/(\d+)/(\d+)(?:/(\d+))?(?:/(\d+))?"),
+    # TenFore Golf portals live at fox.tenfore.golf/<vanity>. The vanity is
+    # case-SENSITIVE in the wild (MD's "SligoCreek"), so allow capitals — the
+    # same lesson rguest taught in Maryland. golfCourseID is NOT in the URL; it
+    # is resolved from GetGolfCourseByVanity and pinned in EXTRA_IDS, so a row
+    # without a pinned golf_course_id is held needs_ids below.
+    "tenfore": re.compile(r"fox\.tenfore\.golf/([A-Za-z0-9-]+)"),
     "ezlinks": re.compile(r"https?://([a-z0-9-]+)\.ezlinks(?:golf)?\.com"),
     # teeoff.com is EZLinks' CONSUMER marketplace, not a course's own portal —
     # same URL shape as a GolfNow facility page, because GolfNow owns both. A
@@ -70,7 +76,29 @@ PATTERNS = {
 }
 
 # extra IDs known from research that aren't visible in the URL
+# TenFore golfCourseID by vanity slug (resolved via GetGolfCourseByVanity).
+# Keyed by the URL vanity, NOT the course name: several MCG courses (Falls Road,
+# Needwood, ...) exist BOTH as a Montgomery County chronogolf portal course and
+# as their own TenFore portal, so a name key would collide with the chronogolf
+# course_ids pinned in EXTRA_IDS. Vanity is globally unique per course.
+TENFORE_IDS = {
+    "colonialhills": "16527", "bluesky": "16532", "hampshiregreens": "16506",
+    "littlebennett": "16508", "needwood": "16509", "laytonsville": "16507",
+    "crossvines": "16510", "fallsroad": "16503", "northwest": "16504",
+    "sligocreek": "16512", "rattlewood": "16511",
+    # Utah (resolved 2026-08-07 via GetGolfCourseByVanity, name-confirmed):
+    "theranches": "16515", "coralcanyon": "16516",
+}
+
 EXTRA_IDS = {
+    # Sand Hollow Resort (UT): two OneTee venues on chronogolf club
+    # sand-hollow-resort (14225). Pin each to its own course id so neither
+    # publishes the other's sheet (confirmed off /private_api 2026-08-07:
+    # Championship=16313, The Links=23670; a 9-hole "Championship Back 9"
+    # 27620 is left out of the 18-hole Championship venue on purpose).
+    "sand hollow resort - championship course": {"course_ids": [16313]},
+    "sand hollow resort - links course": {"course_ids": [23670]},
+
     # (Buffalo Run's old hardcoded facility_id 12190 was stale -> HTTP 500;
     #  the adapter now discovers facility ids at runtime, so it's removed.)
     # Denver MemberSports courses are separate clubs linked in one "Denver
@@ -526,12 +554,6 @@ EXTRA_IDS = {
 # (status, reason) — `unsupported` means no identifier would help, `needs_ids`
 # means a human still can.
 PROBED_HOLDS: dict[str, tuple[str, str]] = {
-    # ForeUp booking pages that load but carry no schedule_id at all, so
-    # discover_ids() comes back empty and fetch() has nothing to query.
-    "meeker-golf-course": ("needs_ids", "foreup booking page 22597 exposes no "
-                           "schedule_id"),
-    "snowflake-municipal-golf-course": ("needs_ids", "foreup booking page 1858 "
-                                        "exposes no schedule_id"),
     # The Wigwam's three courses share one Chronogolf club (2454) whose courses
     # are named Gold / Blue / Red, while our rows are Gold / Heritage /
     # Patriot. Gold is unambiguous; which of Heritage and Patriot is Blue and
@@ -629,7 +651,8 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
 IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
-               "teequest", "clubessential", "resortsuite", "golfback"}
+               "teequest", "clubessential", "resortsuite", "golfback",
+               "tenfore"}
 
 
 def slugify(name: str) -> str:
@@ -721,6 +744,14 @@ def extract_ids(platform: str, url: str) -> dict:
                 "skin": "v2" if sub == "bookateetime" else "legacy"}
     if platform == "golfwithaccess":
         return {"tenant": g[0]}
+    if platform == "tenfore":
+        # golf_course_id keyed by vanity (globally unique), not by name.
+        v = g[0]
+        ids = {"vanity": v}
+        gid = TENFORE_IDS.get(v) or TENFORE_IDS.get(v.lower())
+        if gid:
+            ids["golf_course_id"] = gid
+        return ids
     return {}
 
 
@@ -733,6 +764,7 @@ SOURCES = [
     ("virginia_golf_courses_booking.csv", "VA"),
     ("florida_golf_courses_booking.csv", "FL"),
     ("maryland_golf_courses_booking.csv", "MD"),
+    ("utah_golf_courses_booking.csv", "UT"),
 ]
 
 
@@ -752,6 +784,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # Florida rows (Crane Watch, Martin Downs Osprey Creek, Savanna Club,
         # Spruce Creek CC) carry teeoff.com marketplace links rather than a
         # portal host and had never been attempted.
+        status = "needs_ids"
+    elif platform == "tenfore" and not ids.get("golf_course_id"):
+        # golfCourseID is resolved off GetGolfCourseByVanity and pinned in
+        # EXTRA_IDS; without it the adapter cannot address a sheet.
         status = "needs_ids"
     elif platform == "golfnow" and not ids.get("golfnow_facility_id"):
         # Same shape: browser_golfnow needs the numeric facility id. Lakeview
