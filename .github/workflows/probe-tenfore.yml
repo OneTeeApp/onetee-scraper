@@ -1,0 +1,50 @@
+name: Probe TenFore (isolated, fast — validate headless reCAPTCHA)
+
+# TenFore's priced endpoint is reCAPTCHA Enterprise; the only open question is
+# whether HEADLESS Chromium on a GitHub runner scores high enough for valid
+# tokens. The scrape-browser-near loop buries tenfore behind slow platforms
+# (ezlinks/clubcaddie/cps), so it can take ~40+ min to even reach it. This
+# workflow runs ONLY browser_tenfore, in isolation, so we get a clean yes/no in
+# ~5 min. Optional use_proxy routes Chromium through the residential exit
+# (TEEITUP_PROXY) — the fallback if the free datacenter path is score-blocked.
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_proxy:
+        description: "route through residential proxy? yes|no"
+        default: "no"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Run TenFore (near dates) + push to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          # Only set when use_proxy=yes; browser_tenfore reads TENFORE_PROXY.
+          TENFORE_PROXY: ${{ github.event.inputs.use_proxy == 'yes' && secrets.TEEITUP_PROXY || '' }}
+        run: |
+          DATES=$(python -m scraper.dates --registry registry.json --days 4 | paste -sd, -)
+          echo "tenfore probe dates: ${DATES} (use_proxy=${{ github.event.inputs.use_proxy }})"
+          python -m scraper.browser_tenfore --dates "${DATES}" --out-dir output --registry registry.json
+          echo "===== output summary ====="
+          for f in output/tenfore_*.json; do
+            [ -e "$f" ] || continue
+            python -c "import json,sys; d=json.load(open('$f')); print('$f', 'tee_times=', len(d['tee_times']), 'errors=', len(d['errors'])); [print('   ERR', e['course'], e['error'][:120]) for e in d['errors'][:5]]"
+            python -m scraper.d1 push --data "$f" || true
+          done
