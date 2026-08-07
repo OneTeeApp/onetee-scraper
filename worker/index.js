@@ -300,6 +300,15 @@ const REVALIDATORS = {
 
 async function handleRevalidate(url) {
   const p = url.searchParams;
+  // ?list=1 -> the set of venue_ids that ARE revalidatable, so the frontend
+  // only intercepts those clicks and lets every other booking link open
+  // instantly (no check, no delay). Cached long at the edge; changes on deploy.
+  if (p.get("list")) {
+    return new Response(
+      JSON.stringify({ venues: Object.keys(REVALIDATE_IDS) }),
+      { headers: { "Content-Type": "application/json",
+                   "Cache-Control": "public, max-age=1800, s-maxage=3600", ...CORS } });
+  }
   const course = p.get("course");          // venue_id (what /api hands out)
   const teetime = p.get("teetime");        // "YYYY-MM-DDTHH:MM:SS" (course-local)
   if (!course || !teetime || teetime.length < 16) {
