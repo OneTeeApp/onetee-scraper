@@ -1,0 +1,51 @@
+name: Probe cps PLAIN path for indiantree (read-only, no D1 write)
+
+# Indian Tree is a Cloudflare-CHALLENGED cps tenant, so it is scraped only by the
+# metered residential-proxy path (every 2h) — hence ~2-3h staleness. This probe
+# tests whether the FREE datacenter-direct plain flow now clears Cloudflare from a
+# GitHub runner IP. If it returns rows, indiantree can be promoted to
+# _DC_DIRECT_TENANTS (free hourly plain path / fast near loop). READ-ONLY: it does
+# NOT push to D1 and does NOT change ownership — it only prints per-date results.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps (plain HTTP only)
+        run: pip install requests
+      - name: Run plain flow against indiantree (datacenter-direct)
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          from scraper.aggregate import load_registry
+          from scraper.browser_cps import _scrape_one_course_plain
+          reg = load_registry("registry.json")
+          course = next(c for c in reg if c["slug"] == "indian-tree-golf-course")
+          # near window days 0-3 in Denver local
+          base = dt.datetime.now(dt.timezone(dt.timedelta(hours=-6))).date()
+          dates = [base + dt.timedelta(days=i) for i in range(4)]
+          print("PROBE indiantree plain datacenter-direct; dates:",
+                [d.isoformat() for d in dates])
+          res = _scrape_one_course_plain(course, dates)
+          total = 0
+          for iso, r in res["dates"].items():
+              if r.get("ok"):
+                  n = len(r.get("tts") or [])
+                  total += n
+                  print(f"  {iso}  OK  rows={n}")
+              else:
+                  print(f"  {iso}  FAIL  {r.get('error')}")
+          print("VERDICT:", "PLAIN WORKS (promote to _DC_DIRECT_TENANTS)"
+                if total > 0 else "PLAIN BLOCKED (keep residential; speed up cadence)")
+          PY
