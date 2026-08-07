@@ -1,4 +1,4 @@
-name: Scrape CPS (plain tenants hourly, residential tenants every 2h)
+name: Scrape CPS (plain tenants hourly, residential tenants every 30 min)
 
 # Club Prophet (cps.golf). Two cost profiles, split onto TWO cadences so the free
 # set stays fresh without burning the metered residential proxy:
@@ -12,13 +12,17 @@ name: Scrape CPS (plain tenants hourly, residential tenants every 2h)
 #     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY).
 #     browser_cps now scrapes ALL dates in ONE browser session per tenant — the
 #     expensive Cloudflare page-load happens ONCE per tenant, not once per
-#     (tenant,date), so near (0-3) dropped from 4 page-loads/tenant to 1 and deep
-#     (0-30) from 31 to 1. That makes a TIGHTER cadence affordable: near now runs
-#     every 2 h (the read-path day-0 freshness grace is 3 h, so a challenged
-#     tenant's today sheet finally stays LIVE instead of aging out between the old
-#     6-h runs) at ~16 page-loads/run — FEWER daily page-loads than the old 6-h ×
-#     4-dates scheme, and full tenant coverage each run. CPS_ONLY=browser.
-#     browser_cps also blocks image/media/font and forces a US exit.
+#     (tenant,date), so near (0-3) is 1 page-load/tenant (~16 page-loads/run).
+#     near runs EVERY 30 MIN (2026-08-07): the read-path day-0 grace is 3 h, but
+#     at a 2 h cadence a slot booked right after a scrape stayed visible for up to
+#     ~2-3 h (observed on indian-tree: a booked 2:20pm slot still showing). 30 min
+#     keeps each challenged tenant's today sheet within ~30-40 min of live, so
+#     booked slots clear fast. COST: this is ~4x the residential page-loads of the
+#     old 2 h cadence (48 near runs/day x ~16 = ~770 page-loads/day vs ~190). The
+#     one-page-load-per-tenant design is what keeps that affordable. The plain
+#     datacenter path does NOT work for these tenants (probed 2026-08-07:
+#     indiantree plain = 0 rows, all dates 403/blocked), so residential is the
+#     only option. CPS_ONLY=browser. browser_cps blocks image/media/font + US exit.
 #
 # NO push trigger: code/registry changes are picked up by the next scheduled run
 # (each checks out latest main). Use workflow_dispatch (set: plain|browser|all)
@@ -30,7 +34,7 @@ on:
   schedule:
     - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free, keeps near-term fresh
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
-    - cron: "23 */2 * * *"   # BROWSER, near (0-3): every 2h — metered, day-0 grace is 3h
+    - cron: "*/30 * * * *"   # BROWSER, near (0-3): every 30 min — metered; keeps today live (grace 3h)
     - cron: "7 10 * * *"     # BROWSER, deep (0-30): daily  — metered residential
   workflow_dispatch:
     inputs:
@@ -85,11 +89,11 @@ jobs:
             [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
           done
 
-  # -------- CHALLENGED tenants: every-2h near + daily deep, Chromium + residential --
+  # -------- CHALLENGED tenants: every-30-min near + daily deep, Chromium + residential --
   browser:
     if: >-
       (github.event_name == 'schedule' &&
-        (github.event.schedule == '23 */2 * * *' || github.event.schedule == '7 10 * * *'))
+        (github.event.schedule == '*/30 * * * *' || github.event.schedule == '7 10 * * *'))
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'browser' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
