@@ -562,6 +562,136 @@ const REVALIDATORS = {
     }
     return anyOk ? set : null;
   },
+  // ForeTees public portal: plain JSON. openSlots>0 = bookable.
+  async foretees(ids, date, signal) {
+    const key = ids.club_key, cid = ids.cid;
+    if (!key || !cid) return null;
+    const u = `https://web.foretees.com/v5/servlet/Public_teesheet` +
+              `?cid=${encodeURIComponent(cid)}&ckey=${encodeURIComponent(key)}&a=vts&d=${date}`;
+    const r = await fetch(u, { signal, headers: { "Accept": "application/json", "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const blocks = ((j.foreTeesPublicTimesApiResp || {}).data) || [];
+    const set = new Set();
+    for (const b of blocks) {
+      for (const s of (b.publicTimes || [])) {
+        if (!(typeof s.openSlots === "number" && s.openSlots > 0)) continue;
+        const d = s.date || date;
+        const t = String(s.time || "").slice(0, 5);   // "HH:MM"
+        if (d === date && t) set.add(`${d} ${t}`);
+      }
+    }
+    return set;
+  },
+  // Quick18 (SagaCity): server-rendered searchmatrix table. No DOM in Workers,
+  // so pull time-cells by regex. GUARD: require the "searchmatrix" marker so a
+  // maintenance/error page can never read as an empty sheet (=> false "gone").
+  // Only a time is needed (the sheet lists bookable slots); false-open is safe.
+  async quick18(ids, date, signal) {
+    const sub = ids.subdomain;
+    if (!sub) return null;
+    const domain = ids.domain || "quick18.com";
+    const u = `https://${sub}.${domain}/teetimes/searchmatrix?teedate=${date.replace(/-/g, "")}`;
+    const r = await fetch(u, { signal, headers: { "Accept": "text/html", "User-Agent": REVAL_UA } });
+    if (!r.ok) return null;
+    const html = await r.text();
+    if (!/searchmatrix/i.test(html)) return null;   // not the sheet => unknown
+    const set = new Set();
+    const re = /<td[^>]*>\s*(\d{1,2}):(\d{2})\s*([AP])M\b/gi;
+    let m;
+    while ((m = re.exec(html))) {
+      let h = parseInt(m[1], 10) % 12;
+      if (m[3].toUpperCase() === "P") h += 12;
+      set.add(`${date} ${String(h).padStart(2, "0")}:${m[2]}`);
+    }
+    return set;
+  },
+  // TeeQuest: two skins. v2 has structured attributes; legacy is a form POST.
+  async teequest(ids, date, signal) {
+    const site = ids.site;
+    if (!site) return null;
+    const skin = ids.skin || (ids.host === "bookateetime.teequest.com" ? "v2" : "legacy");
+    const ymd = date.replace(/-/g, "");
+    if (skin === "v2") {
+      const tags = (Array.isArray(ids.course_tags) && ids.course_tags.length)
+        ? ids.course_tags : [`${site}-1`];
+      const set = new Set();
+      let anyOk = false;
+      for (const tag of tags) {
+        for (const players of [1, 2]) {
+          let html;
+          try {
+            const r = await fetch(
+              `https://bookateetime.teequest.com/search/${tag}/${date}` +
+              `?selectedPlayers=${players}&selectedHoles=18`,
+              { signal, headers: { "Accept": "text/html", "User-Agent": REVAL_UA } });
+            if (!r.ok) break;
+            html = await r.text();
+          } catch (e) { break; }
+          anyOk = true;
+          if (players === 1 && /does not allow single player/i.test(html)) continue;
+          const tagRe = /<[^>]*\bdata-date-time="(\d{12})"[^>]*>/gi;
+          let tm;
+          while ((tm = tagRe.exec(html))) {
+            const raw = tm[1];
+            if (raw.slice(0, 8) !== ymd) continue;
+            const av = (tm[0].match(/data-available="(\d+)"/i) || [])[1];
+            if (av !== undefined && parseInt(av, 10) <= 0) continue;
+            set.add(`${date} ${raw.slice(8, 10)}:${raw.slice(10, 12)}`);
+          }
+          break;   // handled this tag
+        }
+      }
+      return anyOk ? set : null;
+    }
+    // legacy: GET shell for the offered course tags, POST search per tag,
+    // collect .time-container times. false-open is safe, so we don't parse the
+    // per-slot player links — presence on the sheet is enough for "not gone".
+    const home = `https://teetimes.teequest.com/${site}`;
+    let shell;
+    try {
+      const r = await fetch(home, { signal, headers: { "Accept": "text/html", "User-Agent": REVAL_UA } });
+      if (!r.ok) return null;
+      shell = await r.text();
+    } catch (e) { return null; }
+    const offered = [];
+    const selM = shell.match(/<select[^>]*name="Search\.CourseTag"[^>]*>([\s\S]*?)<\/select>/i);
+    if (selM) {
+      const optRe = /<option[^>]*value="([^"]+)"/gi;
+      let om;
+      while ((om = optRe.exec(selM[1]))) offered.push(om[1]);
+    }
+    let tags = (Array.isArray(ids.course_tags) && ids.course_tags.length)
+      ? ids.course_tags : offered;
+    if (offered.length) tags = tags.filter((t) => offered.includes(t));
+    if (!tags.length) return null;
+    const [Y, M, D] = date.split("-");
+    const set = new Set();
+    let anyOk = false;
+    for (const tag of tags) {
+      const body = new URLSearchParams({
+        "PaymentTab": "pay-online", "Search.CourseTag": tag,
+        "Search.Date": `${parseInt(M, 10)}/${parseInt(D, 10)}/${Y} 12:00:00 AM`,
+        "Search.Time": "Anytime", "Search.Players": "0" });
+      let html;
+      try {
+        const r = await fetch(home, { method: "POST", signal, body: body.toString(),
+          headers: { "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "text/html", "User-Agent": REVAL_UA } });
+        if (!r.ok) continue;
+        html = await r.text();
+      } catch (e) { continue; }
+      anyOk = true;
+      const re = /class="[^"]*time-container[^"]*"[^>]*>\s*(\d{1,2}):(\d{2})\s*([ap])m/gi;
+      let m;
+      while ((m = re.exec(html))) {
+        let h = parseInt(m[1], 10) % 12;
+        if (m[3].toLowerCase() === "p") h += 12;
+        set.add(`${date} ${String(h).padStart(2, "0")}:${m[2]}`);
+      }
+    }
+    return anyOk ? set : null;
+  },
 };
 // Per-isolate caches (best-effort; isolates are short-lived).
 const CG_DISC = new Map();   // chronogolf: slug/club_id -> {clubId, aff, courseIds}
