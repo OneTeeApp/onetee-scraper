@@ -1,4 +1,4 @@
-name: Scrape CPS (plain tenants hourly, residential tenants every 30 min)
+name: Scrape CPS (plain tenants hourly; residential near = self-chaining loop, deep daily)
 
 # Club Prophet (cps.golf). Two cost profiles, split onto TWO cadences so the free
 # set stays fresh without burning the metered residential proxy:
@@ -10,32 +10,30 @@ name: Scrape CPS (plain tenants hourly, residential tenants every 30 min)
 #
 #   * BROWSER/CHALLENGED tenants (the rest): Cloudflare challenges them, so they
 #     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY).
-#     browser_cps now scrapes ALL dates in ONE browser session per tenant — the
+#     browser_cps scrapes ALL dates in ONE browser session per tenant — the
 #     expensive Cloudflare page-load happens ONCE per tenant, not once per
-#     (tenant,date), so near (0-3) is 1 page-load/tenant (~16 page-loads/run).
-#     near runs EVERY 30 MIN (2026-08-07): the read-path day-0 grace is 3 h, but
-#     at a 2 h cadence a slot booked right after a scrape stayed visible for up to
-#     ~2-3 h (observed on indian-tree: a booked 2:20pm slot still showing). 30 min
-#     keeps each challenged tenant's today sheet within ~30-40 min of live, so
-#     booked slots clear fast. COST: this is ~4x the residential page-loads of the
-#     old 2 h cadence (48 near runs/day x ~16 = ~770 page-loads/day vs ~190). The
-#     one-page-load-per-tenant design is what keeps that affordable. The plain
-#     datacenter path does NOT work for these tenants (probed 2026-08-07:
-#     indiantree plain = 0 rows, all dates 403/blocked), so residential is the
-#     only option. CPS_ONLY=browser. browser_cps blocks image/media/font + US exit.
+#     (tenant,date). Their NEAR window (days 0-3) is now owned by the
+#     self-chaining loop scrape-cps-browser-near.yml (one pass per 30 min — GitHub
+#     cron drifted too much at */30 to keep today live; observed on indian-tree).
+#     The `browser` job HERE now only does the DEEP TAIL, days 4-30 (DISJOINT from
+#     the loop's 0-3), once daily. Disjoint date ranges => the loop and this deep
+#     never write the same (slug,date). CPS_ONLY=browser; US exit; blocks
+#     image/media/font. Plain path does NOT work for these (probed 2026-08-07:
+#     indiantree plain = 0 rows, all dates 403/blocked) — residential only.
 #
 # NO push trigger: code/registry changes are picked up by the next scheduled run
 # (each checks out latest main). Use workflow_dispatch (set: plain|browser|all)
-# to force a run. The plain scraper excludes clubprophet, so this workflow solely
-# owns those course_slugs in D1; the two jobs own disjoint tenant sets, so they
-# never write the same slug.
+# to force a run — `browser` here is the deep tail; to force a challenged-tenant
+# NEAR refresh, dispatch scrape-cps-browser-near.yml instead. The plain scraper
+# excludes clubprophet, so this workflow + the near loop solely own those
+# course_slugs in D1; plain vs browser are disjoint TENANT sets and near vs deep
+# are disjoint DATE ranges, so every (slug,date) has exactly one writer.
 
 on:
   schedule:
     - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free, keeps near-term fresh
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
-    - cron: "*/30 * * * *"   # BROWSER, near (0-3): every 30 min — metered; keeps today live (grace 3h)
-    - cron: "7 10 * * *"     # BROWSER, deep (0-30): daily  — metered residential
+    - cron: "7 10 * * *"     # BROWSER, deep (4-30): daily  — metered residential (near = loop)
   workflow_dispatch:
     inputs:
       set:
@@ -89,11 +87,11 @@ jobs:
             [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
           done
 
-  # -------- CHALLENGED tenants: every-30-min near + daily deep, Chromium + residential --
+  # -------- CHALLENGED tenants: daily DEEP TAIL (days 4-30), Chromium + residential --
+  # NEAR (days 0-3) is owned by the self-chaining loop scrape-cps-browser-near.yml.
   browser:
     if: >-
-      (github.event_name == 'schedule' &&
-        (github.event.schedule == '*/30 * * * *' || github.event.schedule == '7 10 * * *'))
+      (github.event_name == 'schedule' && github.event.schedule == '7 10 * * *')
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'browser' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
@@ -120,16 +118,17 @@ jobs:
           # image/media/font to conserve bandwidth. Unset = direct (would 403).
           TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
         run: |
-          DEEP=no
-          [ "${{ github.event.schedule }}" = "7 10 * * *" ] && DEEP=yes
-          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
-          LAST=3
-          [ "$DEEP" = "yes" ] && LAST=30
-          # ALL dates in ONE invocation → ONE Cloudflare page-load per tenant for
-          # the whole horizon (the residential-bandwidth win).
-          DATES=$(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | paste -sd, -)
-          echo "cps browser dates: ${DATES}"
-          python -m scraper.browser_cps --dates "${DATES}" --out-dir output --registry registry.json || true
-          for f in output/cps_*.json; do
-            [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
+          # DEEP TAIL only: days 4-30. The near window (days 0-3) is owned by the
+          # self-chaining loop scrape-cps-browser-near.yml, so we DROP the first 4
+          # days here — disjoint date ranges mean the loop and this deep never
+          # write the same (slug,date). (scraper.dates lists earliest-first, so
+          # `tail -n +5` keeps day 4 onward.) ONE session per tenant = ONE
+          # Cloudflare page-load for the whole tail (the residential-bandwidth win).
+          ALL=$(python -m scraper.dates --registry registry.json --days 31)
+          DATES=$(echo "$ALL" | tail -n +5)
+          CSV=$(echo "$DATES" | paste -sd, -)
+          echo "cps browser DEEP TAIL dates: ${CSV}"
+          python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
+          for DATE in $DATES; do
+            [ -e "output/cps_${DATE}.json" ] && python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
           done

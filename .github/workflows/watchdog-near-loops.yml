@@ -50,10 +50,10 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # The self-chaining near loops guarded here. (The plain near tier and
-          # the far/cps-browser jobs are plain cron short-jobs — idle between
-          # runs by design — so the "no active run" test does not apply to them;
-          # a missed cron there just resumes next tick.)
-          LOOPS="scrape-teeitup-browser-near.yml scrape-browser-near.yml"
+          # the far / cps-browser-DEEP jobs are plain cron short-jobs — idle
+          # between runs by design — so the "no active run" test does not apply to
+          # them; a missed cron there just resumes next tick.)
+          LOOPS="scrape-teeitup-browser-near.yml scrape-browser-near.yml scrape-cps-browser-near.yml"
           for WF in $LOOPS; do
             # "active" = any recent run whose status is not completed
             # (queued | in_progress | waiting | requested | pending).
