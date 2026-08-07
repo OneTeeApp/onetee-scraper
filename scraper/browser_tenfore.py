@@ -100,6 +100,14 @@ def _launch_kwargs() -> dict:
             proxy["password"] = urllib.parse.unquote(pu.password)
         kwargs["proxy"] = proxy
         log.info("tenfore: routing Chromium through proxy %s", server)
+    # reCAPTCHA Enterprise's strongest signal is headless mode itself — headless
+    # Chromium never got grecaptcha to execute (both datacenter + residential
+    # proxy runs crashed at the grecaptcha-ready wait). Run REAL headful Chromium
+    # when a display is available (the CI step runs us under xvfb-run, which sets
+    # DISPLAY); fall back to headless only if there is no display.
+    kwargs["headless"] = not bool(os.environ.get("DISPLAY"))
+    log.info("tenfore: launching Chromium headless=%s (DISPLAY=%s)",
+             kwargs["headless"], os.environ.get("DISPLAY") or "unset")
     return kwargs
 
 
