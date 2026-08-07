@@ -65,6 +65,9 @@ jobs:
         run: |
           pip install requests playwright
           python -m playwright install --with-deps chromium
+          # xvfb: tenfore runs REAL headful Chromium (reCAPTCHA Enterprise blocks
+          # headless); the tenfore step runs under xvfb-run.
+          sudo apt-get update && sudo apt-get install -y xvfb
 
       - name: Loop ALL browser platforms sequentially over days 0-3
         env:
@@ -121,7 +124,7 @@ jobs:
                   # and queries the swan.tenfore.golf JSON API for every course x
                   # date (host-global API — no per-course navigation).
                   echo "::group::tenfore near pass ${PASS}"
-                  python -m scraper.browser_tenfore --dates "$CSV" --out-dir output --registry registry.json || true
+                  xvfb-run -a python -m scraper.browser_tenfore --dates "$CSV" --out-dir output --registry registry.json || true
                   for DATE in $DATES; do
                     python -m scraper.d1 push --data "output/tenfore_${DATE}.json" || true
                   done

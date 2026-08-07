@@ -27,10 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium
+      - name: Install deps + Chromium + Xvfb
         run: |
           pip install requests playwright
           python -m playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y xvfb
       - name: Run TenFore (near dates) + push to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -41,7 +42,10 @@ jobs:
         run: |
           DATES=$(python -m scraper.dates --registry registry.json --days 4 | paste -sd, -)
           echo "tenfore probe dates: ${DATES} (use_proxy=${{ github.event.inputs.use_proxy }})"
-          python -m scraper.browser_tenfore --dates "${DATES}" --out-dir output --registry registry.json
+          # xvfb-run gives real headful Chromium a virtual display -> reCAPTCHA
+          # Enterprise treats it as a real browser (browser_tenfore goes headful
+          # when DISPLAY is set).
+          xvfb-run -a python -m scraper.browser_tenfore --dates "${DATES}" --out-dir output --registry registry.json
           echo "===== output summary ====="
           for f in output/tenfore_*.json; do
             [ -e "$f" ] || continue
