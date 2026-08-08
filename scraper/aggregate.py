@@ -61,6 +61,8 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "golfwithaccess": GolfWithAccessAdapter,
     "totale": TotaleAdapter,          # browser-only; see scraper/browser_totale.py
     "rguest": RGuestAdapter,
+    "agilysys": RGuestAdapter,     # book.onagilysys.com skin of the same onecart API
+
     "courseco": CourseCoAdapter,   # Total-e's replacement; plain HTTP
     "teequest": TeeQuestAdapter,          # two skins, both server-rendered HTML
     "clubessential": ClubEssentialAdapter,  # NetCaddy JSON on the club's host
