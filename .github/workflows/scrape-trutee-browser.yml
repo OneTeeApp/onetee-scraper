@@ -1,0 +1,66 @@
+name: Scrape Trutee via browser (0-6 hourly, 0-30 daily)
+
+# Trutee (trutee.app) is a Next.js RSC app: the tee-time data is not in any JSON
+# API, not in the SSR HTML, and not in a capturable XHR — it renders into the DOM
+# only after client hydration. A real Chromium loads the org portal per date
+#   https://trutee.app/courses/o/<org>?date=YYYY-MM-DD
+# and scrapes the rendered cards, attributing each to its venue by course name.
+# The plain scraper --excludes trutee, so this job solely owns those slugs.
+
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: "Scrape the full 0-30 day horizon"
+        default: "no"
+  push:
+    branches: [main]
+    paths:
+      - "registry.json"
+      - "scraper/browser_trutee.py"
+      - ".github/workflows/scrape-trutee-browser.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-trutee-browser
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Scrape the horizon + push each date to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
+          # manual deep dispatch stretch to the full 30-day horizon. One org
+          # portal load per date covers all four City of St. George courses, so
+          # this is a handful of page loads per date — cheap.
+          DEEP=no
+          [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
+          LAST=6
+          [ "$DEEP" = "yes" ] && LAST=30
+          # Dates from scraper.dates (union of local todays), not `date -u`:
+          # after ~5pm Mountain the UTC date is already tomorrow.
+          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+            OUT="output/trutee_${DATE}.json"
+            python -m scraper.browser_trutee --date "${DATE}" --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
+          done
