@@ -57,6 +57,9 @@ PATTERNS = {
     # arrived, which silently dropped Rocky Gap to needs_ids: the pattern did
     # not match, so no tenant/property was extracted and nothing said why.
     "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
+    # Agilysys OneCart: same product/API as rguest, different host
+    # (book.onagilysys.com, e.g. Black Desert). Captures tenant + property.
+    "agilysys": re.compile(r"book\.onagilysys\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
     # GolfBack puts the course uuid in the SPA fragment, so every row carries
     # its own id and nothing needs pinning. The trailing slash is optional.
@@ -652,7 +655,7 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
                "teequest", "clubessential", "resortsuite", "golfback",
-               "tenfore"}
+               "tenfore", "agilysys"}
 
 
 def slugify(name: str) -> str:
@@ -737,6 +740,10 @@ def extract_ids(platform: str, url: str) -> dict:
         # shape: two registry venues on ONE property, so those pin an extra
         # course_id in EXTRA_IDS to claim a single sheet each.
         return {"tenant": g[0], "property": g[1]}
+    if platform == "agilysys":
+        # Same onecart shape as rguest; pin the host so RGuestAdapter targets
+        # book.onagilysys.com instead of book.rguest.com.
+        return {"tenant": g[0], "property": g[1], "host": "book.onagilysys.com"}
     if platform == "teequest":
         sub = g[0]
         return {"site": g[1],
