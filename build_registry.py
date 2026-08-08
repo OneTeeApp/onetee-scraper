@@ -66,6 +66,11 @@ PATTERNS = {
     # EasyTee: app.easyteegolf.com/course/<slug>/ (slug may contain an
     # apostrophe, e.g. schneiter's-pebblebrook-golf-club).
     "easytee": re.compile(r"app\.easyteegolf\.com/course/([^/?#]+)"),
+    # GolfRev is Cybergolf's tee-time engine. A Cybergolf course's own site
+    # (e.g. birchcreekgolf.com) links out to golfrev.com/go/tee_times/ carrying
+    # both ids in the query string: ?htc=<h>&courseid=<c> (order varies, so
+    # extract_ids pulls each independently rather than positionally).
+    "golfrev": re.compile(r"golfrev\.com/go/tee_times/"),
     # Trutee: trutee.app/courses/o/<org> — the org portal lists every course
     # under that org; per-venue attribution is by the pinned trutee_course name
     # (browser_trutee.py). Captures the org slug.
@@ -675,7 +680,7 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
                "teequest", "clubessential", "resortsuite", "golfback",
-               "tenfore", "agilysys", "golfpay", "easytee"}
+               "tenfore", "agilysys", "golfpay", "easytee", "golfrev"}
 
 
 def slugify(name: str) -> str:
@@ -771,6 +776,17 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"slug": g[0]}
     if platform == "trutee":
         return {"org": g[0]}
+    if platform == "golfrev":
+        # Both ids live in the query string; order is not guaranteed, so read
+        # each on its own instead of relying on capture-group position.
+        ids: dict = {}
+        cm = re.search(r"[?&]courseid=(\d+)", url or "")
+        hm = re.search(r"[?&]htc=(\d+)", url or "")
+        if cm:
+            ids["courseid"] = cm.group(1)
+        if hm:
+            ids["htc"] = hm.group(1)
+        return ids
     if platform == "teequest":
         sub = g[0]
         return {"site": g[1],
@@ -826,6 +842,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     elif platform == "golfpay" and not ids.get("course_id"):
         # golfpay's course_id/tsid are not in the URL; without the pinned
         # course_id the /api/tee-times call cannot be addressed.
+        status = "needs_ids"
+    elif platform == "golfrev" and not ids.get("courseid"):
+        # golfrev keys the tee sheet on courseid; a row whose URL lacks it
+        # (or isn't a golfrev tee_times link) cannot address a sheet.
         status = "needs_ids"
     elif platform == "golfnow" and not ids.get("golfnow_facility_id"):
         # Same shape: browser_golfnow needs the numeric facility id. Lakeview
