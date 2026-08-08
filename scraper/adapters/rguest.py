@@ -1,4 +1,10 @@
-"""rGuest Golf adapter — Agilysys' resort booking platform (book.rguest.com).
+"""rGuest Golf adapter — Agilysys' resort booking platform.
+
+Serves two host skins of ONE product: book.rguest.com (platform `rguest`) and
+book.onagilysys.com (platform `agilysys`, e.g. Black Desert). Byte-identical
+API — token, getAvailableCourses, getAvailableTeeSlots, and the slot/rate shape
+all match (verified 2026-08-08 on Black Desert tenant 2434). The host is pinned
+in ids.host (default book.rguest.com) so one adapter covers both.
 
 Captured from live traffic (July 2026). Anonymous: no login, no CAPTCHA.
 
@@ -88,10 +94,24 @@ import requests
 from .base import Adapter
 from ..models import TeeTime
 
-BASE = "https://book.rguest.com"
-TOKEN_URL = BASE + "/wbe-admin-service/generatetoken/v2/tenants/{tenant}/propertyId/{prop}/appName/NA"
-GOLF = BASE + "/wbe-golf-service/golf/tenants/{tenant}/propertyId/{prop}"
-BOOKING_PAGE = BASE + "/onecart/golf/courses/{tenant}/{prop}"
+DEFAULT_HOST = "book.rguest.com"
+
+
+def _base(host: str) -> str:
+    return f"https://{host}"
+
+
+def _token_url(host: str, tenant: str, prop: str) -> str:
+    return (_base(host) + "/wbe-admin-service/generatetoken/v2/tenants/"
+            f"{tenant}/propertyId/{prop}/appName/NA")
+
+
+def _golf(host: str, tenant: str, prop: str) -> str:
+    return _base(host) + f"/wbe-golf-service/golf/tenants/{tenant}/propertyId/{prop}"
+
+
+def _booking_page(host: str, tenant: str, prop: str) -> str:
+    return _base(host) + f"/onecart/golf/courses/{tenant}/{prop}"
 
 DEFAULT_TZ = "America/Phoenix"
 _TOKEN_TTL = 45 * 60          # tokens live ~1h; re-mint early
@@ -115,8 +135,9 @@ class RGuestAdapter(Adapter):
                 "rguest: registry must pin ids.tenant and ids.property "
                 "(from book.rguest.com/onecart/golf/courses/<tenant>/<property>)")
 
+        host = str(ids.get("host") or DEFAULT_HOST)
         tz = ids.get("timezone") or DEFAULT_TZ
-        token = self._token(tenant, prop)
+        token = self._token(host, tenant, prop)
 
         pinned = ids.get("course_id")
         if pinned is not None:
@@ -124,13 +145,13 @@ class RGuestAdapter(Adapter):
         else:
             # Whole property: label each sub-course so D1 keeps them distinct.
             targets = [(int(c["id"]), str(c.get("name") or ""))
-                       for c in self._courses(tenant, prop, token, tz)]
+                       for c in self._courses(host, tenant, prop, token, tz)]
         if not targets:
             return []
 
         out: list[TeeTime] = []
         for course_id, label in targets:
-            for group in self._slots(tenant, prop, token, tz, course_id, date):
+            for group in self._slots(host, tenant, prop, token, tz, course_id, date):
                 # Hazard 4: never publish another course's sheet as ours.
                 got = group.get("courseId")
                 if got is not None and int(got) != course_id:
@@ -138,7 +159,7 @@ class RGuestAdapter(Adapter):
                         f"rguest: asked for courseId {course_id} but the sheet "
                         f"returned {got} — refusing to publish it")
                 for s in (group.get("slots") or []):
-                    tt = self._tee_time(course, s, label, tenant, prop,
+                    tt = self._tee_time(course, s, label, host, tenant, prop,
                                         course_id, date)
                     if tt is not None:
                         out.append(tt)
@@ -146,13 +167,13 @@ class RGuestAdapter(Adapter):
 
     # -- HTTP ----------------------------------------------------------------
 
-    def _token(self, tenant: str, prop: str) -> str:
-        key = (tenant, prop)
+    def _token(self, host: str, tenant: str, prop: str) -> str:
+        key = (host, tenant, prop)
         with _LOCK:
             hit = _TOKENS.get(key)
             if hit and hit[1] > time.time():
                 return hit[0]
-        data = self.get_json(TOKEN_URL.format(tenant=tenant, prop=prop))
+        data = self.get_json(_token_url(host, tenant, prop))
         token = (data or {}).get("token")
         if not token:
             raise ValueError(f"rguest: no token minted for {tenant}/{prop}")
@@ -168,14 +189,15 @@ class RGuestAdapter(Adapter):
             "Accept": "application/json, text/plain, */*",
         }
 
-    def _courses(self, tenant: str, prop: str, token: str, tz: str) -> list[dict]:
-        key = (tenant, prop)
+    def _courses(self, host: str, tenant: str, prop: str, token: str,
+                 tz: str) -> list[dict]:
+        key = (host, tenant, prop)
         with _LOCK:
             hit = _COURSES.get(key)
         if hit is not None:
             return hit
         data = self.get_json(
-            GOLF.format(tenant=tenant, prop=prop) + "/getAvailableCourses",
+            _golf(host, tenant, prop) + "/getAvailableCourses",
             headers=self._headers(token, tz, dt.date.today()),
             params={"appName": "golf"})
         courses = [c for c in ((data or {}).get("availableCourses") or [])
@@ -193,9 +215,9 @@ class RGuestAdapter(Adapter):
             _COURSES[key] = courses
         return courses
 
-    def _slots(self, tenant: str, prop: str, token: str, tz: str,
+    def _slots(self, host: str, tenant: str, prop: str, token: str, tz: str,
                course_id: int, date: dt.date) -> list[dict]:
-        url = GOLF.format(tenant=tenant, prop=prop) + "/getAvailableTeeSlots"
+        url = _golf(host, tenant, prop) + "/getAvailableTeeSlots"
         params = {
             "fromDate": date.isoformat(),
             "toDate": date.isoformat(),
@@ -228,8 +250,9 @@ class RGuestAdapter(Adapter):
 
     # -- parsing -------------------------------------------------------------
 
-    def _tee_time(self, course: dict, slot: dict, label: str, tenant: str,
-                  prop: str, course_id: int, date: dt.date) -> TeeTime | None:
+    def _tee_time(self, course: dict, slot: dict, label: str, host: str,
+                  tenant: str, prop: str, course_id: int,
+                  date: dt.date) -> TeeTime | None:
         teetime = self._iso(slot.get("scheduleDateTime"))
         if teetime is None:
             return None
@@ -244,7 +267,7 @@ class RGuestAdapter(Adapter):
             price_min=price, price_max=price,
             raw=slot,
         )
-        tt.booking_url = self._slot_url(course, tenant, prop, course_id, date)
+        tt.booking_url = self._slot_url(course, host, tenant, prop, course_id, date)
         return tt
 
     @staticmethod
@@ -286,9 +309,8 @@ class RGuestAdapter(Adapter):
         return max(totals) if totals else None
 
     @staticmethod
-    def _slot_url(course: dict, tenant: str, prop: str, course_id: int,
-                  date: dt.date) -> str:
-        base = course.get("booking_url") or BOOKING_PAGE.format(tenant=tenant,
-                                                                prop=prop)
+    def _slot_url(course: dict, host: str, tenant: str, prop: str,
+                  course_id: int, date: dt.date) -> str:
+        base = course.get("booking_url") or _booking_page(host, tenant, prop)
         base = base.split("?")[0]
         return f"{base}?date={date.isoformat()}&id={course_id}"
