@@ -36,6 +36,7 @@ from .adapters.golfwithaccess import GolfWithAccessAdapter
 from .adapters.rguest import RGuestAdapter
 from .adapters.golfpay import GolfPayAdapter
 from .adapters.easytee import EasyTeeAdapter
+from .adapters.golfrev import GolfRevAdapter
 from .adapters.courseco import CourseCoAdapter
 from .adapters.teequest import TeeQuestAdapter
 from .adapters.clubessential import ClubEssentialAdapter
@@ -66,6 +67,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "agilysys": RGuestAdapter,     # book.onagilysys.com skin of the same onecart API
     "golfpay": GolfPayAdapter,
     "easytee": EasyTeeAdapter,
+    "golfrev": GolfRevAdapter,     # Cybergolf tee sheet on golfrev.com; plain HTML
 
     "courseco": CourseCoAdapter,   # Total-e's replacement; plain HTTP
     "teequest": TeeQuestAdapter,          # two skins, both server-rendered HTML
