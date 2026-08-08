@@ -66,6 +66,10 @@ PATTERNS = {
     # EasyTee: app.easyteegolf.com/course/<slug>/ (slug may contain an
     # apostrophe, e.g. schneiter's-pebblebrook-golf-club).
     "easytee": re.compile(r"app\.easyteegolf\.com/course/([^/?#]+)"),
+    # Trutee: trutee.app/courses/o/<org> — the org portal lists every course
+    # under that org; per-venue attribution is by the pinned trutee_course name
+    # (browser_trutee.py). Captures the org slug.
+    "trutee": re.compile(r"trutee\.app/courses/o/([a-z0-9-]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
     # GolfBack puts the course uuid in the SPA fragment, so every row carries
     # its own id and nothing needs pinning. The trailing slash is optional.
@@ -100,6 +104,14 @@ TENFORE_IDS = {
 }
 
 EXTRA_IDS = {
+    # Trutee (City of St. George org) — each venue's EXACT trutee.app img-alt
+    # course name, matched verbatim by browser_trutee.py (Trutee drops our
+    # "Dixie" prefix and calls Southgate a "Course", so these are pinned, not
+    # fuzzy-matched).
+    "dixie red hills golf course": {"trutee_course": "Red Hills Golf Course"},
+    "southgate golf club": {"trutee_course": "Southgate Golf Course"},
+    "st. george golf club": {"trutee_course": "St. George Golf Club"},
+    "sunbrook golf club": {"trutee_course": "Sunbrook Golf Club"},
     # GolfPay: The Barn (UT) — course_id/tsid read off golfpay.co 2026-08-08.
     "the barn golf club": {"course_id": 1466, "tsid": 20},
     # Sand Hollow Resort (UT): two OneTee venues on chronogolf club
@@ -757,6 +769,8 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"slug": g[0]}
     if platform == "easytee":
         return {"slug": g[0]}
+    if platform == "trutee":
+        return {"org": g[0]}
     if platform == "teequest":
         sub = g[0]
         return {"site": g[1],
