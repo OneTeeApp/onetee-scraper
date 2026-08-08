@@ -76,18 +76,17 @@ class GolfRevAdapter(Adapter):
             "reset": "yes",
             "snapshot": "no",
         }
-        for attempt in range(2):
-            try:
-                r = self.session.get(URL, params=params, timeout=TIMEOUT)
-                if r.status_code in RETRY_STATUS:
-                    continue
-                r.raise_for_status()
-                return r.text
-            except requests.RequestException:
-                if attempt == 0:
-                    continue
-                return None
-        return None
+        # DIAG (temporary): surface exactly what CI receives so we can tell an
+        # empty sheet apart from a Cloudflare block / challenge page.
+        r = self.session.get(URL, params=params, timeout=TIMEOUT)
+        cfray = r.headers.get("cf-ray", "")
+        server = r.headers.get("server", "")
+        ncards = len((r.text or "").split("showBooking(")) - 1
+        snippet = re.sub(r"\s+", " ", (r.text or ""))[:200]
+        raise ValueError(
+            f"GOLFREV-DIAG status={r.status_code} len={len(r.text or '')} "
+            f"cards={ncards} server={server!r} cf-ray={cfray!r} "
+            f"url={r.url.split('?')[0]} snippet={snippet!r}")
 
     # -- parsing -------------------------------------------------------------
 
