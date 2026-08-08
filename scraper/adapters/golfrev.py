@@ -1,5 +1,16 @@
 """GolfRev adapter — golfrev.com, Cybergolf's tee-time reservation engine.
 
+NOT WIRED INTO ADAPTERS (2026-08-08). golfrev.com sits behind Cloudflare, which
+serves the tee sheet fine to a residential browser (any/no headers) but returns
+HTTP 403 (a 6.1KB Cloudflare block page, cf-ray ...-ORD, server=cloudflare) to a
+GitHub Actions datacenter IP. Confirmed end-to-end via diag-course-pipeline: all
+three days 403, zero cards. So a plain requests fetch from CI cannot work — this
+platform needs the headless + residential-proxy tier (a browser_golfrev.py, the
+way trutee/teeitup/cps are handled). This module is kept as the endpoint spec
+and the ready-made card parser (_parse) that a future browser adapter reuses;
+Birch Creek is marked `experimental` and excluded from the plain tiers until
+that browser adapter exists.
+
 Anonymous, stateless HTML. A Cybergolf course (e.g. Birch Creek, Smithfield UT)
 fronts its booking on its own site, but the actual tee sheet is served by
 golfrev.com. One GET per course-day returns an HTML fragment of Bootstrap cards:
@@ -76,17 +87,18 @@ class GolfRevAdapter(Adapter):
             "reset": "yes",
             "snapshot": "no",
         }
-        # DIAG (temporary): surface exactly what CI receives so we can tell an
-        # empty sheet apart from a Cloudflare block / challenge page.
-        r = self.session.get(URL, params=params, timeout=TIMEOUT)
-        cfray = r.headers.get("cf-ray", "")
-        server = r.headers.get("server", "")
-        ncards = len((r.text or "").split("showBooking(")) - 1
-        snippet = re.sub(r"\s+", " ", (r.text or ""))[:200]
-        raise ValueError(
-            f"GOLFREV-DIAG status={r.status_code} len={len(r.text or '')} "
-            f"cards={ncards} server={server!r} cf-ray={cfray!r} "
-            f"url={r.url.split('?')[0]} snippet={snippet!r}")
+        for attempt in range(2):
+            try:
+                r = self.session.get(URL, params=params, timeout=TIMEOUT)
+                if r.status_code in RETRY_STATUS:
+                    continue
+                r.raise_for_status()
+                return r.text
+            except requests.RequestException:
+                if attempt == 0:
+                    continue
+                return None
+        return None
 
     # -- parsing -------------------------------------------------------------
 
