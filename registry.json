@@ -18387,9 +18387,9 @@
     "courseid": "3719",
     "htc": "370"
    },
-   "status": "ready",
+   "status": "experimental",
    "confidence": "high",
-   "notes": "GolfRev (Cybergolf tee-time engine) - the site's Online Tee Times page links to golfrev.com/go/tee_times/?htc=370&courseid=3719; anonymous stateless HTML endpoint teetime_table_html.asp (no cookies) VERIFIED LIVE 2026-08-08 | Northern Utah region | Pro shop (435) 563-6825"
+   "notes": "GolfRev (Cybergolf) - endpoint teetime_table_html.asp?c=3719&h=370 serves the sheet to a residential browser (verified live 6 cards 8/9) but Cloudflare 403s the CI datacenter IP (confirmed via diag: 6.1KB block page cf-ray -ORD). Needs the headless+residential-proxy tier (browser_golfrev.py) - marked experimental"
   },
   {
    "slug": "glenmoor-golf-club",
