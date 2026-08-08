@@ -60,6 +60,12 @@ PATTERNS = {
     # Agilysys OneCart: same product/API as rguest, different host
     # (book.onagilysys.com, e.g. Black Desert). Captures tenant + property.
     "agilysys": re.compile(r"book\.onagilysys\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
+    # GolfPay: golfpay.co/course/<slug>. course_id + tsid are NOT in the URL
+    # (read off the page's /api/tee-times call) and pinned in EXTRA_IDS.
+    "golfpay": re.compile(r"golfpay\.co/course/([a-z0-9-]+)"),
+    # EasyTee: app.easyteegolf.com/course/<slug>/ (slug may contain an
+    # apostrophe, e.g. schneiter's-pebblebrook-golf-club).
+    "easytee": re.compile(r"app\.easyteegolf\.com/course/([^/?#]+)"),
     "courseco": re.compile(r"https?://([a-z0-9-]+)\.totaleintegrated\.net"),
     # GolfBack puts the course uuid in the SPA fragment, so every row carries
     # its own id and nothing needs pinning. The trailing slash is optional.
@@ -94,6 +100,8 @@ TENFORE_IDS = {
 }
 
 EXTRA_IDS = {
+    # GolfPay: The Barn (UT) — course_id/tsid read off golfpay.co 2026-08-08.
+    "the barn golf club": {"course_id": 1466, "tsid": 20},
     # Sand Hollow Resort (UT): two OneTee venues on chronogolf club
     # sand-hollow-resort (14225). Pin each to its own course id so neither
     # publishes the other's sheet (confirmed off /private_api 2026-08-07:
@@ -655,7 +663,7 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
                "teequest", "clubessential", "resortsuite", "golfback",
-               "tenfore", "agilysys"}
+               "tenfore", "agilysys", "golfpay", "easytee"}
 
 
 def slugify(name: str) -> str:
@@ -744,6 +752,11 @@ def extract_ids(platform: str, url: str) -> dict:
         # Same onecart shape as rguest; pin the host so RGuestAdapter targets
         # book.onagilysys.com instead of book.rguest.com.
         return {"tenant": g[0], "property": g[1], "host": "book.onagilysys.com"}
+    if platform == "golfpay":
+        # slug is documentation; course_id + tsid come from EXTRA_IDS.
+        return {"slug": g[0]}
+    if platform == "easytee":
+        return {"slug": g[0]}
     if platform == "teequest":
         sub = g[0]
         return {"site": g[1],
@@ -795,6 +808,10 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     elif platform == "tenfore" and not ids.get("golf_course_id"):
         # golfCourseID is resolved off GetGolfCourseByVanity and pinned in
         # EXTRA_IDS; without it the adapter cannot address a sheet.
+        status = "needs_ids"
+    elif platform == "golfpay" and not ids.get("course_id"):
+        # golfpay's course_id/tsid are not in the URL; without the pinned
+        # course_id the /api/tee-times call cannot be addressed.
         status = "needs_ids"
     elif platform == "golfnow" and not ids.get("golfnow_facility_id"):
         # Same shape: browser_golfnow needs the numeric facility id. Lakeview
