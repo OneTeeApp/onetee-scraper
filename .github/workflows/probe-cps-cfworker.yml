@@ -1,0 +1,49 @@
+name: Probe cps via Cloudflare Worker egress (free/scalable?)
+
+# Read-only, throwaway. Deploys a tiny probe Worker and invokes it: the Worker,
+# running on Cloudflare's edge, fetches each challenged cps.golf tenant's
+# Configuration endpoint. Tests whether Cloudflare-edge egress clears cps.golf's
+# Cloudflare where GitHub datacenter IPs get 403. If the challenged tenants come
+# back status=200 / hasApiKey=true, Cloudflare Workers (100k req/day free) are a
+# FREE, scalable scrape path — no proxy. Deletes the probe Worker at the end.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Deploy probe Worker + invoke it
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd worker-cpsprobe
+          echo "=== wrangler deploy ==="
+          npx --yes wrangler@3 deploy 2>&1 | tee deploy.log || true
+          URL="$(grep -oE 'https://cps-egress-probe[a-z0-9.-]*\.workers\.dev' deploy.log | head -1)"
+          if [ -z "$URL" ]; then URL="https://cps-egress-probe.damp-snow-8025.workers.dev"; fi
+          echo "PROBE URL: ${URL}"
+          echo "=== invoke (give edge a few seconds) ==="
+          sleep 8
+          echo "CFWORKER-RESULT-BEGIN"
+          curl -sS --max-time 90 "${URL}" || echo "curl failed"
+          echo ""
+          echo "CFWORKER-RESULT-END"
+      - name: Delete probe Worker
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd worker-cpsprobe
+          npx --yes wrangler@3 delete --name cps-egress-probe --force 2>&1 | tail -5 || true
