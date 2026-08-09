@@ -66,6 +66,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt || pip install requests beautifulsoup4 lxml
+      - run: pip install "curl_cffi>=0.7"   # for golfrev + any curl_cffi adapter
 
       - name: Trace
         # Step timeout under the job's, so a slow platform still reaches the
