@@ -1,0 +1,31 @@
+name: Probe golfrev (why 403 from datacenter; cheapest fix?)
+
+# Read-only. Walks the cheap ladder against golfrev.com from a datacenter runner:
+# plain requests, plain+full-headers, curl_cffi impersonation (no proxy),
+# impersonation+headers, then the DATACENTER proxy, then residential as a last
+# comparison. Tells us whether a no-proxy fix (TLS impersonation) or a regular
+# datacenter proxy clears Cloudflare before concluding residential is required.
+# Manual dispatch only; delete after reading.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install requests "curl_cffi>=0.7"
+      - name: Probe golfrev
+        env:
+          TEEITUP_DC_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+        run: python scripts/probe_golfrev.py
