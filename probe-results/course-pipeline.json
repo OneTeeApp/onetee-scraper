@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-08-08T20:50:03+00:00",
+ "generated_at": "2026-08-09T22:05:48+00:00",
  "dates": [
-  "2026-08-08",
   "2026-08-09",
-  "2026-08-10"
+  "2026-08-10",
+  "2026-08-11"
  ],
  "push": true,
  "courses": [
@@ -11,22 +11,38 @@
    "slug": "birch-creek-golf-course",
    "d1_before": null,
    "fetch": {
-    "2026-08-08": {
-     "result": "error",
-     "error": "ValueError: GOLFREV-DIAG status=403 len=6101 cards=0 server='cloudflare' cf-ray='a2816421ccfce544-ORD' url=https://www.golfrev.com/go/tee_times/teetime_table_html.asp snippet='<!DOCTYPE html><html lang=\"en-US\"><head><title>Just a moment...</title><meta http-equiv=\"Content-Type\" content=\"text/html; c"
-    },
     "2026-08-09": {
-     "result": "error",
-     "error": "ValueError: GOLFREV-DIAG status=403 len=6101 cards=0 server='cloudflare' cf-ray='a2816422183e49ad-ORD' url=https://www.golfrev.com/go/tee_times/teetime_table_html.asp snippet='<!DOCTYPE html><html lang=\"en-US\"><head><title>Just a moment...</title><meta http-equiv=\"Content-Type\" content=\"text/html; c"
+     "result": "empty",
+     "slots": 0
     },
     "2026-08-10": {
-     "result": "error",
-     "error": "ValueError: GOLFREV-DIAG status=403 len=6104 cards=0 server='cloudflare' cf-ray='a28164224e6cead3-ORD' url=https://www.golfrev.com/go/tee_times/teetime_table_html.asp snippet='<!DOCTYPE html><html lang=\"en-US\"><head><title>Just a moment...</title><meta http-equiv=\"Content-Type\" content=\"text/html; c"
+     "result": "empty",
+     "slots": 0
+    },
+    "2026-08-11": {
+     "result": "rows",
+     "slots": 15
     }
    },
-   "fetched_total": 0,
-   "d1_after": null,
-   "verdict": "fetch_error"
+   "fetched_total": 15,
+   "sync": {
+    "2026-08-11": {
+     "rows_inserted": 15,
+     "rows_updated": 0,
+     "rows_deactivated": 0
+    }
+   },
+   "d1_after": {
+    "course_slug": "birch-creek-golf-course",
+    "n": 15,
+    "n_active": 15,
+    "state": "UT",
+    "venue_id": "birch-creek-golf-course",
+    "first_tt": "2026-08-11T12:16:00",
+    "last_tt": "2026-08-11T15:20:00",
+    "newest": "2026-08-09T22:05:50+00:00"
+   },
+   "verdict": "landed"
   }
  ]
 }
