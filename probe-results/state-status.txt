@@ -8,9 +8,9 @@ AZ          204   185    91%            5            0            0            0
 VA          227   114    50%            0            0            0            3            0          110          102
 FL          646   290    45%           54           29           11           62           21          179           10
 MD          119    75    63%            1            0            0            8            2           33            1
-UT           91    72    79%            3            0            1            4            3            8            0
+UT           91    72    79%            3            0            2            3            3            8            0
 -----------------------------------------------------------------------------------------------------------------------
-ALL        1467   866    59%           63           30           12           77           26          393          188
+ALL        1467   866    59%           63           30           13           76           26          393          188
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -37,7 +37,8 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   needs_ids    totale                       1   FL:1
   experimental ezlinks                     11   FL:11
   experimental golfnow                      1   UT:1
-  unsupported  other:native                31   FL:29 UT:2
+  experimental golfrev                      1   UT:1
+  unsupported  other:native                30   FL:29 UT:1
   unsupported  other:webtrac                6   FL:5 VA:1
   unsupported  other:eagleclubsystem        4   FL:2 MD:1 VA:1
   unsupported  other:unclaimed-chron        4   FL:4
@@ -719,11 +720,11 @@ UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 7
      Davis Park Golf Course                       foreup         Fruit Heights
      Valley View Golf Course                      foreup         Layton
 
-  EXPERIMENTAL  (1) — adapter exists but is not production
+  EXPERIMENTAL  (2) — adapter exists but is not production
+     Birch Creek Golf Course                      golfrev        Smithfield
      Roosevelt Municipal Golf Course              golfnow        Roosevelt
 
-  UNSUPPORTED  (4) — no adapter possible today
-     Birch Creek Golf Course                      other:native   Smithfield
+  UNSUPPORTED  (3) — no adapter possible today
      Copper Rock Golf Course                      other:native   Hurricane
      Schneiter's Bluff Golf Course                other:teerocket West Point
      Schneiter's Riverside Golf Course            other:teerocket Riverdale
@@ -746,14 +747,14 @@ UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 7
 ==========================================================================
 REGISTRY DRIFT (8) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     364 rows
-  FL  Providence Golf Club                         teeitup        1811 rows
-  FL  Willowbrook Golf Course                      teeitup        645 rows
-  MD  Fox Hollow Golf Course                       foreup         285 rows
-  MD  Rocky Point Golf Course                      foreup         331 rows
-  UT  Eaglewood Golf Course                        membersports   620 rows
-  UT  Fox Hollow Golf Club                         membersports   230 rows
-  UT  Mountain View Golf Course                    chronogolf     270 rows
+  FL  Continental Country Club                     chronogolf     385 rows
+  FL  Providence Golf Club                         teeitup        1746 rows
+  FL  Willowbrook Golf Course                      teeitup        565 rows
+  MD  Fox Hollow Golf Course                       foreup         281 rows
+  MD  Rocky Point Golf Course                      foreup         319 rows
+  UT  Eaglewood Golf Course                        membersports   637 rows
+  UT  Fox Hollow Golf Club                         membersports   200 rows
+  UT  Mountain View Golf Course                    chronogolf     265 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (8) — serving tee times, not traceable to a CSV course
