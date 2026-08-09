@@ -56,7 +56,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 "curl_cffi>=0.7"
 
       - name: Loop shard ${{ matrix.shard }}/4 over days 0-3
         env:
@@ -79,7 +79,7 @@ jobs:
               echo "::group::pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.aggregate --date "${DATE}" --workers 10 \
                 --shard "${{ matrix.shard }}/4" \
-                --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,golfrev \
+                --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee \
                 --out "${OUT}" || true
               python -m scraper.d1 push --data "${OUT}" || true
               echo "::endgroup::"

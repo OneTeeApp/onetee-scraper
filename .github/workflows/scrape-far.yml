@@ -87,7 +87,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 "curl_cffi>=0.7"
 
       - name: Stagger shards
         # The initial full sweep 429-shredded kenna past ~day 9 with all four
@@ -123,7 +123,7 @@ jobs:
             echo "::group::far ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/4" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,golfrev \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee \
               ${ARGS} --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
