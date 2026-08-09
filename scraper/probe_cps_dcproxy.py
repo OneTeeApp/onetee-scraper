@@ -1,24 +1,18 @@
-"""cps.golf via a STICKY datacenter proxy — read only.
+"""cps.golf via a STICKY datacenter proxy — read only, SELF-TUNING.
 
 Brian's goal: scrape the ~16 challenged cps tenants without a RESIDENTIAL proxy.
-Established so far: from GitHub's datacenter IP they 403 even with a real browser
-(claude/cps-browser-direct-result) — it's IP reputation, not fingerprint/JS. The
-one lever left: a NON-GitHub datacenter IP with cleaner Cloudflare reputation,
-i.e. the cheap TEEITUP_DC_PROXY (Webshare datacenter, flat-rate, no bandwidth
-meter) — but STICKY, because cps binds its cf_clearance to the IP (rotating
-breaks it).
+Established: from GitHub's datacenter IP they 403 even with a real browser
+(claude/cps-browser-direct-result) — IP reputation, not fingerprint/JS. The one
+lever left: a NON-GitHub datacenter IP with cleaner Cloudflare reputation, i.e.
+the cheap TEEITUP_DC_PROXY (flat-rate, no bandwidth meter) — but STICKY, because
+cps binds cf_clearance to the IP.
 
-This runs the full plain reservation flow per tenant through the DC proxy, one
-STICKY session per tenant (same exit IP for all requests in the flow), and
-reports: the exit IP (to prove sticky held), and per tenant how far it got /
-whether Cloudflare still challenged. Plain HTTP first — if a good IP alone clears
-these (they're IP-blocked, not JS-challenged like fossil-trace), no browser is
-even needed. Writes NOTHING to D1.
-
-Sticky username is provider-aware, mirroring browser_cps._proxy_launch_kwargs:
-Webshare -> {base}-{cc}-{sid} (cc from CPS_PROXY_COUNTRY, blank for datacenter);
-else append ;sessid.<id>. Proxy secret: TEEITUP_DC_PROXY (falls back to
-TEEITUP_PROXY).
+The proxy's sticky-username format is provider/plan-specific and not knowable
+from here, so this probe is SELF-TUNING: at startup it tries several username
+variants against an IP-echo and picks the first that authenticates, reporting
+whether that IP is stable across two calls on one session (sticky) or rotates.
+Then it runs the full plain cps flow per tenant through that variant and reports
+whether each clears Cloudflare from the proxy's IP. Writes NOTHING to D1.
 
 Usage: python -m scraper.probe_cps_dcproxy [--date YYYY-MM-DD] [--only sub,sub]
 """
@@ -31,13 +25,16 @@ import os
 import re
 import time
 import urllib.parse
+import uuid
 
 import requests
 
 from .probe_cps_dc import _cps_subs, _challenged, _headers, API_PATH, ZG, UA, TIMEOUT
 
+IPECHO = "https://api.ipify.org?format=json"
 
-def _sticky_proxies(sid: str):
+
+def _parse_proxy():
     raw = re.sub(r"\s+", "", os.environ.get("TEEITUP_DC_PROXY", "")
                  or os.environ.get("TEEITUP_PROXY", ""))
     if not raw:
@@ -45,45 +42,74 @@ def _sticky_proxies(sid: str):
     if "://" not in raw:
         raw = "http://" + raw
     pu = urllib.parse.urlparse(raw)
-    user = urllib.parse.unquote(pu.username or "")
-    pw = urllib.parse.unquote(pu.password or "")
-    host = (pu.hostname or "").lower()
-    if user and "webshare" in host:
-        base = user.split("-", 1)[0]
-        cc = os.environ.get("CPS_PROXY_COUNTRY", "").lower()  # blank = no country tag (datacenter)
-        num = int(hashlib.md5(sid.encode()).hexdigest()[:8], 16) % 1000000
-        user = f"{base}-{cc}-{num}" if cc else f"{base}-{num}"
-    elif user and "sessid." not in user:
-        user = f"{user};sessid.{sid}"
-    auth = f"{urllib.parse.quote(user)}:{urllib.parse.quote(pw)}@" if user else ""
-    server = f"{pu.scheme}://{auth}{pu.hostname}" + (f":{pu.port}" if pu.port else "")
+    return {"scheme": pu.scheme, "host": pu.hostname, "port": pu.port,
+            "user": urllib.parse.unquote(pu.username or ""),
+            "pw": urllib.parse.unquote(pu.password or "")}
+
+
+def _proxies(pp: dict, variant: str, sid: str):
+    """Build a proxies dict for a username variant + sticky session id."""
+    user = pp["user"]
+    base = user.split("-", 1)[0] if user else ""
+    num = int(hashlib.md5(sid.encode()).hexdigest()[:8], 16) % 1000000
+    if variant == "raw":
+        u = user
+    elif variant == "ws-us-sid":       # webshare residential country+sticky
+        u = f"{base}-us-{num}"
+    elif variant == "ws-sid":          # webshare sticky, no country (datacenter)
+        u = f"{base}-{num}"
+    elif variant == "sessid":          # dataimpulse
+        u = f"{user};sessid.{num}"
+    else:
+        u = user
+    auth = f"{urllib.parse.quote(u)}:{urllib.parse.quote(pp['pw'])}@" if u else ""
+    server = f"{pp['scheme']}://{auth}{pp['host']}" + (f":{pp['port']}" if pp['port'] else "")
     return {"http": server, "https": server}
 
 
-def _exit_ip(proxies) -> str:
+def _echo(proxies) -> tuple[bool, str]:
     try:
-        s = requests.Session(); s.proxies.update(proxies or {})
-        r = s.get("https://api.ipify.org?format=json", timeout=TIMEOUT)
-        return r.json().get("ip", "?") if r.ok else f"HTTP{r.status_code}"
+        s = requests.Session(); s.proxies.update(proxies)
+        r = s.get(IPECHO, timeout=TIMEOUT)
+        if r.status_code == 200:
+            return True, r.json().get("ip", "?")
+        return False, f"HTTP{r.status_code}"
     except Exception as e:  # noqa: BLE001
-        return f"ERR {type(e).__name__}: {str(e)[:60]}"
+        return False, f"{type(e).__name__}"
 
 
-def probe_tenant(sub: str, date_str: str) -> dict:
+def pick_variant(pp: dict):
+    """Return (variant, note) for the first username form that authenticates.
+    Prefers a form that also holds ONE IP across two calls (sticky)."""
+    order = ["ws-us-sid", "ws-sid", "sessid", "raw"]
+    working = None
+    for v in order:
+        # two echoes on the SAME logical sticky id -> do IPs match?
+        pr = _proxies(pp, v, "probe-sid")
+        ok1, ip1 = _echo(pr)
+        ok2, ip2 = _echo(pr)
+        note = f"{v}: echo1={ip1} echo2={ip2}"
+        print("CPSDCP variant " + note + (" STICKY" if ok1 and ip1 == ip2 else
+              (" ROTATES" if ok1 and ok2 else " FAIL")), flush=True)
+        if ok1 and ok2 and working is None:
+            working = (v, "sticky" if ip1 == ip2 else "rotating")
+            if ip1 == ip2:
+                return working  # sticky + working = ideal, stop early
+    return working or (None, "none authenticated")
+
+
+def probe_tenant(sub: str, date_str: str, pp: dict, variant: str) -> dict:
     base = f"https://{sub}.cps.golf"
     api = base + API_PATH
-    proxies = _sticky_proxies(sub)
+    proxies = _proxies(pp, variant, sub)  # per-tenant sticky id
     s = requests.Session()
     s.headers.update({"User-Agent": UA})
-    if proxies:
-        s.proxies.update(proxies)
+    s.proxies.update(proxies)
     r = {"sub": sub, "stage": "config", "status": 0, "teetimes": 0,
          "challenged": False, "auth": "none", "ip": ""}
 
-    # exit IP twice — confirm the sticky session holds ONE IP
-    ip1 = _exit_ip(proxies)
-    ip2 = _exit_ip(proxies)
-    r["ip"] = ip1 + ("" if ip1 == ip2 else f"!={ip2}(ROTATED)")
+    ok, ip = _echo(proxies)  # exit IP for this tenant's session
+    r["ip"] = ip
 
     def get(url, **kw):
         return s.get(url, timeout=TIMEOUT, **kw)
@@ -146,7 +172,6 @@ def probe_tenant(sub: str, date_str: str) -> dict:
     if not wid or not cids:
         r["stage"] = "discover"; r["note"] = "no wid/cids"; return r
 
-    import uuid
     txid = str(uuid.uuid4())
     try:
         hr = _headers(wid, token, api_key); hr["Content-Type"] = "application/json"
@@ -177,7 +202,6 @@ def probe_tenant(sub: str, date_str: str) -> dict:
     return r
 
 
-# The ~16 that 403 even with a real browser from GitHub's datacenter IP.
 CHALLENGED = [
     "cattailcreek", "flatironsgolf", "fossiltrace", "gypsumcreekgolf",
     "indiantree", "marianabutte", "oldecourseloveland", "universityofdenver",
@@ -188,12 +212,24 @@ CHALLENGED = [
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="cps via sticky datacenter proxy")
+    p = argparse.ArgumentParser(description="cps via sticky datacenter proxy (self-tuning)")
     p.add_argument("--date", default=(dt.date.today() + dt.timedelta(days=1)).isoformat())
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--only", default="", help="comma-separated subs (blank = the challenged set)")
-    p.add_argument("--gap", type=float, default=0.4)
+    p.add_argument("--gap", type=float, default=0.3)
     a = p.parse_args(argv)
+
+    pp = _parse_proxy()
+    print(f"CPSDCP date={a.date} DC-proxy={'set host='+str(pp['host']) if pp else 'MISSING'}",
+          flush=True)
+    if not pp:
+        print("CPSDCP no proxy secret — nothing to test", flush=True); return 0
+
+    variant, kind = pick_variant(pp)
+    print(f"CPSDCP chosen-variant={variant} ({kind})", flush=True)
+    if not variant:
+        print("CPSDCP proxy did not authenticate under any username form — "
+              "check the secret / provider sticky syntax", flush=True); return 0
 
     have = set(_cps_subs(a.registry))
     if a.only:
@@ -201,16 +237,9 @@ def main(argv=None) -> int:
     else:
         subs = [s for s in CHALLENGED if s in have]
 
-    proxy_set = bool(re.sub(r"\s+", "", os.environ.get("TEEITUP_DC_PROXY", "")
-                            or os.environ.get("TEEITUP_PROXY", "")))
-    print(f"CPSDCP date={a.date} DC-proxy={'set' if proxy_set else 'MISSING'} tenants={len(subs)}",
-          flush=True)
-    if not proxy_set:
-        print("CPSDCP no proxy secret — nothing to test", flush=True); return 0
-
     ok = challenged = other = 0
     for sub in subs:
-        r = probe_tenant(sub, a.date)
+        r = probe_tenant(sub, a.date, pp, variant)
         tag = ("OK" if r["teetimes"] > 0 else
                "CHALLENGED" if r["challenged"] else "empty/fail")
         if r["teetimes"] > 0: ok += 1
@@ -220,8 +249,9 @@ def main(argv=None) -> int:
               % (sub, tag, r["stage"], r["status"], r["teetimes"], r["ip"],
                  (" err=" + r["error"]) if r.get("error") else ""), flush=True)
         time.sleep(a.gap)
-    print(f"CPSDCP DONE ok={ok} challenged={challenged} other={other} of {len(subs)} "
-          f"(OK via sticky DC proxy = can drop residential for those)", flush=True)
+    print(f"CPSDCP DONE variant={variant}({kind}) ok={ok} challenged={challenged} "
+          f"other={other} of {len(subs)} — OK count = tenants movable off residential",
+          flush=True)
     return 0
 
 
