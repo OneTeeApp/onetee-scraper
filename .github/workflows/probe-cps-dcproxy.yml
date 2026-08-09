@@ -1,0 +1,36 @@
+name: Probe cps via sticky datacenter proxy (can it drop residential?)
+
+# Read-only. Runs the full cps flow for the ~16 hard-blocked tenants through the
+# cheap TEEITUP_DC_PROXY in STICKY mode (one exit IP per tenant flow), no
+# residential, no browser. Prints the exit IP (to prove sticky held) and whether
+# each tenant clears Cloudflare from a non-GitHub datacenter IP. If they clear,
+# cps can move off residential onto the ~$3/mo datacenter proxy. Writes NOTHING.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "comma-separated subs (blank = the challenged set)"
+        default: ""
+      country:
+        description: "CPS_PROXY_COUNTRY tag for Webshare username (blank for datacenter; try 'us' if auth fails)"
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: cps full flow through sticky datacenter proxy
+        env:
+          TEEITUP_DC_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
+          CPS_PROXY_COUNTRY: ${{ github.event.inputs.country }}
+        run: python -m scraper.probe_cps_dcproxy --only "${{ github.event.inputs.only }}"
