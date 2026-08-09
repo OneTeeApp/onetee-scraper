@@ -5,7 +5,7 @@ name: Probe cps via Cloudflare Worker egress (free/scalable?)
 # Configuration endpoint. Tests whether Cloudflare-edge egress clears cps.golf's
 # Cloudflare where GitHub datacenter IPs get 403. If the challenged tenants come
 # back status=200 / hasApiKey=true, Cloudflare Workers (100k req/day free) are a
-# FREE, scalable scrape path — no proxy. Deletes the probe Worker at the end.
+# FREE, scalable scrape path. Deletes the probe Worker at the end.
 
 on:
   workflow_dispatch: {}
@@ -16,13 +16,13 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Deploy probe Worker + invoke it
+      - name: Deploy probe Worker + invoke it (retry for propagation)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_DEPLOY_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -33,11 +33,16 @@ jobs:
           URL="$(grep -oE 'https://cps-egress-probe[a-z0-9.-]*\.workers\.dev' deploy.log | head -1)"
           if [ -z "$URL" ]; then URL="https://cps-egress-probe.damp-snow-8025.workers.dev"; fi
           echo "PROBE URL: ${URL}"
-          echo "=== invoke (give edge a few seconds) ==="
-          sleep 8
+          RESP=""
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "--- invoke attempt ${i} ---"
+            RESP="$(curl -sS --max-time 90 "${URL}" || echo 'CURL_FAILED')"
+            echo "${RESP}" | head -c 160; echo ""
+            if echo "${RESP}" | grep -q 'ok_with_apikey'; then echo "GOT RESULT"; break; fi
+            echo "not ready (propagation) — waiting 15s"; sleep 15
+          done
           echo "CFWORKER-RESULT-BEGIN"
-          curl -sS --max-time 90 "${URL}" || echo "curl failed"
-          echo ""
+          echo "${RESP}"
           echo "CFWORKER-RESULT-END"
       - name: Delete probe Worker
         if: always()
