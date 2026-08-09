@@ -680,7 +680,7 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
                "teequest", "clubessential", "resortsuite", "golfback",
-               "tenfore", "agilysys", "golfpay", "easytee"}
+               "tenfore", "agilysys", "golfpay", "easytee", "golfrev"}
 
 
 def slugify(name: str) -> str:
