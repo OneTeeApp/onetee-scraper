@@ -18387,9 +18387,9 @@
     "courseid": "3719",
     "htc": "370"
    },
-   "status": "experimental",
+   "status": "ready",
    "confidence": "high",
-   "notes": "GolfRev (Cybergolf) - endpoint teetime_table_html.asp?c=3719&h=370 serves the sheet to a residential browser (verified live 6 cards 8/9) but Cloudflare 403s the CI datacenter IP (confirmed via diag: 6.1KB block page cf-ray -ORD). Needs the headless+residential-proxy tier (browser_golfrev.py) - marked experimental"
+   "notes": "GolfRev (Cybergolf) - endpoint teetime_table_html.asp?c=3719&h=370. Behind Cloudflare that JA3-fingerprints plain requests (403); NOT an IP block - curl_cffi Chrome impersonation clears it from the datacenter with no proxy (probe_golfrev.py: plain 403 / impersonate 200 15 cards). Plain adapter golfrev.py uses curl_cffi. VERIFIED LIVE 2026-08-09. ids courseid 3719 htc 370 | Northern Utah region | Pro shop (435) 563-6825"
   },
   {
    "slug": "glenmoor-golf-club",
