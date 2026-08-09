@@ -1,0 +1,30 @@
+name: Probe cps plain-vs-impersonate (can curl_cffi drop the residential proxy?)
+
+# Read-only. Runs the full cps reservation flow for every tenant twice from a
+# datacenter runner — plain requests vs curl_cffi Chrome TLS impersonation, no
+# proxy, no browser. Answers whether impersonation clears the ~18 "challenged"
+# tenants that currently need the metered residential browser (the golfrev
+# lever, never tried on cps). Writes NOTHING. Manual dispatch only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "comma-separated subdomains to limit to (blank = all)"
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests "curl_cffi>=0.7"
+      - name: cps plain vs impersonate, datacenter-direct
+        run: python -m scraper.probe_cps_impersonate --only "${{ github.event.inputs.only }}"
