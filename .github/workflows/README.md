@@ -38,6 +38,7 @@ two never write the same course and clobber each other in D1.
 
 | Workflow | Purpose |
 |---|---|
+| `alert-landed-zero.yml` | Every 6h: fail (→ GitHub emails admins) if a whole platform has gone dark — 0 of its known courses cleanly scraped, per the `sheet_freshness` ledger. The systemic "green run → 0 rows" alarm. |
 | `deploy-worker.yml` | Deploy the Cloudflare Worker API |
 | `prune-past.yml` | Hourly backstop to deactivate elapsed slots (Worker cron is primary) |
 | `monitor-inventory.yml` | Hourly inventory-health witness |

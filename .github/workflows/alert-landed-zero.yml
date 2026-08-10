@@ -1,0 +1,78 @@
+name: Alert — platform landed zero (gone dark)
+
+# THE PROBLEM THIS SOLVES. A broken scraper looks identical to a healthy one:
+# the workflow goes green, it just writes no rows. That is how teeitup (dead
+# proxy secret), teesnap (concurrency 500s) and clubcaddie (source-side SPA
+# rewrite) each sat DARK for weeks before a human noticed by eye.
+#
+# THE SIGNAL. `scraper/d1.py coverage` reads the sheet_freshness ledger, which
+# sync() stamps for every course it CONFIRMED (rows OR a trustworthy clean
+# empty) and NEVER for a course that errored. So "0 of a platform's known
+# courses were cleanly scraped in the last N hours" means the scraper is broken
+# — true even when a platform legitimately has no availability. See
+# docs/ARCHITECTURE.md §7.
+#
+# THE ALERT. On the schedule this runs with --alert, so a fully-dark sizable
+# platform makes the job exit non-zero → the run turns red → GitHub emails the
+# repo admins. push / manual runs stay report-only (never red) so deploying or
+# eyeballing coverage can't cry wolf. Widen with --window-hours, quiet a
+# known-unfixable source with --exclude.
+
+on:
+  schedule:
+    - cron: "9 */6 * * *"        # every 6h — catches a dark platform within 6h
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "report (never fails) | alert (fails on dark)"
+        default: "report"
+  push:
+    branches: [main]
+    paths:
+      - "scraper/d1.py"
+      - ".github/workflows/alert-landed-zero.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alert-landed-zero
+  cancel-in-progress: false
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Per-platform freshness coverage
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          set -o pipefail
+          # Alert (fail the job) only on the schedule, or a manual mode=alert
+          # run. push / default dispatch are report-only so they never go red.
+          ALERT=""
+          if [ "${{ github.event_name }}" = "schedule" ]; then ALERT="--alert"; fi
+          if [ "${{ github.event.inputs.mode }}" = "alert" ]; then ALERT="--alert"; fi
+          python -m scraper.d1 coverage \
+            --window-hours 18 --min-courses 4 $ALERT 2>&1 | tee coverage.log
+
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo '## Per-platform freshness coverage'
+            echo '```'
+            cat coverage.log 2>/dev/null || echo "(no output)"
+            echo '```'
+            echo '_A DARK platform means a whole platform that normally produces'
+            echo 'has stopped being scraped. Diagnose via docs/ARCHITECTURE.md §7._'
+          } >> "$GITHUB_STEP_SUMMARY"
