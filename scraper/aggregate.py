@@ -36,6 +36,7 @@ from .adapters.golfwithaccess import GolfWithAccessAdapter
 from .adapters.rguest import RGuestAdapter
 from .adapters.golfpay import GolfPayAdapter
 from .adapters.easytee import EasyTeeAdapter
+from .adapters.golfscape import GolfscapeAdapter
 from .adapters.golfrev import GolfRevAdapter
 from .adapters.courseco import CourseCoAdapter
 from .adapters.teequest import TeeQuestAdapter
@@ -67,6 +68,9 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "agilysys": RGuestAdapter,     # book.onagilysys.com skin of the same onecart API
     "golfpay": GolfPayAdapter,
     "easytee": EasyTeeAdapter,
+    "golfscape": GolfscapeAdapter,   # golfscape.com marketplace; one anonymous
+                                     # form-POST per course-day, propertyId pinned
+
     "golfrev": GolfRevAdapter,     # Cybergolf tee sheet; curl_cffi impersonation
                                    # clears its Cloudflare TLS fingerprint check
 
