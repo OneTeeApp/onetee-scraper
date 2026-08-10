@@ -539,6 +539,19 @@ EXTRA_IDS = {
     # that returned 200 in discover3.
     "patty jewett golf course":  {"booking_class": "1339"},
     "valley hi golf course":     {"booking_class": "4502"},
+    # Three Utah ForeUp munis, same class of bug (2026-08-10). All were "ready"
+    # but reading zero: the times endpoint returns [] with no booking_class, and
+    # discover_ids() can't find one because these courses only expose the class
+    # after you pick a booking TYPE in the SPA (18 Hole Groups / Public
+    # Reservations), not in the page HTML. Captured each live off the SPA's own
+    # /api/booking/times request, then verified the class returns inventory:
+    #   Crane Field  bc 6420 (schedule 1)     -> ~60-72 times/day
+    #   Davis Park   bc 2094 (schedule 1757)  -> short 2-3 day window, a few/day
+    #   Valley View  bc 1208 (schedule 1759)  -> 15-20 on open days (had NO
+    #                schedule_id pinned before, so also pin 1759).
+    "crane field golf course":   {"booking_class": "6420"},
+    "davis park golf course":    {"booking_class": "2094"},
+    "valley view golf course":   {"booking_class": "1208", "schedule_id": "1759"},
     # Pin every cps.golf tenant's websiteId + courseIds (captured via the
     # tenant's own GetAllOptions). Runtime discovery works from a residential IP
     # but returns empty/garbled from GitHub's datacenter IP, so pinning lets the
