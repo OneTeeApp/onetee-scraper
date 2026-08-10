@@ -75,10 +75,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
-          # Residential rotating proxy (per Brian, 2026-08-10 — the datacenter
-          # secret was erroring, leaving all teeitup courses dark). JSON-only plain
-          # path keeps bandwidth to a few KB/course, so residential stays cheap.
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          # Rotating DATACENTER proxy (Webshare). Kenna doesn't block datacenter
+          # IPs, only rate-limits per IP, which per-request rotation defeats — the
+          # cheapest working transport. 2026-08-10: BOTH proxy secrets were dead
+          # (DC ProxyError, residential Max-retries), so teeitup went dark. RENEW
+          # this DC plan and teeitup recovers with NO code change. JSON-only.
+          TEEITUP_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
           TEEITUP_PLAIN_HTTP: "1"
           TEEITUP_PLAIN_CONCURRENCY: "4"   # rotation spreads IPs; keep bursts modest
           TEEITUP_PLAIN_GAP_MS: "150"      # small jitter so we don't micro-burst kenna
