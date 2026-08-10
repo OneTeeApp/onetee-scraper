@@ -1,28 +1,30 @@
 """Headless-browser fetcher for Club Caddie public booking widgets.
 
 Club Caddie's widget (apimanager-<shard>.clubcaddie.com/webapi/view/<token>) is
-session-gated: plain HTTP gets a "session expired" stub. But once a real Chromium
-loads the widget, the page fires a POST to /webapi/TeeTimes and gets back an HTML
-tee sheet. That POST body carries everything we need — CourseId, the public
-apikey (view token) and the session Interaction id:
+a client-rendered SPA. As of Aug 2026 it NO LONGER server-renders an HTML tee
+sheet: the old `POST /webapi/TeeTimes` that returned repeated
+`Tee Time: </span><br> 06:30 AM ...` blocks now just returns the 49 KB app
+shell, so the previous capture-the-POST-and-parse-HTML approach silently parsed
+ZERO rows for every course (green run, no data — the nationwide "clubcaddie
+mostly dark" gap). Confirmed live 2026-08-10.
 
-  POST /webapi/TeeTimes
-    date=MM/DD/YYYY&player=1&holes=any&fromtime=4&totime=23&minprice=0
-    &maxprice=9999&ratetype=any&HoleGroup=front&CourseId=<id>&apikey=<token>
-    &Interaction=<sessionId>
-    (X-Requested-With: XMLHttpRequest; form-urlencoded)
-  -> HTML with repeated blocks:
-       Tee Time: <br> 06:30 AM   Price: <br>$58.00   Holes: <br>18
-
-So we load the widget, capture that POST body, then re-POST it in-page with the
-date swapped to each target date and parse the HTML. No login, no CAPTCHA, no
-challenge-solving — the same public page a golfer uses.
+CURRENT FLOW (verified live against Applewood cc11/hbfdabab, 2026-08-10):
+  1. GET /webapi/view/<token>              — establishes the session (Interaction).
+  2. GET /webapi/view/<token>/slots?date=MM/DD/YYYY&player=1&ratetype=any
+       — the SPA auto-attaches &Interaction=<id> and CLIENT-SIDE renders the
+         tee sheet as repeated `div.teetime` cards:
+           "Golfers: 1 - 2  <course> - Front  06:30 AM  $58.00  18 Holes  Book Now"
+So we drive a real Chromium: load the widget once (session), then navigate to
+the per-date /slots URL, wait for the `div.teetime` cards to render, and read
+time / price / holes / golfer-range straight off the rendered DOM. No login, no
+CAPTCHA, no challenge — the same public page a golfer uses. Parsing the RENDERED
+DOM (not a raw HTML fragment) is resilient to their internal data format.
 
 This owns ALL clubcaddie courses (the plain scraper excludes the platform), so
 the two never write the same course_slug and clobber each other in D1.
 
 Usage:
-    python -m scraper.browser_clubcaddie --date 2026-07-25 --out output/cc.json
+    python -m scraper.browser_clubcaddie --date 2026-07-25 --out-dir output
 """
 from __future__ import annotations
 
@@ -31,7 +33,6 @@ import datetime as dt
 import json
 import logging
 import pathlib
-import re
 import sys
 import time
 
@@ -42,55 +43,70 @@ from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
 
-# Re-POST the captured body with the date swapped, in-page (real session).
-REPLAY_JS = r"""
-async ([body, dateStr]) => {
-  const p = new URLSearchParams(body);
-  p.set("date", dateStr);
-  const r = await fetch("/webapi/TeeTimes", {method: "POST",
-    headers: {"X-Requested-With": "XMLHttpRequest",
-              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"},
-    body: p.toString()});
-  return {status: r.status, html: await r.text()};
+# Read the rendered tee-time cards off the SPA DOM. Each slot is a `div.teetime`
+# card; nested duplicates (card-box-outer > slotBox-body > teetime) are dropped
+# by keeping only cards that are not themselves inside another `div.teetime`.
+# `shell` proves the booking app actually rendered, so an empty `cards` list can
+# be trusted as "no availability" rather than "failed to load".
+EXTRACT_JS = r"""
+() => {
+  const shell = document.title.indexOf('Club Caddie') !== -1
+             || !!document.querySelector('.SliderValue, div.teetime');
+  const cards = [...document.querySelectorAll('div.teetime')]
+    .filter(el => !(el.parentElement && el.parentElement.closest('div.teetime')));
+  const out = [];
+  for (const el of cards) {
+    const t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+    const tm = (t.match(/(\d{1,2}:\d\d\s*[AP]M)/i) || [])[1];
+    if (!tm) continue;
+    const pr = (t.match(/\$([\d,]+(?:\.\d{2})?)/) || [])[1];
+    const ho = (t.match(/(\d+)\s*Holes/i) || [])[1];
+    const gg = t.match(/Golfers:\s*(\d+)(?:\s*-\s*(\d+))?/i);
+    out.push({time: tm, price: pr || null, holes: ho || null,
+              gmax: gg ? (gg[2] || gg[1]) : null});
+  }
+  return {shell, cards: out};
 }
 """
 
-_TIME = re.compile(r"Tee Time:\s*</span>\s*<br>\s*(\d{1,2}:\d\d\s*[AP]M)", re.I)
-_PRICE = re.compile(r"Price:\s*</span>\s*<br>\s*\$?([\d,]+(?:\.\d+)?)", re.I)
-_HOLES = re.compile(r"Holes:\s*</span>\s*<br>\s*(\d+)", re.I)
 
-
-def _parse(course: dict, date: dt.date, html: str) -> list:
-    # split into per-slot chunks at each "Tee Time:" marker
-    chunks = re.split(r"(?=Tee Time:\s*</span>)", html)
+def _parse_cards(course: dict, date: dt.date, cards: list) -> list:
+    """Turn the extracted card dicts into TeeTime rows, deduped by tee time."""
     by_time: dict[str, dict] = {}
-    for ch in chunks:
-        tm = _TIME.search(ch)
-        if not tm:
-            continue
-        raw = re.sub(r"\s+", " ", tm.group(1)).strip().upper().replace(" ", "")
+    for c in cards:
+        raw = (c.get("time") or "").upper().replace(" ", "")
         try:
             t = dt.datetime.strptime(raw, "%I:%M%p").time()
         except ValueError:
             continue
         iso = dt.datetime.combine(date, t).isoformat()
-        pm = _PRICE.search(ch)
-        price = float(pm.group(1).replace(",", "")) if pm else None
-        hm = _HOLES.search(ch)
-        holes = int(hm.group(1)) if hm else None
-        e = by_time.setdefault(iso, {"holes": set(), "prices": []})
-        if holes in (9, 18):
-            e["holes"].add(holes)
-        if price and price > 0:
-            e["prices"].append(price)
+        e = by_time.setdefault(iso, {"holes": set(), "prices": [], "spots": 0})
+        try:
+            h = int(c.get("holes")) if c.get("holes") else None
+        except (TypeError, ValueError):
+            h = None
+        if h in (9, 18):
+            e["holes"].add(h)
+        if c.get("price"):
+            try:
+                p = float(str(c["price"]).replace(",", ""))
+                if p > 0:
+                    e["prices"].append(p)
+            except ValueError:
+                pass
+        # "Golfers: 1 - 4" => up to 4 bookable = 4 open spots. Take the max
+        # across cards sharing the tee time (front/back, rate types).
+        try:
+            g = int(c.get("gmax")) if c.get("gmax") else 0
+        except (TypeError, ValueError):
+            g = 0
+        e["spots"] = max(e["spots"], g)
 
     out = []
     for iso, e in by_time.items():
-        # Club Caddie's tee sheet doesn't expose a reliable open-spots count,
-        # so we leave open_spots unset rather than publish a wrong number.
         out.append(GolfNowAdapter.base_tee_time(
             course, teetime=iso, holes=sorted(e["holes"]) or [18],
-            open_spots=None,
+            open_spots=(e["spots"] or None),
             price_min=min(e["prices"]) if e["prices"] else None,
             price_max=max(e["prices"]) if e["prices"] else None,
             raw={}))
@@ -98,51 +114,59 @@ def _parse(course: dict, date: dt.date, html: str) -> list:
 
 
 def _fetch_course(pw, course: dict, dates: list[dt.date]) -> tuple[dict, str | None]:
-    """Load the widget once (capture the TeeTimes POST body), then replay for
-    each date. Returns {date_iso: [TeeTime]} and an error string if it failed."""
+    """Render the widget per date and read the tee-time cards off the DOM.
+
+    Returns {date_iso: [TeeTime] | None}. None marks a date whose page failed
+    to render (unknown) so sync shields the course's existing D1 rows; [] is a
+    trustworthy empty day (the app shell rendered with no slots)."""
     ids = course["ids"]
     base = f"https://apimanager-{ids['shard']}.clubcaddie.com"
     token = ids["view_token"]
     last = None
     for attempt in range(3):
         browser = pw.chromium.launch(args=["--no-sandbox"])
-        captured: dict[str, str] = {}
         try:
             ctx = browser.new_context(user_agent=USER_AGENT)
             page = ctx.new_page()
-
-            def on_req(rq):
-                if "/webapi/TeeTimes" in rq.url and rq.method == "POST":
-                    try:
-                        captured["body"] = rq.post_data or ""
-                    except Exception:
-                        pass
-
-            page.on("request", on_req)
+            # Establish the session (Interaction cookie) once, like a golfer
+            # opening the widget, before requesting individual dates.
             page.goto(f"{base}/webapi/view/{token}",
-                      wait_until="networkidle", timeout=45000)
-            # give the auto-fired TeeTimes POST time to land
-            for _ in range(16):
-                if captured.get("body"):
-                    break
-                page.wait_for_timeout(500)
-            if not captured.get("body"):
-                last = "no TeeTimes POST observed"
-                raise RuntimeError(last)
-            # A failed replay is recorded as None ("unknown"), NEVER as [] —
-            # an expired session mid-run used to file every remaining date as
-            # a clean empty day, and sync deactivated the course's real rows.
+                      wait_until="domcontentloaded", timeout=45000)
+            try:
+                page.wait_for_selector("div.teetime, .SliderValue", timeout=15000)
+            except Exception:  # noqa: BLE001 — shell may still be usable
+                pass
+
             per_date: dict[str, list | None] = {}
             for d in dates:
-                r = page.evaluate(REPLAY_JS, [captured["body"], d.strftime("%m/%d/%Y")])
-                if r.get("status") == 200 and (r.get("html") or "").strip()[:1] == "<":
-                    per_date[d.isoformat()] = _parse(course, d, r["html"])
-                else:
+                mdy = d.strftime("%m/%d/%Y")
+                try:
+                    page.goto(f"{base}/webapi/view/{token}/slots"
+                              f"?date={mdy}&player=1&ratetype=any",
+                              wait_until="domcontentloaded", timeout=45000)
+                    # cards render client-side after load; wait briefly for the
+                    # first one, else confirm the shell (=> genuine empty day).
+                    try:
+                        page.wait_for_selector("div.teetime", timeout=9000)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    r = page.evaluate(EXTRACT_JS)
+                    if not r or not r.get("shell"):
+                        per_date[d.isoformat()] = None
+                        last = "shell did not render"
+                    else:
+                        per_date[d.isoformat()] = _parse_cards(
+                            course, d, r.get("cards") or [])
+                except Exception as e:  # noqa: BLE001
                     per_date[d.isoformat()] = None
-                    last = f"replay status {r.get('status')}"
-                page.wait_for_timeout(400)
-            return per_date, (last if any(v is None for v in per_date.values())
-                              else None)
+                    last = f"nav {type(e).__name__}"
+                page.wait_for_timeout(300)
+
+            # success if at least one date rendered (list, incl. empty)
+            if any(v is not None for v in per_date.values()):
+                return per_date, (last if any(v is None for v in per_date.values())
+                                  else None)
+            last = last or "no dates rendered"
         except Exception as e:  # noqa: BLE001
             last = last or type(e).__name__
         finally:
@@ -178,7 +202,7 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
                          "error": f"browser {err}"})
                 log.info("  %-32s ERROR %s", c["slug"], err)
             else:
-                # per-date: a None marks a failed replay — error that date so
+                # per-date: a None marks a failed render — error that date so
                 # sync shields the course's rows instead of reading "empty".
                 failed = 0
                 for diso, tts in got.items():
@@ -186,7 +210,7 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
                         failed += 1
                         errors[diso].append(
                             {"course": c["slug"], "platform": "clubcaddie",
-                             "error": f"browser {err or 'replay failed'}"})
+                             "error": f"browser {err or 'render failed'}"})
                     else:
                         per_date_times[diso].extend(tts)
                 log.info("  %-32s %d times (%d dates, %d failed)", c["slug"],
