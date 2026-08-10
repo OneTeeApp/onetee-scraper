@@ -75,6 +75,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          VPS_DUALWRITE: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
           # Rotating DATACENTER proxy (Webshare). Kenna doesn't block datacenter
           # IPs, only rate-limits per IP, which per-request rotation defeats — the
           # cheapest working transport. 2026-08-10: BOTH proxy secrets were dead
