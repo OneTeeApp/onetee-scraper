@@ -1,0 +1,43 @@
+name: Deploy to VPS (onetee-db)
+
+# Manual deploy: SSHes into the OneTee VPS and runs vps/deploy.sh (idempotent).
+# Requires repo secrets: VPS_HOST (IP), VPS_USER (e.g. root), VPS_SSH_KEY (the
+# private half of a key whose public half is in the VPS's authorized_keys).
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH deploy to VPS
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VPS_HOST:-}" ] || [ -z "${VPS_USER:-}" ] || [ -z "${VPS_SSH_KEY:-}" ]; then
+            echo "Missing one of VPS_HOST / VPS_USER / VPS_SSH_KEY repo secrets." >&2
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          echo "Copying vps/ to the server..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "rm -rf /root/onetee-vps"
+          scp -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 -r vps "$VPS_USER@$VPS_HOST:/root/onetee-vps"
+
+          echo "Running deploy.sh on the server..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "bash /root/onetee-vps/deploy.sh"
