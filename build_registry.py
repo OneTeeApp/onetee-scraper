@@ -71,6 +71,10 @@ PATTERNS = {
     # both ids in the query string: ?htc=<h>&courseid=<c> (order varies, so
     # extract_ids pulls each independently rather than positionally).
     "golfrev": re.compile(r"golfrev\.com/go/tee_times/"),
+    # Golfscape: golfscape.com/<region>/<course-slug>. The numeric propertyId the
+    # /executeaction API needs is NOT in the URL (nor in the embed courseCode), so
+    # the slug is documentation only and property_id is pinned in EXTRA_IDS.
+    "golfscape": re.compile(r"golfscape\.com/[a-z0-9-]+/([a-z0-9-]+)"),
     # Trutee: trutee.app/courses/o/<org> — the org portal lists every course
     # under that org; per-venue attribution is by the pinned trutee_course name
     # (browser_trutee.py). Captures the org slug.
@@ -119,6 +123,11 @@ EXTRA_IDS = {
     "sunbrook golf club": {"trutee_course": "Sunbrook Golf Club"},
     # GolfPay: The Barn (UT) — course_id/tsid read off golfpay.co 2026-08-08.
     "the barn golf club": {"course_id": 1466, "tsid": 20},
+    # Golfscape: Copper Rock (UT) — numeric propertyId 3713, read off the course
+    # page's booking-box-fetch-teetimes call 2026-08-10 (the embed courseCode is
+    # 125e71; neither number is in a public URL). Its own /book-tee-times page
+    # only links out to the golfscape marketplace, so this is the sole channel.
+    "copper rock golf course": {"property_id": "3713"},
     # Sand Hollow Resort (UT): two OneTee venues on chronogolf club
     # sand-hollow-resort (14225). Pin each to its own course id so neither
     # publishes the other's sheet (confirmed off /private_api 2026-08-07:
@@ -710,7 +719,8 @@ IMPLEMENTED = {"foreup", "teeitup", "chronogolf", "clubprophet", "clubcaddie",
                "membersports", "quick18", "teesnap", "foretees",
                "golfwithaccess", "totale", "rguest", "courseco",
                "teequest", "clubessential", "resortsuite", "golfback",
-               "tenfore", "agilysys", "golfpay", "easytee", "golfrev"}
+               "tenfore", "agilysys", "golfpay", "easytee", "golfrev",
+               "golfscape"}
 
 
 def slugify(name: str) -> str:
@@ -804,6 +814,9 @@ def extract_ids(platform: str, url: str) -> dict:
         return {"slug": g[0]}
     if platform == "easytee":
         return {"slug": g[0]}
+    if platform == "golfscape":
+        # slug is documentation; the numeric property_id comes from EXTRA_IDS.
+        return {"slug": g[0]}
     if platform == "trutee":
         return {"org": g[0]}
     if platform == "golfrev":
@@ -876,6 +889,11 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
     elif platform == "golfrev" and not ids.get("courseid"):
         # golfrev keys the tee sheet on courseid; a row whose URL lacks it
         # (or isn't a golfrev tee_times link) cannot address a sheet.
+        status = "needs_ids"
+    elif platform == "golfscape" and not ids.get("property_id"):
+        # golfscape's numeric propertyId is not in the URL (nor the embed
+        # courseCode); without the pinned property_id the /executeaction call
+        # cannot be addressed.
         status = "needs_ids"
     elif platform == "golfnow" and not ids.get("golfnow_facility_id"):
         # Same shape: browser_golfnow needs the numeric facility id. Lakeview
