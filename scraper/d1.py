@@ -632,9 +632,12 @@ def coverage(db, window_hours: float = 12.0) -> list[dict]:
     out = []
     for platform, courses in known.items():
         total = len(courses)
-        n = len(courses & fresh)
-        out.append({"platform": platform, "known": total, "fresh": n,
-                    "pct": round(100.0 * n / total, 1) if total else 0.0})
+        stale = sorted(courses - fresh)
+        out.append({"platform": platform, "known": total,
+                    "fresh": total - len(stale),
+                    "pct": round(100.0 * (total - len(stale)) / total, 1)
+                    if total else 0.0,
+                    "stale_courses": stale})
     out.sort(key=lambda d: (d["pct"], -d["known"]))
     return out
 
@@ -670,6 +673,9 @@ def main() -> int:
     p.add_argument("--exclude", default="",
                    help="coverage: comma-separated platforms to report but never "
                         "fail on (e.g. a known-unfixable source)")
+    p.add_argument("--list-dark", action="store_true",
+                   help="coverage: also list the specific not-fresh course slugs "
+                        "behind each platform's %% (the per-course gaps to triage)")
     a = p.parse_args()
 
     db = SqliteLocal(a.local) if a.local else D1Rest()
@@ -756,6 +762,17 @@ def main() -> int:
                 return 1
         else:
             print("\nAll sizable platforms have fresh coverage. No dark platforms.")
+        if a.list_dark:
+            gaps = [r for r in rows if r.get("stale_courses")]
+            if gaps:
+                print("\nPer-course gaps (known courses not freshly scraped in "
+                      f"{a.window_hours:g}h — triage: bad/stale IDs vs delisted "
+                      "vs genuinely-empty-but-ledger-lagging):")
+                for r in gaps:
+                    slugs = r["stale_courses"]
+                    shown = ", ".join(slugs[:20])
+                    more = f" … (+{len(slugs) - 20} more)" if len(slugs) > 20 else ""
+                    print(f"  {r['platform']} ({len(slugs)}): {shown}{more}")
     return 0
 
 
