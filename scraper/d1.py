@@ -596,7 +596,8 @@ def sync(db, doc: dict) -> dict:
 # coverage — the "landed 0" health signal
 # --------------------------------------------------------------------------- #
 
-def coverage(db, window_hours: float = 12.0) -> list[dict]:
+def coverage(db, window_hours: float = 12.0,
+             registry_path: str | None = None) -> list[dict]:
     """Per-platform freshness coverage — the signal for a silently-dead scraper.
 
     A broken scraper looks exactly like a healthy one: the workflow goes green,
@@ -609,10 +610,16 @@ def coverage(db, window_hours: float = 12.0) -> list[dict]:
 
     Denominator = courses that have EVER produced inventory (DISTINCT
     course_slug per platform in tee_times; rows are only deactivated, never
-    deleted, so a platform stays counted after it goes dark). Numerator = those
-    whose most recent clean scrape (any date) is within `window_hours`.
+    deleted, so a platform stays counted after it goes dark), INTERSECTED with
+    the current registry when `registry_path` is given. The intersect drops
+    "ghost" (course_slug, platform) pairs — old platform assignments whose rows
+    linger in D1 after a course churned platforms, got reclassified unsupported,
+    or had its slug retired/consolidated. Those are stale data, not missing
+    coverage, and without this filter they inflate every dark count. Numerator =
+    those whose most recent clean scrape (any date) is within `window_hours`.
 
-    Returns one dict per platform: {platform, known, fresh, pct}, worst first.
+    Returns one dict per platform: {platform, known, fresh, pct, stale_courses},
+    worst first.
     """
     from collections import defaultdict
     known: dict[str, set] = defaultdict(set)
@@ -620,6 +627,20 @@ def coverage(db, window_hours: float = 12.0) -> list[dict]:
             "SELECT DISTINCT course_slug, platform FROM tee_times "
             "WHERE platform IS NOT NULL AND platform != ''"):
         known[r["platform"]].add(r["course_slug"])
+
+    if registry_path:
+        try:
+            reg = json.loads(pathlib.Path(registry_path).read_text())
+            current = defaultdict(set)
+            for c in reg.get("courses", reg if isinstance(reg, list) else []):
+                p = c.get("platform")
+                if p:
+                    current[p].add(c["slug"])
+            known = {p: (slugs & current.get(p, set()))
+                     for p, slugs in known.items()}
+            known = {p: s for p, s in known.items() if s}  # drop emptied platforms
+        except (OSError, ValueError, KeyError):
+            pass                 # no registry checkout — fall back to tee_times only
 
     cutoff = (dt.datetime.now(dt.timezone.utc)
               - dt.timedelta(hours=window_hours)).isoformat(timespec="seconds")
@@ -722,7 +743,8 @@ def main() -> int:
         for r in runs:
             print(" run:", dict(r))
     elif a.cmd == "coverage":
-        rows = coverage(db, window_hours=a.window_hours)
+        rows = coverage(db, window_hours=a.window_hours,
+                        registry_path=a.registry)
         excluded = {p.strip() for p in a.exclude.split(",") if p.strip()}
         print(f"Per-platform freshness coverage "
               f"(fresh = cleanly scraped within {a.window_hours:g}h):")
