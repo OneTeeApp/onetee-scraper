@@ -333,6 +333,56 @@ async function ingest(req, res) {
   return send(res, 200, { ok: true, upserted: inserted, freshness: fresh.length });
 }
 
+// POST /exec — bearer-token SQL execution for the scraper's future HttpBackend
+// (mirrors Cloudflare D1's REST API, so scraper/d1.py's sync() can run unchanged
+// against Postgres). Translates the one SQLite-dialect gap in the write path —
+// "INSERT OR REPLACE INTO <table>" -> INSERT ... ON CONFLICT DO UPDATE — and
+// converts ? placeholders to $n. Everything else in d1.py (SELECT substr(),
+// UPDATE, INSERT ... ON CONFLICT for freshness, INSERT INTO runs) is already
+// Postgres-compatible. Token-gated; only the scraper calls it.
+const PK = {
+  tee_times: ["course_slug", "teetime", "course_label"],
+  sheet_freshness: ["course_slug", "date"],
+};
+function translate(sql, params) {
+  let s = String(sql).trim();
+  const m = s.match(/^INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)([\s\S]*)$/i);
+  if (m) {
+    const [, tbl, cols, rest] = m;
+    const pk = PK[tbl] || [];
+    const upd = cols.split(",").map((c) => c.trim())
+      .filter((c) => !pk.includes(c)).map((c) => `${c}=EXCLUDED.${c}`).join(", ");
+    s = `INSERT INTO ${tbl} (${cols})${rest} ON CONFLICT (${pk.join(",")}) DO UPDATE SET ${upd}`;
+  }
+  let i = 0;
+  return { text: s.replace(/\?/g, () => "$" + (++i)), values: params || [] };
+}
+async function exec(req, res) {
+  const auth = req.headers["authorization"] || "";
+  if (!INGEST_TOKEN || auth !== `Bearer ${INGEST_TOKEN}`) return send(res, 401, { error: "unauthorized" });
+  let payload;
+  try { payload = JSON.parse(await readBody(req)); } catch (e) { return send(res, 400, { error: "bad json" }); }
+  const stmts = Array.isArray(payload.batch) ? payload.batch
+    : [{ sql: payload.sql, params: payload.params || [] }];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let results = [];
+    for (const st of stmts) {
+      if (!st || !st.sql) continue;
+      const { text, values } = translate(st.sql, st.params || []);
+      const r = await client.query(text, values);
+      results = r.rows;
+    }
+    await client.query("COMMIT");
+    GEO_CACHE = null;
+    return send(res, 200, { results });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    return send(res, 500, { error: String(e.message || e) });
+  } finally { client.release(); }
+}
+
 // ===================== router =====================
 const server = http.createServer(async (req, res) => {
   try {
@@ -340,6 +390,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
     const p = url.searchParams;
     if (req.method === "POST" && url.pathname === "/ingest") return ingest(req, res);
+    if (req.method === "POST" && url.pathname === "/exec") return exec(req, res);
     let out;
     if (url.pathname === "/api/health") out = await health();
     else if (url.pathname === "/api/directory") out = await directory(p);
