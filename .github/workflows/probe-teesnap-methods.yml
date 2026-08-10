@@ -1,0 +1,37 @@
+name: Probe teesnap methods (plain vs curl_cffi vs DC proxy — cheapest fix?)
+
+# teesnap is DARK on the datacenter runner (connection resets) across all states.
+# This finds the cheapest working transport: curl_cffi (free, if the reset is
+# TLS-fingerprint based) or the rotating DC proxy (TEEITUP_DC_PROXY) if it's IP-based.
+# No D1 push — diagnostic only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "ISO date"
+        default: "2026-08-11"
+      subs:
+        description: "comma-separated teesnap subdomains (blank = default set)"
+        default: ""
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install requests "curl_cffi>=0.7"
+      - name: Probe teesnap transports
+        env:
+          TEEITUP_DC_PROXY: ${{ secrets.TEEITUP_DC_PROXY }}
+        run: |
+          if [ -n "${{ inputs.subs }}" ]; then
+            python -m scraper.probe_teesnap --date "${{ inputs.date }}" --subs "${{ inputs.subs }}"
+          else
+            python -m scraper.probe_teesnap --date "${{ inputs.date }}"
+          fi
