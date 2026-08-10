@@ -111,6 +111,61 @@ class SqliteLocal:
         self.conn.commit()
 
 
+class HttpBackend:
+    """Same interface as D1Rest, but POSTs to the OneTee VPS /exec endpoint,
+    which mirrors D1's REST API and translates SQLite->Postgres. Used for
+    dual-write during the D1->VPS migration. Env: ONETEE_API_URL (e.g.
+    https://api.oneteeapp.com) + ONETEE_INGEST_TOKEN."""
+
+    def __init__(self) -> None:
+        base = os.environ.get("ONETEE_API_URL")
+        token = os.environ.get("ONETEE_INGEST_TOKEN")
+        if not base or not token:
+            raise RuntimeError("Set ONETEE_API_URL and ONETEE_INGEST_TOKEN")
+        self.url = base.rstrip("/") + "/exec"
+        self.s = requests.Session()
+        self.s.headers["Authorization"] = f"Bearer {token}"
+        self.last_changes = 0
+
+    def execute(self, sql: str, params: list | None = None) -> list[dict]:
+        r = self.s.post(self.url, json={"sql": sql, "params": params or []},
+                        timeout=60)
+        r.raise_for_status()
+        return (r.json() or {}).get("results", [])
+
+    def executescript(self, sql: str) -> None:
+        for stmt in (s.strip() for s in sql.split(";")):
+            if stmt:
+                self.execute(stmt)
+
+
+class DualBackend:
+    """Runs every statement on `primary` (the real store — D1) and MIRRORS
+    writes to `secondary` (the VPS) non-fatally. Reads (SELECT) hit primary
+    only; schema DDL (executescript) is NOT mirrored (the VPS schema is managed
+    by its own deploy). A VPS failure is logged and swallowed, so dual-write can
+    never break the live D1 path."""
+
+    def __init__(self, primary, secondary) -> None:
+        self.primary = primary
+        self.secondary = secondary
+        self.last_changes = 0
+
+    def execute(self, sql: str, params: list | None = None) -> list[dict]:
+        res = self.primary.execute(sql, params)
+        self.last_changes = getattr(self.primary, "last_changes", 0)
+        if not sql.lstrip().upper().startswith("SELECT"):
+            try:
+                self.secondary.execute(sql, params)
+            except Exception as e:  # noqa: BLE001
+                print(f"[vps-dualwrite] mirror failed: {e}", file=sys.stderr)
+        return res
+
+    def executescript(self, sql: str) -> None:
+        # VPS schema is deploy-managed; only run DDL against the primary.
+        self.primary.executescript(sql)
+
+
 # --------------------------------------------------------------------------- #
 # sync logic
 # --------------------------------------------------------------------------- #
@@ -700,6 +755,15 @@ def main() -> int:
     a = p.parse_args()
 
     db = SqliteLocal(a.local) if a.local else D1Rest()
+    # Migration dual-write: mirror writes to the VPS when explicitly enabled.
+    # Inert unless VPS_DUALWRITE=1 is set on the workflow — zero risk to D1.
+    if not a.local and os.environ.get("VPS_DUALWRITE") == "1":
+        try:
+            db = DualBackend(db, HttpBackend())
+            print("VPS dual-write ENABLED", file=sys.stderr)
+        except Exception as e:  # noqa: BLE001
+            print(f"VPS dual-write init failed, continuing D1-only: {e}",
+                  file=sys.stderr)
 
     if a.cmd == "init":
         init_schema(db)
