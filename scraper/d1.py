@@ -593,18 +593,83 @@ def sync(db, doc: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# coverage — the "landed 0" health signal
+# --------------------------------------------------------------------------- #
+
+def coverage(db, window_hours: float = 12.0) -> list[dict]:
+    """Per-platform freshness coverage — the signal for a silently-dead scraper.
+
+    A broken scraper looks exactly like a healthy one: the workflow goes green,
+    it just writes no rows. What tells the two apart is the sheet_freshness
+    ledger: sync() stamps last_ok_at for every course it CONFIRMED (rows OR a
+    trustworthy clean empty) and NEVER for a course that errored. So "was this
+    platform scraped successfully lately?" = "did any of its courses get a fresh
+    ledger stamp?" — which is true even when a platform legitimately has no
+    availability, and false the moment its scraper breaks.
+
+    Denominator = courses that have EVER produced inventory (DISTINCT
+    course_slug per platform in tee_times; rows are only deactivated, never
+    deleted, so a platform stays counted after it goes dark). Numerator = those
+    whose most recent clean scrape (any date) is within `window_hours`.
+
+    Returns one dict per platform: {platform, known, fresh, pct}, worst first.
+    """
+    from collections import defaultdict
+    known: dict[str, set] = defaultdict(set)
+    for r in db.execute(
+            "SELECT DISTINCT course_slug, platform FROM tee_times "
+            "WHERE platform IS NOT NULL AND platform != ''"):
+        known[r["platform"]].add(r["course_slug"])
+
+    cutoff = (dt.datetime.now(dt.timezone.utc)
+              - dt.timedelta(hours=window_hours)).isoformat(timespec="seconds")
+    fresh: set = set()
+    for r in db.execute("SELECT course_slug, MAX(last_ok_at) AS last_ok "
+                        "FROM sheet_freshness GROUP BY course_slug"):
+        if (r["last_ok"] or "") >= cutoff:
+            fresh.add(r["course_slug"])
+
+    out = []
+    for platform, courses in known.items():
+        total = len(courses)
+        n = len(courses & fresh)
+        out.append({"platform": platform, "known": total, "fresh": n,
+                    "pct": round(100.0 * n / total, 1) if total else 0.0})
+    out.sort(key=lambda d: (d["pct"], -d["known"]))
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Cloudflare D1 tee-time store")
-    p.add_argument("cmd", choices=["init", "migrate", "push", "prune", "stats"])
+    p.add_argument("cmd",
+                   choices=["init", "migrate", "push", "prune", "stats",
+                            "coverage"])
     p.add_argument("--dry-run", action="store_true",
                    help="prune: report what would be deactivated, write nothing")
     p.add_argument("--data", default="output/tee_times.json")
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--local", metavar="SQLITE_FILE",
                    help="use a local SQLite file instead of Cloudflare D1")
+    # coverage flags
+    p.add_argument("--window-hours", type=float, default=12.0,
+                   help="coverage: a course is 'fresh' if cleanly scraped within "
+                        "this many hours (default 12)")
+    p.add_argument("--min-courses", type=int, default=4,
+                   help="coverage --alert: only a platform with at least this "
+                        "many known courses can trip the alert (default 4)")
+    p.add_argument("--warn-pct", type=float, default=25.0,
+                   help="coverage: platforms below this %% fresh are flagged as "
+                        "degraded (warning, not failure) (default 25)")
+    p.add_argument("--alert", action="store_true",
+                   help="coverage: exit non-zero if any sizable platform is fully "
+                        "dark (0 fresh) — turns the workflow red so GitHub emails")
+    p.add_argument("--exclude", default="",
+                   help="coverage: comma-separated platforms to report but never "
+                        "fail on (e.g. a known-unfixable source)")
     a = p.parse_args()
 
     db = SqliteLocal(a.local) if a.local else D1Rest()
@@ -650,6 +715,47 @@ def main() -> int:
         print("tee_times rows:", total[0])
         for r in runs:
             print(" run:", dict(r))
+    elif a.cmd == "coverage":
+        rows = coverage(db, window_hours=a.window_hours)
+        excluded = {p.strip() for p in a.exclude.split(",") if p.strip()}
+        print(f"Per-platform freshness coverage "
+              f"(fresh = cleanly scraped within {a.window_hours:g}h):")
+        print(f"  {'platform':<16} {'fresh/known':>12}  {'pct':>6}  status")
+        dark, degraded = [], []
+        for r in rows:
+            sizable = r["known"] >= a.min_courses
+            if sizable and r["fresh"] == 0 and r["platform"] not in excluded:
+                status = "DARK ***"
+                dark.append(r)
+            elif sizable and r["fresh"] == 0 and r["platform"] in excluded:
+                status = "dark (excluded)"
+            elif r["pct"] < a.warn_pct:
+                status = "degraded"
+                if sizable:
+                    degraded.append(r)
+            else:
+                status = "ok"
+            print(f"  {r['platform']:<16} "
+                  f"{str(r['fresh']) + '/' + str(r['known']):>12}  "
+                  f"{r['pct']:>5}%  {status}")
+        if degraded:
+            print("\nDEGRADED (below "
+                  f"{a.warn_pct:g}% fresh — worth a look, not failing):")
+            for r in degraded:
+                print(f"  - {r['platform']}: {r['fresh']}/{r['known']} "
+                      f"({r['pct']}%)")
+        if dark:
+            print(f"\n*** LANDED-ZERO ALERT: {len(dark)} platform(s) fully DARK "
+                  f"(0 of ≥{a.min_courses} known courses scraped in "
+                  f"{a.window_hours:g}h) ***")
+            for r in dark:
+                print(f"  - {r['platform']}: 0/{r['known']} courses fresh")
+            print("A whole platform that normally produces has stopped. See "
+                  "docs/ARCHITECTURE.md §7 (green run → 0 rows) to diagnose.")
+            if a.alert:
+                return 1
+        else:
+            print("\nAll sizable platforms have fresh coverage. No dark platforms.")
     return 0
 
 
