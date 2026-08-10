@@ -1,0 +1,42 @@
+name: Probe TeeItUp via Patchright (stealth browser, NO proxy — does kenna serve a datacenter browser?)
+
+# TeeItUp/kenna's block looks IP/rate-limit based (429 + "Failed to fetch" on the
+# datacenter runner), NOT a JS bot-challenge like cps. Patchright fixes automation
+# detection but NOT the IP, so it may not help here. This settles it: run kenna
+# through Patchright from the free datacenter runner with no proxy. Real slots at a
+# FAR date => Patchright is enough (like cps). 429/throttle => TeeItUp needs a clean
+# IP (Oracle free VM / per-request unblocker), not a stealth browser.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "ISO date (blank = today+14, a FAR date where the throttle bit)"
+        default: ""
+      channel:
+        description: "browser channel (chrome|chromium)"
+        default: "chrome"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install system deps (xvfb)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Install python + patched browser
+        run: |
+          python -m pip install --upgrade pip
+          pip install patchright requests beautifulsoup4
+          patchright install --with-deps chromium
+      - name: Probe (headful under xvfb)
+        env:
+          TU_HEADLESS: "0"
+        run: |
+          xvfb-run -a python -m scraper.probe_teeitup_patchright \
+            --date "${{ inputs.date }}" \
+            --channel "${{ inputs.channel }}"
