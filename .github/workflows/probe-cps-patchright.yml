@@ -1,0 +1,48 @@
+name: Probe cps via Patchright (stealth browser, NO proxy — clears Cloudflare from datacenter?)
+
+# Hypothesis: the 16 hard cps tenants block our VANILLA Playwright because it leaks
+# Runtime.enable over CDP (Cloudflare's managed challenge watches for it), NOT because
+# of the datacenter IP (3 unchallenged tenants cleared from the same IP). Patchright
+# patches that leak. If this probe returns real tee times from the free runner with no
+# proxy, the whole residential/Apify problem is solved for $0.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenants:
+        description: "comma-separated cps tenant subdomains"
+        default: "cattailcreek,flatironsgolf,marianabutte"
+      date:
+        description: "single ISO date (blank = today+2)"
+        default: ""
+      channel:
+        description: "browser channel to try first (chrome|chromium)"
+        default: "chrome"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install system deps (xvfb)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Install python + browser
+        run: |
+          python -m pip install --upgrade pip
+          pip install patchright requests beautifulsoup4
+          # Patched Chromium (guaranteed present) + its system libs. Chrome channel
+          # is preinstalled on ubuntu-latest and the script prefers it, falling back
+          # to this bundled chromium if the channel is missing.
+          patchright install --with-deps chromium
+      - name: Probe (headful under xvfb = stealthiest)
+        env:
+          CPS_HEADLESS: "0"
+        run: |
+          xvfb-run -a python -m scraper.probe_cps_patchright \
+            --tenants "${{ inputs.tenants }}" \
+            --date "${{ inputs.date }}" \
+            --channel "${{ inputs.channel }}"
