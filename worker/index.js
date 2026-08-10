@@ -36,10 +36,10 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const json = (data, status = 200) =>
+const json = (data, status = 200, extraHeaders = {}) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS },
+    headers: { "Content-Type": "application/json", ...CORS, ...extraHeaders },
   });
 
 // "now" as a naive local ISO string in a tz, comparable to stored teetimes.
@@ -795,9 +795,20 @@ export default {
       }
 
       if (url.pathname === "/api/health") {
-        const r = await env.DB.prepare(
-          "SELECT COUNT(*) AS total, SUM(active) AS active FROM tee_times").first();
-        return json({ ok: true, ...r });
+        // Liveness + last-scrape stats WITHOUT scanning tee_times. The old
+        // "SELECT COUNT(*), SUM(active) FROM tee_times" read the ENTIRE table
+        // (~1.38M rows) on every hit, uncached — a monitor polling this endpoint
+        // was the bulk of D1's row-read bill (519B reads). Read one indexed row
+        // from `runs` (PK desc) instead — zero table scan — and let the edge
+        // cache it so repeated polls don't even reach D1.
+        let r = null;
+        try {
+          r = await env.DB.prepare(
+            "SELECT generated_at, date, tee_times, courses_ok, courses_queried " +
+            "FROM runs ORDER BY id DESC LIMIT 1").first();
+        } catch (e) { /* runs empty on a fresh DB — still report liveness */ }
+        return json({ ok: true, last_run: r || null }, 200,
+                    { "Cache-Control": "public, max-age=60" });
       }
 
       // Every course we know of, bookable by us or not — the answer to "is
