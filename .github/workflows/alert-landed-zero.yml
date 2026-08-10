@@ -63,7 +63,7 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then ALERT="--alert"; fi
           if [ "${{ github.event.inputs.mode }}" = "alert" ]; then ALERT="--alert"; fi
           python -m scraper.d1 coverage \
-            --window-hours 18 --min-courses 4 $ALERT 2>&1 | tee coverage.log
+            --window-hours 18 --min-courses 4 --list-dark $ALERT 2>&1 | tee coverage.log
 
       - name: Step summary
         if: always()
