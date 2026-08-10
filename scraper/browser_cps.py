@@ -410,14 +410,16 @@ _DC_DIRECT_TENANTS = frozenset({
     "cityofwestminster", "redhawkridge", "dellago",
     "stjamesbay", "wakullasandsfl", "southerndunes", "tanglewoodfl",
     "musketridgemd", "oceancitygc",
+    # highlandsridgefl: North (course_ids [1]) and South ([2]) share this ONE
+    # tenant. It was HELD BACK from the plain path while both were UNPINNED — the
+    # flow returned the combined sheet and would publish it under BOTH slugs
+    # (duplication). Both are now pinned in the registry (2026-08-10), so the
+    # plain adapter fetches each course_id separately and filters correctly —
+    # exactly like the other shared tenants here (oceancitygc, cityofwestminster).
+    # This recovers highlands-ridge-golf-club-south-course, the last dark FL CPS
+    # "ready" course.
+    "highlandsridgefl",
 })
-# HELD BACK: "highlandsridgefl". Its North and South are two SEPARATE registry
-# courses sharing this ONE tenant, and both are UNPINNED (no course_ids), so the
-# flow returns the combined sheet and _teetimes would publish it under BOTH
-# slugs — duplication. Every other shared tenant here (oceancitygc,
-# cityofwestminster) pins course_ids per course, so it filters correctly.
-# FOLLOW-UP to move highlands-ridge to plain: pin the N/S course_ids in the
-# registry (discoverable from GetAllOptions.courseOptions), then add it back.
 _API = "/onlineres/onlineapi/api/v1/onlinereservation"
 _ZG = "00000000-0000-0000-0000-000000000000"
 
