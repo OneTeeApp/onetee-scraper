@@ -4,13 +4,13 @@ PER-STATE COVERAGE
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
 CO          180   130    72%            0            1            0            0            0           49           61
-AZ          204   185    91%            5            0            0            0            0           14           14
-VA          227   114    50%            0            0            0            3            0          110          102
-FL          646   290    45%           54           29           11           62           21          179           10
+AZ          204   184    90%            5            0            1            0            0           14           14
+VA          227   114    50%            0            0            0            4            0          109          102
+FL          646   288    45%           56           29           11           62           21          179           10
 MD          119    75    63%            1            0            0            8            2           33            1
-UT           91    72    79%            3            0            2            3            3            8            0
+UT           91    73    80%            3            0            1            3            3            8            0
 -----------------------------------------------------------------------------------------------------------------------
-ALL        1467   866    59%           63           30           13           76           26          393          188
+ALL        1467   864    59%           65           30           13           77           26          392          188
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -19,12 +19,13 @@ ALL        1467   866    59%           63           30           13           76
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     50   AZ:1 FL:48 MD:1
+  silent       teeitup                     51   AZ:1 FL:49 MD:1
   silent       foreup                       4   AZ:1 UT:3
   silent       courseco                     2   AZ:2
   silent       teesnap                      2   FL:2
   silent       golfback                     2   FL:2
   silent       quick18                      1   AZ:1
+  silent       clubprophet                  1   FL:1
   silent       chronogolf                   1   FL:1
   silent       rguest                       1   FL:1
   needs_ids    teeitup                     11   FL:11
@@ -36,13 +37,13 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   needs_ids    golfnow                      1   FL:1
   needs_ids    totale                       1   FL:1
   experimental ezlinks                     11   FL:11
-  experimental golfnow                      1   UT:1
-  experimental golfrev                      1   UT:1
+  experimental golfnow                      2   AZ:1 UT:1
   unsupported  other:native                30   FL:29 UT:1
   unsupported  other:webtrac                6   FL:5 VA:1
   unsupported  other:eagleclubsystem        4   FL:2 MD:1 VA:1
   unsupported  other:unclaimed-chron        4   FL:4
   unsupported  other:booktrump              4   FL:4
+  unsupported  other:whoosh                 2   FL:1 VA:1
   unsupported  other:clubhouseonline        2   FL:2
   unsupported  other:cps-shared             2   FL:1 MD:1
   unsupported  other:acuity                 2   FL:2
@@ -57,7 +58,6 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   unsupported  other:buz                    1   FL:1
   unsupported  other:bailey                 1   FL:1
   unsupported  other:golf18network          1   FL:1
-  unsupported  other:whoosh                 1   FL:1
   unsupported  other:golfrev                1   MD:1
   unsupported  other:square                 1   MD:1
   unsupported  other:easyteegolf            1   MD:1
@@ -67,7 +67,7 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   no_platform  chronogolf                   2   FL:1 UT:1
   no_platform  foreup                       2   MD:2
   no_platform  membersports                 2   UT:2
-  no_booking   —                          374   AZ:2 CO:48 FL:175 MD:33 UT:8 VA:108
+  no_booking   —                          373   AZ:2 CO:48 FL:175 MD:33 UT:8 VA:107
   no_booking   other:unclaimed-chron        4   AZ:1 CO:1 VA:2
   no_booking   golfnow                      4   AZ:4
   no_booking   golfwithaccess               3   AZ:3
@@ -136,7 +136,7 @@ CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 185 live (91%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 184 live (90%)
 ==========================================================================
 
   SILENT  (5) — believed scrapable, returning nothing
@@ -145,6 +145,9 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Francisco Grande Hotel & Golf Resort         foreup         Casa Grande
      SunRidge Canyon Golf Club                    quick18        Fountain Hills
      Torres Blancas Golf Club                     teeitup        Green Valley
+
+  EXPERIMENTAL  (1) — adapter exists but is not production
+     Robson Ranch Golf Club                       golfnow        Eloy
 
   NO_BOOKING  (14) — playable, but no online booking in the source data
      Aguila 9 Golf Course                         teeitup        Laveen (Phoenix)
@@ -166,12 +169,13 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
 VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 114 live (50%)
 ==========================================================================
 
-  UNSUPPORTED  (3) — no adapter possible today
+  UNSUPPORTED  (4) — no adapter possible today
      Draper Valley Golf Club                      other:eagleclubsystems Draper
      Fort Belvoir Golf Club                       other:webtrac  Fort Belvoir
      The Highland Course at Primland (Primland Re other:tyngo    Meadows of Dan
+     Windy Hill Sports                            other:whoosh   Midlothian
 
-  NO_BOOKING  (110) — playable, but no online booking in the source data
+  NO_BOOKING  (109) — playable, but no online booking in the source data
      Alleghany Country Club                       —              Clifton Forge
      Appleland Sports Center                      —              Stephens City
      Beaver Creek Golf Club                       —              Martinsville
@@ -278,16 +282,15 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Waynesboro Par-3 Golf Course                 —              Waynesboro
      Westpark Golf Club                           —              Leesburg
      Willow Creek Country Club                    —              Rocky Mount
-     Windy Hill Sports                            —              Midlothian
      Winton Country Club                          —              Clifford
      Wolf Creek Golf & Country Club               —              Bastian
      Woodside Country Club                        —              Tappahannock
 
 ==========================================================================
-FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 290 live (45%)
+FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 288 live (45%)
 ==========================================================================
 
-  SILENT  (54) — believed scrapable, returning nothing
+  SILENT  (56) — believed scrapable, returning nothing
      Arlington Ridge Golf Club                    teeitup        Leesburg
      Baytree Executive Golf Course                teeitup        Tavares
      Beacon Woods Golf Club                       teeitup        Hudson
@@ -308,6 +311,7 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Gator Lakes Golf Course                      teeitup        Hurlburt Field
      Harder Hall Country Club                     teeitup        Sebring
      Highlands Reserve Golf Club                  teeitup        Davenport
+     Highlands Ridge Golf Club - South Course     clubprophet    Avon Park
      Hollywood Beach Golf Club                    teeitup        Hollywood
      Indian Hills Golf Course                     teeitup        Fort Pierce
      Juliette Falls Golf Club                     teeitup        Dunnellon
@@ -315,6 +319,7 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      Oak Hills Golf Club                          teeitup        Spring Hill
      Oakwood Golf Club                            teeitup        Lake Wales
      Ocean Village Golf Course                    chronogolf     Fort Pierce
+     Palmetto-Pine Country Club                   teeitup        Cape Coral
      Pelican Preserve Golf Club                   teeitup        Fort Myers
      Placid Lakes Country Club                    teesnap        Lake Placid
      Polo Park Golf Course                        teeitup        Davenport
@@ -712,7 +717,7 @@ MD  —  119 bookable courses (120 in maryland_golf_courses_booking.csv, 1 priva
      Yingling's Golf Center                       —              Hagerstown
 
 ==========================================================================
-UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 72 live (79%)
+UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 73 live (80%)
 ==========================================================================
 
   SILENT  (3) — believed scrapable, returning nothing
@@ -720,8 +725,7 @@ UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 7
      Davis Park Golf Course                       foreup         Fruit Heights
      Valley View Golf Course                      foreup         Layton
 
-  EXPERIMENTAL  (2) — adapter exists but is not production
-     Birch Creek Golf Course                      golfrev        Smithfield
+  EXPERIMENTAL  (1) — adapter exists but is not production
      Roosevelt Municipal Golf Course              golfnow        Roosevelt
 
   UNSUPPORTED  (3) — no adapter possible today
@@ -747,14 +751,14 @@ UT  —  91 bookable courses (91 in utah_golf_courses_booking.csv, 0 private), 7
 ==========================================================================
 REGISTRY DRIFT (8) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     385 rows
-  FL  Providence Golf Club                         teeitup        1746 rows
-  FL  Willowbrook Golf Course                      teeitup        565 rows
+  FL  Continental Country Club                     chronogolf     361 rows
+  FL  Providence Golf Club                         teeitup        1840 rows
+  FL  Willowbrook Golf Course                      teeitup        635 rows
   MD  Fox Hollow Golf Course                       foreup         281 rows
-  MD  Rocky Point Golf Course                      foreup         319 rows
-  UT  Eaglewood Golf Course                        membersports   637 rows
-  UT  Fox Hollow Golf Club                         membersports   200 rows
-  UT  Mountain View Golf Course                    chronogolf     265 rows
+  MD  Rocky Point Golf Course                      foreup         316 rows
+  UT  Eaglewood Golf Course                        membersports   601 rows
+  UT  Fox Hollow Golf Club                         membersports   158 rows
+  UT  Mountain View Golf Course                    chronogolf     259 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (8) — serving tee times, not traceable to a CSV course
