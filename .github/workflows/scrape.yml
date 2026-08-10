@@ -109,7 +109,7 @@ jobs:
             OK=yes
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/4" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,teesnap \
               --out "${OUT}" || OK=no
             python -m scraper.d1 push --data "${OUT}" || OK=no
             [ "$OK" = "yes" ] && echo "${DATE}" >> output/.dates_done
