@@ -24,8 +24,18 @@ def env_val(path, key):
 TOKEN = env_val("/root/onetee-api.env", "INGEST_TOKEN")
 
 
+BROWSERISH = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+    "Origin": "https://www.oneteeapp.com",
+    "Referer": "https://www.oneteeapp.com/",
+    "Accept": "application/json",
+}
+
+
 def fetch(url):
-    with urllib.request.urlopen(url, timeout=90) as r:
+    req = urllib.request.Request(url, headers=BROWSERISH)
+    with urllib.request.urlopen(req, timeout=90) as r:
         return json.loads(r.read())
 
 
