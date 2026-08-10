@@ -366,6 +366,32 @@ EXTRA_IDS = {
     # here since it's no longer extractable from the (Noteefy) booking URL.
     "broadlands golf course": {"slug": "broadlands-golf-course"},
 
+    # TeeItUp facility_id PINS (2026-08-10). These 11 courses read zero for
+    # weeks — the coverage/landed-zero report flagged them. Their kenna ALIAS is
+    # fine, but the registry facility_id was NULL (the booking URL had no
+    # ?course=<n>) or WRONG (emerald-bay's URL is ?course=54f14d... — a Mongo
+    # courseId whose leading digits "54" were mis-read as the facility id; the
+    # real facility is 4897). With no/ wrong pin, fetch() depends on runtime
+    # facility discovery, which is unreliable through the throttled kenna proxy,
+    # so the course errors and never stamps fresh. Each id below was read live
+    # from phx-api-be-east-1b.kenna.io/alias/<alias>/facilities (all return
+    # inventory). A correct pin skips the discovery hop — see the fetch() note in
+    # adapters/teeitup.py (~L423). (Not pinned: seven-springs CHAMPION already
+    # has the right id 5782 yet reads empty — a real thin sheet, not this bug;
+    # mainlands-golf-course + the-preserve-18-hole-championship-golf-course
+    # aliases 404 at kenna = delisted, need a fresh alias.)
+    "arlington ridge golf club":                            {"facility_id": "2102"},
+    "eagle springs golf course":                            {"facility_id": "2096"},
+    "emerald bay golf club":                                {"facility_id": "4897"},
+    "highlands reserve golf club":                          {"facility_id": "2240"},
+    "palmetto-pine country club":                           {"facility_id": "5534"},
+    "polo park golf course":                                {"facility_id": "20055"},
+    "river run golf club":                                  {"facility_id": "950"},
+    "serenoa golf club":                                    {"facility_id": "2697"},
+    "seven springs golf & country club - executive course": {"facility_id": "6280"},
+    "shalimar pointe golf club":                            {"facility_id": "268"},
+    "torres blancas golf club":                             {"facility_id": "872"},
+
     # Maryland shared Chronogolf portals. Eleven Montgomery County courses and
     # both Turf Valley courses answer on ONE club slug each, so without a pinned
     # course_id the adapter fetches every course on the club and publishes the
