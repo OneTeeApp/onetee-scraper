@@ -1,0 +1,53 @@
+name: Geocode venues (backfill venue_geo)
+
+# Fills the D1 `venue_geo` table (venue_id -> lat/lng) that the Worker LEFT JOINs
+# onto every course, so the "near me" filter has coordinates for the WHOLE
+# directory — not just the CO/AZ/VA courses someone geocoded by hand. Reads
+# directory.json, geocodes each still-missing venue course-precise via Nominatim
+# (city-centre fallback), writes each row as it resolves. Idempotent + resumable:
+# already-geocoded venues are skipped, so a rate-limit/timeout just resumes next
+# run and re-runs are no-ops. Diagnostic/enrichment only — never touches tee_times.
+#
+# Nominatim asks for <= 1 req/sec and a real User-Agent (both honoured in the
+# script). A full backfill is ~1200 venues ~= 25-45 min; use `limit` to run it in
+# polite batches if preferred.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "restrict to these states, comma-separated (blank = all missing)"
+        default: ""
+      limit:
+        description: "max geocodes this run (blank/0 = all missing)"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geocode-venues          # never run two backfills at once (same table)
+  cancel-in-progress: false
+
+jobs:
+  geocode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Backfill venue_geo
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          set -o pipefail
+          ARGS=""
+          [ -n "${{ inputs.states }}" ] && ARGS="$ARGS --states ${{ inputs.states }}"
+          [ -n "${{ inputs.limit }}" ]  && ARGS="$ARGS --limit ${{ inputs.limit }}"
+          python -m scripts.geocode_venues $ARGS
