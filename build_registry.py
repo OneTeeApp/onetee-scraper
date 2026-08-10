@@ -398,6 +398,29 @@ EXTRA_IDS = {
     "mainlands golf club":                          {"alias": "mainlands-golf-club"},
     "saltleaf golf preserve - the preserve course": {"alias": "saltleaf-golf-preserve"},
 
+    # TeeItUp needs_ids ALIAS+FACILITY discovery (2026-08-10, run 31409654256).
+    # These vanity booking hosts are NOT the kenna alias, so /alias/<vanity>/
+    # facilities 404s and each row sat at needs_ids (PROBED_HOLDS below). The
+    # booking PAGE, though, loads the real tenant and fires /v2/tee-times to
+    # phx-api-be-east-1b.kenna.io with the REAL alias in its x-be-alias HEADER.
+    # probe_teeitup_alias.py drove each page in Chromium and read that header +
+    # facilityIds off the outgoing request. Pinning both alias and facility_id
+    # here (EXTRA_IDS wins over the URL-derived vanity alias) flips them to ready.
+    # winter-park-pines is the same fix in disguise: its old alias
+    # winter-park-pines-golf-club-wp18 knew the tenant but 404'd facility 5634 —
+    # the REAL tenant is winter-pines-golf-club, which owns 5634. (stonecrest
+    # fired no kenna call — no alias captured — so it stays needs_ids.)
+    "clermont national golf club":               {"alias": "sanctuary-ridge-golf-club", "facility_id": "1499"},
+    "little sandy at omni amelia island resort": {"alias": "omni-amelia-island-plantation-ocean-links-course", "facility_id": "4487"},
+    "water oak golf club":                       {"alias": "water-oak-9-hole", "facility_id": "2689"},
+    "wildcat crossing golf club":                {"alias": "majestic-golf-club", "facility_id": "8142"},
+    "legacy golf club":                          {"alias": "holiday-golf-club", "facility_id": "4751"},
+    "sebring international golf resort":          {"alias": "sebring-international-golf-resort-panther-creek", "facility_id": "2378"},
+    "willow lakes golf club":                    {"alias": "willow-lakes-rv-park-and-golf-resort", "facility_id": "10700"},
+    "capri isles golf club":                     {"alias": "the-golf-club-at-capri-isles", "facility_id": "4092"},
+    "stoneybrook west golf club":                {"alias": "stoneybrook-west", "facility_id": "1943"},
+    "winter park pines golf course":             {"alias": "winter-pines-golf-club", "facility_id": "5634"},
+
     # Maryland shared Chronogolf portals. Eleven Montgomery County courses and
     # both Turf Valley courses answer on ONE club slug each, so without a pinned
     # course_id the adapter fetches every course on the club and publishes the
@@ -643,60 +666,22 @@ PROBED_HOLDS: dict[str, tuple[str, str]] = {
     # club's own /alias/ network call, and guessing one is how Viniterra ended
     # up on a REAL but wrong tenant that answered 200 with zero rows for weeks
     # (94d655b). needs_ids is the honest status: platform right, alias unknown.
-    "capri-isles-golf-club": ("needs_ids", "kenna 404s alias "
-                              "capri-isles-golf-club on /v2/courses, all dates"),
-    "clermont-national-golf-club": ("needs_ids", "kenna 404s alias "
-                                    "the-grove-at-clermont-national on "
-                                    "/v2/courses, all dates"),
-    # Five more of the same, from the 2026-07-29 resumed run. Each 404ed on
-    # kenna /v2/courses on ALL THREE dates, which is what makes them a verdict
-    # rather than noise: the same run was riddled with 429s (see the note in
-    # probe_newly_ready.py) and a 429 is a different status from a 404. Held,
-    # not repaired — the replacement alias has to be read off each club's own
-    # /alias/ call, and guessing is how Viniterra ended up on a real-but-wrong
-    # tenant (94d655b).
-    "legacy-golf-club": ("needs_ids", "kenna 404s alias legacy-golf-club-pcb "
-                         "on /v2/courses, all dates"),
-    "little-sandy-at-omni-amelia-island-resort":
-        ("needs_ids", "kenna 404s alias little-sandy-short-course-at-omni-"
-                      "amelia-island-resort-spa on /v2/courses, all dates"),
-    "sebring-international-golf-resort":
-        ("needs_ids", "kenna 404s alias sebring-international-golf-resort on "
-                      "/v2/courses, all dates"),
+    # RESOLVED 2026-08-10 (run 31409654256): probe_teeitup_alias.py drove each
+    # vanity booking page in Chromium and read the REAL x-be-alias header off its
+    # own /v2/tee-times request — the alias the /alias/<vanity>/ 404 was hiding.
+    # Ten of these eleven kenna-404 holds now carry a correct alias+facility_id
+    # pin in EXTRA_IDS above and are promoted to ready; only stonecrest is kept
+    # (its booking page fired no kenna call, so no alias was captured).
     "stonecrest-golf-club":
         ("needs_ids", "kenna 404s alias broad-stripes-golf-club-at-stonecrest "
                       "on /v2/courses, all dates (club rebranded to Broad "
-                      "Stripes; the new vanity host is not a kenna alias)"),
-    "stoneybrook-west-golf-club":
-        ("needs_ids", "kenna 404s alias stoneybrook-west-golf-club on "
-                      "/v2/courses, all dates"),
+                      "Stripes; the new vanity host is not a kenna alias); "
+                      "2026-08-10 booking page fired no kenna call — no alias"),
     # ForeUp booking page 22056 loads but exposes no schedule_id, so
     # discover_ids() returns nothing and fetch() has nothing to query — the
     # same shape as meeker and snowflake above.
     "rocky-bayou-country-club": ("needs_ids", "foreup booking page 22056 "
                                  "exposes no schedule_id"),
-    # Final three kenna-404s from the completed 2026-07-29 sweep. Same test as
-    # the five above: 404 on /v2/courses, every date, while the same run's 429s
-    # were confined to other rows.
-    "water-oak-golf-club": ("needs_ids", "kenna 404s alias water-oak-golf-club "
-                            "on /v2/courses, all dates"),
-    "wildcat-crossing-golf-club": ("needs_ids", "kenna 404s alias "
-                                   "wildcat-crossing-golf-club on /v2/courses, "
-                                   "all dates"),
-    "willow-lakes-golf-club": ("needs_ids", "kenna 404s alias "
-                               "willow-lakes-golf-club on /v2/courses, all dates"),
-    # A DIFFERENT fault, kept separate because conflating them would send the
-    # next pass looking for the wrong thing. Winter Park Pines' alias RESOLVES —
-    # its 404 is on /v2/tee-times?...&facilityIds=5634, i.e. kenna knows the
-    # tenant and does not know facility 5634. So the alias is right and the
-    # pinned facility_id is wrong or stale. Unpinning would make it fetch the
-    # tenant's whole sheet, which on a shared tenant publishes a neighbour's tee
-    # times under this name (the Biltmore hazard), so it waits for the real
-    # facility id off the club's own booking call.
-    "winter-park-pines-golf-course":
-        ("needs_ids", "alias winter-park-pines-golf-club-wp18 resolves but "
-                      "kenna 404s facilityIds=5634 on /v2/tee-times, all dates "
-                      "— pinned facility id is wrong/stale, not the alias"),
     # River Run (MD) used to be held here: chronogolf club 19908 resolves but its
     # only course, 28443, has online_booking_enabled=false, re-verified live
     # 2026-07-30. The hold is retired rather than kept because the CSV no longer
