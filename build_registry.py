@@ -391,6 +391,12 @@ EXTRA_IDS = {
     "seven springs golf & country club - executive course": {"facility_id": "6280"},
     "shalimar pointe golf club":                            {"facility_id": "268"},
     "torres blancas golf club":                             {"facility_id": "872"},
+    # Two more where the registry's ALIAS 404s at kenna (the pinned facility_id
+    # is already correct — 1710 / 3664). Real alias read from kenna 2026-08-10:
+    # mainlands-golf-course -> mainlands-golf-club (facility 1710); the-preserve-
+    # 18-hole-championship-golf-course -> saltleaf-golf-preserve (facility 3664).
+    "mainlands golf club":                          {"alias": "mainlands-golf-club"},
+    "saltleaf golf preserve - the preserve course": {"alias": "saltleaf-golf-preserve"},
 
     # Maryland shared Chronogolf portals. Eleven Montgomery County courses and
     # both Turf Valley courses answer on ONE club slug each, so without a pinned
