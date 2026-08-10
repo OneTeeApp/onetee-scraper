@@ -54,7 +54,16 @@ jobs:
       - name: Install deps
         run: pip install requests      # plain HTTP only — no proxy, no Chromium
 
-      - name: Loop teesnap (plain HTTP, low concurrency) over days 0-6
+      # WORKERS=1 IS LOAD-BEARING. teesnap answers HTTP 500 on the homepage
+      # (discover_courses) under concurrency from a datacenter IP: run 31363182593
+      # at --workers 4 got 24 of 28 courses 500-erroring (mtmassivegolf/golfpagosa/
+      # petteyspark all failed) even though probe-teesnap-methods.yml — which hits
+      # each subdomain STRICTLY SEQUENTIALLY — got 8/8 clean 200s minutes earlier.
+      # The 4 successes prove the IP isn't blocked; concurrency is the whole problem.
+      # So teesnap runs single-threaded, exactly like the probe. Homepage discovery
+      # is memoised per subdomain (class-level _COURSES), so sequential cost is just
+      # the per-course teetimes-day calls (~35 courses/date, minutes).
+      - name: Loop teesnap (plain HTTP, SINGLE-THREADED) over days 0-6
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -73,7 +82,7 @@ jobs:
             for DATE in $(python -m scraper.dates --registry registry.json --days 7); do
               OUT="output/ts_${DATE}.json"
               echo "::group::teesnap pass ${PASS} ${DATE}"
-              python -m scraper.aggregate --date "${DATE}" --workers 4 \
+              python -m scraper.aggregate --date "${DATE}" --workers 1 \
                 --platforms teesnap --out "${OUT}" || true
               python -m scraper.d1 push --data "${OUT}" || true
               echo "::endgroup::"
