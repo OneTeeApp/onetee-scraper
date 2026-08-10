@@ -701,6 +701,26 @@ const REVALIDATORS = {
 const CG_DISC = new Map();   // chronogolf: slug/club_id -> {clubId, aff, courseIds}
 const RG_TOK = new Map();    // rguest: tenant/prop -> {token, exp}
 const TS_DISC = new Map();   // teesnap: subdomain -> [course ids]
+let GEO_CACHE = null;        // venue_geo: venue_id -> [lat, lng] (whole table)
+
+// One read of venue_geo per isolate, reused for every /api/directory response.
+// The table is tiny (~1 row per venue) and changes only when the geocode
+// backfill runs, so caching it beats a JOIN-per-request. Missing table / any
+// error -> empty map, and every course just reports lat/lng null (the near-me
+// filter already tolerates that for un-geocoded venues).
+async function venueGeo(env) {
+  if (GEO_CACHE) return GEO_CACHE;
+  const m = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT venue_id, lat, lng FROM venue_geo").all();
+    for (const r of results) {
+      if (r.lat != null && r.lng != null) m.set(r.venue_id, [r.lat, r.lng]);
+    }
+  } catch (e) { /* table absent / read error -> no geo, courses get null */ }
+  GEO_CACHE = m;
+  return m;
+}
 
 // Teesnap: the TOP-LEVEL ids of `window.courses = [...]` (bracket-matched +
 // JSON-parsed, never regexed — a course object embeds its parent property's own
@@ -803,6 +823,14 @@ export default {
         if (method) courses = courses.filter((c) => c.booking_method === method);
         if (city) courses = courses.filter((c) => (c.city || "").toLowerCase() === city);
         if (q) courses = courses.filter((c) => (c.name || "").toLowerCase().includes(q));
+        // Attach lat/lng from venue_geo (same source the tee-times feed joins),
+        // so a book-on-site directory entry carries coordinates too. Spread into
+        // fresh objects — never mutate the shared DIRECTORY bundle.
+        const geo = await venueGeo(env);
+        courses = courses.map((c) => {
+          const g = geo.get(c.venue_id);
+          return { ...c, lat: g ? g[0] : null, lng: g ? g[1] : null };
+        });
         return new Response(
           JSON.stringify({ count: courses.length, courses }),
           { headers: {
