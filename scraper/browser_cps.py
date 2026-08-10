@@ -266,7 +266,16 @@ def _scrape_one_course(course: dict, dates: list) -> dict:
     when the session never reached the TeeTimes stage OR cleared but no date
     succeeded — a per-date success is kept even if a sibling date failed.
     """
-    from playwright.sync_api import sync_playwright
+    # PATCHRIGHT (2026-08-10): the challenged cps tenants block VANILLA Playwright
+    # because it leaks Runtime.enable over CDP and Cloudflare's managed challenge
+    # flags it — NOT because of the datacenter IP (proven: probe run 31350985854
+    # cleared cattailcreek/flatirons/marianabutte from the free runner with NO
+    # proxy, 46/47/21 tee times). Patchright is a drop-in Playwright fork that
+    # patches that leak, so real Chrome (channel="chrome", headful under xvfb) now
+    # passes from a plain datacenter IP. Residential proxy is no longer needed for
+    # this path (leave TEEITUP_PROXY unset). Bundled patched chromium is the
+    # fallback if the chrome channel is missing.
+    from patchright.sync_api import sync_playwright
 
     ids = course["ids"]
     tenant = ids["tenant"]
@@ -287,7 +296,20 @@ def _scrape_one_course(course: dict, dates: list) -> dict:
         # ERR_CONNECTION_CLOSED), so a dead attempt costs a retry, not the course.
         for attempt in range(4):
             sid = f"{course['slug']}-{attempt}"
-            browser = pw.chromium.launch(**_proxy_launch_kwargs(sid))
+            # Real Chrome + Patchright's patches + headful (under xvfb) is what
+            # clears Cloudflare. _proxy_launch_kwargs returns just {"args": [...]}
+            # when TEEITUP_PROXY is unset (the no-proxy default now); it still
+            # honours a proxy if one is ever set. Headless is opt-in via
+            # CPS_HEADLESS=1 (headful is stealthier). Fall back to the bundled
+            # patched chromium if the chrome channel isn't installed.
+            lk = _proxy_launch_kwargs(sid)
+            lk["headless"] = os.environ.get("CPS_HEADLESS", "0") in ("1", "true", "True")
+            channel = os.environ.get("CPS_BROWSER_CHANNEL", "chrome").strip()
+            try:
+                browser = (pw.chromium.launch(channel=channel, **lk) if channel
+                           else pw.chromium.launch(**lk))
+            except Exception:  # noqa: BLE001
+                browser = pw.chromium.launch(**lk)   # bundled patched chromium
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
                 # Residential bandwidth is METERED and full SPA page-loads are
