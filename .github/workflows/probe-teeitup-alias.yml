@@ -1,0 +1,34 @@
+name: Probe TeeItUp real aliases (needs_ids onboarding)
+
+# Loads each TeeItUp needs_ids booking page in Chromium and reads the REAL kenna
+# x-be-alias header (+ facilityIds) off its own request — the fix for rows whose
+# vanity host is not the kenna alias (build_registry.py PROBED_HOLDS). Prints an
+# EXTRA_IDS-ready block to paste in. Diagnostic only; no D1 writes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slugs:
+        description: "comma-separated course slugs (blank = all teeitup needs_ids)"
+        default: ""
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+      - name: Discover aliases
+        run: |
+          if [ -n "${{ inputs.slugs }}" ]; then
+            python -m scraper.probe_teeitup_alias --slugs "${{ inputs.slugs }}"
+          else
+            python -m scraper.probe_teeitup_alias
+          fi
