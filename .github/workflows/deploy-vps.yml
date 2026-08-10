@@ -43,4 +43,18 @@ jobs:
           scp -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 -r vps "$VPS_USER@$VPS_HOST:/root/onetee-vps"
 
           echo "Running deploy.sh on the server..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "bash /root/onetee-vps/deploy.sh"
+          set +e
+          OUT="$(ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "bash /root/onetee-vps/deploy.sh" 2>&1)"
+          RC=$?
+          set -e
+          # Surface the deploy output on the run's Summary page (readable even when
+          # the streaming log viewer won't render).
+          {
+            echo "### deploy.sh output (rc=$RC)"
+            echo ''
+            echo '```'
+            printf '%s\n' "$OUT" | tail -100
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$OUT"
+          exit $RC
