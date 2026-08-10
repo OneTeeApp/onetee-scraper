@@ -31,7 +31,12 @@ if [ -f api/directory.json ]; then cp -f api/directory.json /opt/onetee-api/; el
 cp -f api/seed_from_worker.py /opt/onetee-api/
 ( cd /opt/onetee-api && npm install --omit=dev --no-audit --no-fund )
 
-if [ ! -f /root/onetee-api.env ]; then
+if [ -n "${VPS_INGEST_TOKEN:-}" ]; then
+  # Shared token from the VPS_INGEST_TOKEN repo secret (so the scraper and the
+  # API use the same key). Overwrites any previously-generated one.
+  echo "INGEST_TOKEN=${VPS_INGEST_TOKEN}" > /root/onetee-api.env
+  chmod 600 /root/onetee-api.env
+elif [ ! -f /root/onetee-api.env ]; then
   echo "INGEST_TOKEN=$(openssl rand -hex 24)" > /root/onetee-api.env
   chmod 600 /root/onetee-api.env
 fi
