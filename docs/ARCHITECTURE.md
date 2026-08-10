@@ -185,9 +185,12 @@ recipe is:
 3. If 0 rows, reproduce one course locally (`--platforms X --courses Y -v`), and
    for browser platforms inspect the live site to see if the flow/markup changed.
 
-The systemic fix (not yet built): a **"landed 0 → alert"** check so these surface
-in hours, not weeks. The `probe_*` scripts/workflows exist to run these
-one-course reproductions quickly.
+The systemic fix (built 2026-08-10): a **"landed 0 → alert"** check —
+`python -m scraper.d1 coverage` reports per-platform freshness coverage from the
+`sheet_freshness` ledger, and `.github/workflows/alert-landed-zero.yml` runs it
+every 6h with `--alert`, so a whole platform going dark turns the run red and
+GitHub emails the admins (within 6h, not weeks). The `probe_*` scripts/workflows
+then run the one-course reproductions to find the specific cause.
 
 ---
 
