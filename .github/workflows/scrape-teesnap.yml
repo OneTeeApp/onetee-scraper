@@ -1,0 +1,98 @@
+name: Scrape Teesnap (dedicated, plain HTTP direct, low concurrency, self-chaining)
+
+# WHY THIS EXISTS (2026-08-10). Teesnap is reachable by PLAIN HTTP from the free
+# GitHub datacenter runner — probe-teesnap-methods.yml run 31362465248 fetched all
+# 8 probed subdomains at HTTP 200 with real tee sheets (stoneridge 67, mtmassive 76,
+# kinderton 65, petteys 63, pagosa 44 slots) using nothing but requests. curl_cffi
+# was byte-identical (no benefit) and the rotating DC proxy was WORSE (403 on
+# kinderton + mtmassive — some proxy exit IPs are themselves blocked). So teesnap
+# needs NO proxy and NO curl_cffi.
+#
+# The problem was never transport — it was CONCURRENCY. Teesnap resets datacenter
+# connections under bursty load (adapters/teesnap.py documents ConnectionReset 104).
+# In the shared near/far tiers teesnap rode a 10-worker burst alongside every other
+# platform and its whole batch reset together, so its rows only refreshed on the
+# rare pass that slipped through (CO teesnap went 13 days stale). Isolating teesnap
+# into its own LOW-CONCURRENCY job (workers 4, small jitter) lets the adapter's
+# per-request retry actually recover, and a reset here can't starve anything else.
+#
+# Teesnap is therefore EXCLUDED from scrape-near.yml / scrape.yml / scrape-far.yml
+# and owned entirely here. This covers days 0-6 (near+mid) every pass; the far
+# companion scrape-teesnap-far.yml owns days 6-30. Plain HTTP, no proxy, no Chromium.
+
+on:
+  schedule:
+    - cron: "13 * * * *"        # backstop/successor — self-chain is primary
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "scraper/adapters/teesnap.py"
+      - ".github/workflows/scrape-teesnap.yml"
+
+permissions:
+  contents: read
+  actions: write             # chains the next run
+
+concurrency:
+  group: scrape-teesnap
+  cancel-in-progress: false
+
+env:
+  INTERVAL_SECONDS: 300         # min seconds per pass
+  LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 335
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install requests      # plain HTTP only — no proxy, no Chromium
+
+      - name: Loop teesnap (plain HTTP, low concurrency) over days 0-6
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+        run: |
+          START=$(date +%s)
+          PASS=0
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED_MIN=$(( (NOW - START) / 60 ))
+            if [ "$ELAPSED_MIN" -ge "$LOOP_MINUTES" ]; then
+              echo "loop budget spent after $PASS passes"; break
+            fi
+            PASS=$((PASS + 1))
+            T0=$(date +%s)
+            for DATE in $(python -m scraper.dates --registry registry.json --days 7); do
+              OUT="output/ts_${DATE}.json"
+              echo "::group::teesnap pass ${PASS} ${DATE}"
+              python -m scraper.aggregate --date "${DATE}" --workers 4 \
+                --platforms teesnap --out "${OUT}" || true
+              python -m scraper.d1 push --data "${OUT}" || true
+              echo "::endgroup::"
+            done
+            T1=$(date +%s)
+            TOOK=$((T1 - T0))
+            SLEEP=$((INTERVAL_SECONDS - TOOK))
+            if [ "$SLEEP" -gt 0 ]; then
+              echo "pass ${PASS} took ${TOOK}s; sleeping ${SLEEP}s"
+              sleep "$SLEEP"
+            else
+              echo "pass ${PASS} took ${TOOK}s (over interval; no sleep)"
+            fi
+          done
+
+      - name: Chain the next loop run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run scrape-teesnap.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
