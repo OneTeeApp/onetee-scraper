@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +34,9 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+
+          echo "Bundling the directory metadata with the API..."
+          cp directory.json vps/api/directory.json || echo "no root directory.json (continuing)"
 
           echo "Copying vps/ to the server..."
           ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "rm -rf /root/onetee-vps"
