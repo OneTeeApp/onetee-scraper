@@ -1,39 +1,31 @@
-name: Scrape CPS (plain tenants hourly; residential near = self-chaining loop, deep daily)
+name: Scrape CPS (plain tenants hourly; challenged near = self-chaining loop, deep daily)
 
-# Club Prophet (cps.golf). Two cost profiles, split onto TWO cadences so the free
-# set stays fresh without burning the metered residential proxy:
+# Club Prophet (cps.golf). Two cost profiles on two cadences:
 #
 #   * PLAIN-DIRECT tenants (_DC_DIRECT_TENANTS in browser_cps): plain HTTP, no
-#     proxy, no browser, NO bandwidth cost. cps.golf's Cloudflare does not
-#     challenge them from a datacenter IP. These run HOURLY (near, days 0-3) +
-#     a daily deep (0-30). CPS_ONLY=plain.
+#     proxy, no browser. cps.golf's Cloudflare does not challenge them from a
+#     datacenter IP. HOURLY near (0-3) + daily deep (0-30). CPS_ONLY=plain.
 #
-#   * BROWSER/CHALLENGED tenants (the rest): Cloudflare challenges them, so they
-#     need a real Chromium + the METERED residential proxy (TEEITUP_PROXY).
-#     browser_cps scrapes ALL dates in ONE browser session per tenant — the
-#     expensive Cloudflare page-load happens ONCE per tenant, not once per
-#     (tenant,date). Their NEAR window (days 0-3) is now owned by the
-#     self-chaining loop scrape-cps-browser-near.yml (one pass per 30 min — GitHub
-#     cron drifted too much at */30 to keep today live; observed on indian-tree).
-#     The `browser` job HERE now only does the DEEP TAIL, days 4-30 (DISJOINT from
-#     the loop's 0-3), once daily. Disjoint date ranges => the loop and this deep
-#     never write the same (slug,date). CPS_ONLY=browser; US exit; blocks
-#     image/media/font. Plain path does NOT work for these (probed 2026-08-07:
-#     indiantree plain = 0 rows, all dates 403/blocked) — residential only.
+#   * CHALLENGED tenants (the rest): Cloudflare challenges them. As of 2026-08-10
+#     they are scraped with PATCHRIGHT (Runtime.enable-patched Playwright) driving
+#     real Chrome headful under xvfb — which clears Cloudflare from a plain
+#     datacenter IP with NO residential proxy (the block was automation detection,
+#     not IP; proven by probe run 31350985854). browser_cps scrapes ALL dates in
+#     ONE browser session per tenant. Their NEAR window (days 0-3) is owned by the
+#     self-chaining loop scrape-cps-browser-near.yml; the `browser` job HERE does
+#     the DEEP TAIL, days 4-30 (disjoint), once daily. CPS_ONLY=browser. FREE now
+#     (no TEEITUP_PROXY). Plain path does NOT work for these (they 403 a datacenter
+#     plain request) — the stealth browser is required.
 #
-# NO push trigger: code/registry changes are picked up by the next scheduled run
-# (each checks out latest main). Use workflow_dispatch (set: plain|browser|all)
-# to force a run — `browser` here is the deep tail; to force a challenged-tenant
-# NEAR refresh, dispatch scrape-cps-browser-near.yml instead. The plain scraper
-# excludes clubprophet, so this workflow + the near loop solely own those
-# course_slugs in D1; plain vs browser are disjoint TENANT sets and near vs deep
-# are disjoint DATE ranges, so every (slug,date) has exactly one writer.
+# NO push trigger: scheduled runs check out latest main. Disjoint tenant sets
+# (plain vs browser) and disjoint date ranges (near vs deep) => one writer per
+# (slug,date).
 
 on:
   schedule:
-    - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free, keeps near-term fresh
+    - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
-    - cron: "7 10 * * *"     # BROWSER, deep (4-30): daily  — metered residential (near = loop)
+    - cron: "7 10 * * *"     # BROWSER, deep (4-30): daily  — free (Patchright, no proxy)
   workflow_dispatch:
     inputs:
       set:
@@ -78,8 +70,6 @@ jobs:
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=3
           [ "$DEEP" = "yes" ] && LAST=30
-          # ALL dates in ONE invocation (one session per tenant). Dates from
-          # scraper.dates (union of local todays across covered TZs), comma-joined.
           DATES=$(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | paste -sd, -)
           echo "cps plain dates: ${DATES}"
           python -m scraper.browser_cps --dates "${DATES}" --out-dir output --registry registry.json || true
@@ -87,7 +77,7 @@ jobs:
             [ -e "$f" ] && python -m scraper.d1 push --data "$f" || true
           done
 
-  # -------- CHALLENGED tenants: daily DEEP TAIL (days 4-30), Chromium + residential --
+  # -------- CHALLENGED tenants: daily DEEP TAIL (days 4-30), Patchright + real Chrome --
   # NEAR (days 0-3) is owned by the self-chaining loop scrape-cps-browser-near.yml.
   browser:
     if: >-
@@ -104,31 +94,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium
+      - name: Install deps + patched browser + xvfb
         run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
-      - name: Scrape challenged cps tenants (residential) + push each date to D1
+          sudo apt-get update && sudo apt-get install -y xvfb
+          pip install requests patchright
+          patchright install --with-deps chromium
+      - name: Scrape challenged cps tenants (Patchright, no proxy) + push each date to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
           CPS_ONLY: browser          # only the Cloudflare-challenged tenants
-          # METERED residential proxy — browser_cps forces a US exit + blocks
-          # image/media/font to conserve bandwidth. Unset = direct (would 403).
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          # NO proxy — Patchright + real Chrome headful clears Cloudflare from the
+          # datacenter. Full assets (match proven probe); lower concurrency (headful).
+          CPS_KEEP_ASSETS: "1"
+          CPS_CONCURRENCY: "3"
         run: |
-          # DEEP TAIL only: days 4-30. The near window (days 0-3) is owned by the
-          # self-chaining loop scrape-cps-browser-near.yml, so we DROP the first 4
-          # days here — disjoint date ranges mean the loop and this deep never
-          # write the same (slug,date). (scraper.dates lists earliest-first, so
-          # `tail -n +5` keeps day 4 onward.) ONE session per tenant = ONE
-          # Cloudflare page-load for the whole tail (the residential-bandwidth win).
+          # DEEP TAIL only: days 4-30 (near 0-3 is owned by the loop). scraper.dates
+          # lists earliest-first, so `tail -n +5` keeps day 4 onward.
           ALL=$(python -m scraper.dates --registry registry.json --days 31)
           DATES=$(echo "$ALL" | tail -n +5)
           CSV=$(echo "$DATES" | paste -sd, -)
           echo "cps browser DEEP TAIL dates: ${CSV}"
-          python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
+          xvfb-run -a python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
           for DATE in $DATES; do
             [ -e "output/cps_${DATE}.json" ] && python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
           done

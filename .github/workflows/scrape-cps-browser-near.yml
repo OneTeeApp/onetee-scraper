@@ -1,29 +1,24 @@
 name: Scrape CPS challenged tenants near (days 0-3, self-chaining 30-min loop)
 
 # WHY (2026-08-07). The Cloudflare-CHALLENGED cps.golf tenants (indian-tree etc.)
-# are reachable ONLY via the metered residential-proxy browser path. Their near
-# window (days 0-3) was refreshed by a plain cron in scrape-cps-browser.yml —
-# first every 2h, then */30 — but GitHub cron drifts/throttles sub-hourly
-# schedules, so the real cadence (and thus day-0 freshness) was unreliable: a
-# booked slot could linger for hours (observed on indian-tree).
+# refresh their near window (days 0-3) here on a self-chaining 30-min loop.
 #
-# FIX. A SELF-CHAINING loop that re-scrapes days 0-3 for the challenged tenants
-# every 30 min and dispatches its OWN successor at the end. Cadence no longer
-# depends on GitHub cron. The hourly cron here is only a crash backstop, and
-# watchdog-near-loops.yml revives the loop if BOTH the self-chain and the cron
-# backstop miss (e.g. a GitHub Actions incident).
+# 2026-08-10 — NO MORE RESIDENTIAL PROXY. These tenants blocked our VANILLA
+# Playwright because it leaks Runtime.enable over CDP (Cloudflare's managed
+# challenge flags it), NOT because of the datacenter IP. browser_cps now drives
+# PATCHRIGHT (a Runtime.enable-patched Playwright fork) + real Chrome headful under
+# xvfb, which clears Cloudflare straight from the free GitHub runner with NO proxy
+# (proven: probe run 31350985854 — cattailcreek/flatirons/marianabutte cleared,
+# 46/47/21 tee times). So this loop is now FREE: no TEEITUP_PROXY, no metered
+# bandwidth. The residential 10GB/2-day burn is gone.
 #
-# OWNERSHIP (no double-write). This loop owns the challenged tenants' days 0-3.
-# The daily deep in scrape-cps-browser.yml now owns days 4-30 (a DISJOINT range),
-# so the two never write the same (slug,date) and need no shared concurrency
-# group. The plain-direct tenants are a disjoint TENANT set (CPS_ONLY split),
-# scraped by scrape-cps-browser.yml's plain job. So every challenged (slug,date)
-# has exactly one writer.
+# FIX (unchanged). A SELF-CHAINING loop that re-scrapes days 0-3 for the challenged
+# tenants every 30 min and dispatches its OWN successor. watchdog-near-loops.yml
+# revives it if both the self-chain and the hourly cron backstop miss.
 #
-# COST. ~16 challenged tenants x 1 Cloudflare page-load each per pass, 48 passes/
-# day. browser_cps does ONE page-load per tenant covering all near dates and
-# blocks image/media/font + forces a US exit, which is what keeps a 30-min
-# residential cadence affordable.
+# OWNERSHIP (no double-write). This loop owns the challenged tenants' days 0-3;
+# the daily deep in scrape-cps-browser.yml owns days 4-30 (disjoint). Plain-direct
+# tenants are a disjoint TENANT set (CPS_ONLY split). One writer per (slug,date).
 
 on:
   schedule:
@@ -51,19 +46,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps + Chromium (once per run)
+      - name: Install deps + patched browser + xvfb (once per run)
         run: |
-          pip install requests playwright
-          python -m playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y xvfb
+          pip install requests patchright
+          # Chrome is preinstalled on ubuntu-latest and the code prefers
+          # channel="chrome"; this bundled patched chromium is the fallback + brings
+          # the system libs.
+          patchright install --with-deps chromium
       - name: Loop challenged cps tenants over days 0-3 (30-min cadence)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
           CPS_ONLY: browser          # only the Cloudflare-challenged tenants
-          # METERED residential proxy — browser_cps forces a US exit + blocks
-          # image/media/font to conserve bandwidth. Unset = direct (would 403).
-          TEEITUP_PROXY: ${{ secrets.TEEITUP_PROXY }}
+          # NO proxy — Patchright + real Chrome headful clears Cloudflare from the
+          # datacenter IP. Keep full assets (match the proven probe; bandwidth is
+          # free now). Lower concurrency because headful Chrome is heavier.
+          CPS_KEEP_ASSETS: "1"
+          CPS_CONCURRENCY: "3"
         run: |
           START=$(date +%s)
           PASS=0
@@ -81,7 +82,7 @@ jobs:
             DATES=$(python -m scraper.dates --registry registry.json --days 4)
             CSV=$(echo "$DATES" | paste -sd, -)
             echo "::group::cps browser near pass ${PASS} (${CSV})"
-            python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
+            xvfb-run -a python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
             for DATE in $DATES; do
               [ -e "output/cps_${DATE}.json" ] && python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
             done
