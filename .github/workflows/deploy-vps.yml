@@ -25,6 +25,7 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${VPS_HOST:-}" ] || [ -z "${VPS_USER:-}" ] || [ -z "${VPS_SSH_KEY:-}" ]; then
@@ -44,7 +45,7 @@ jobs:
 
           echo "Running deploy.sh on the server..."
           set +e
-          OUT="$(ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "bash /root/onetee-vps/deploy.sh" 2>&1)"
+          OUT="$(ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" "VPS_INGEST_TOKEN='$VPS_INGEST_TOKEN' bash /root/onetee-vps/deploy.sh" 2>&1)"
           RC=$?
           set -e
           # Surface the deploy output on the run's Summary page (readable even when
