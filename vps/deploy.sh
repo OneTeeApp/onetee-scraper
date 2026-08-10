@@ -3,8 +3,10 @@
 #   Phase 1: Postgres schema + indexes
 #   Phase 2: Node read+ingest API (systemd service onetee-api on 127.0.0.1:8080)
 #   Phase 3: one-time seed from the live worker (only if tee_times is empty)
+#   Phase 4: Caddy HTTPS reverse proxy (vps.oneteeapp.com -> 127.0.0.1:8080)
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+API_HOST="api.oneteeapp.com"
 echo "== OneTee VPS deploy =="
 cd "$(dirname "$0")"
 
@@ -29,7 +31,6 @@ if [ -f api/directory.json ]; then cp -f api/directory.json /opt/onetee-api/; el
 cp -f api/seed_from_worker.py /opt/onetee-api/
 ( cd /opt/onetee-api && npm install --omit=dev --no-audit --no-fund )
 
-# Ingest token — generated once, stored only on the box.
 if [ ! -f /root/onetee-api.env ]; then
   echo "INGEST_TOKEN=$(openssl rand -hex 24)" > /root/onetee-api.env
   chmod 600 /root/onetee-api.env
@@ -37,7 +38,6 @@ fi
 DB_PW="$(grep '^DB_PASSWORD=' /root/onetee-db.env | cut -d= -f2)"
 ING_TOK="$(grep '^INGEST_TOKEN=' /root/onetee-api.env | cut -d= -f2)"
 
-# Runtime env file (chmod 600) so the DB password stays out of the world-readable unit.
 cat > /root/onetee-api-runtime.env <<ENVV
 DATABASE_URL=postgresql://onetee:${DB_PW}@127.0.0.1:5432/onetee
 INGEST_TOKEN=${ING_TOK}
@@ -74,7 +74,26 @@ if [ "$CNT" = "0" ]; then
 fi
 unset PGPASSWORD
 
-echo "---- API /api/health ----"; curl -s http://127.0.0.1:8080/api/health; echo
-echo "---- API /api/tee-times?state=CO&limit=3 ----"
-curl -s "http://127.0.0.1:8080/api/tee-times?state=CO&limit=3"; echo
+# ---------- Phase 4: Caddy HTTPS reverse proxy ----------
+if ! command -v caddy >/dev/null 2>&1; then
+  echo "installing caddy..."
+  apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl gnupg >/dev/null
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
+  apt-get update -qq
+  apt-get install -y caddy >/dev/null
+fi
+cat > /etc/caddy/Caddyfile <<CADDY
+${API_HOST} {
+	reverse_proxy 127.0.0.1:8080
+}
+CADDY
+ufw allow 80/tcp  >/dev/null 2>&1 || true
+ufw allow 443/tcp >/dev/null 2>&1 || true
+systemctl enable caddy >/dev/null 2>&1 || true
+systemctl restart caddy
+sleep 2
+echo "caddy active: $(systemctl is-active caddy) for ${API_HOST} (TLS provisions on first hit)"
+
+echo "---- API /api/health (localhost) ----"; curl -s http://127.0.0.1:8080/api/health; echo
 echo "== deploy done OK =="
