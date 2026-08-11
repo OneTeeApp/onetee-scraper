@@ -130,7 +130,12 @@ class HttpBackend:
     def execute(self, sql: str, params: list | None = None) -> list[dict]:
         r = self.s.post(self.url, json={"sql": sql, "params": params or []},
                         timeout=60)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # Surface the server's error body (Postgres message + SQLSTATE), not
+            # just the generic "500 Server Error" — makes mirror failures
+            # diagnosable straight from the scraper log.
+            body = (r.text or "")[:300].replace("\n", " ")
+            raise RuntimeError(f"HTTP {r.status_code}: {body}")
         return (r.json() or {}).get("results", [])
 
     def executescript(self, sql: str) -> None:
