@@ -15,6 +15,10 @@ sudo -u postgres psql -d onetee -c \
   "ALTER SCHEMA public OWNER TO onetee; GRANT ALL ON SCHEMA public TO onetee;" >/dev/null
 export PGPASSWORD="$(grep '^DB_PASSWORD=' /root/onetee-db.env | cut -d= -f2)"
 psql -h 127.0.0.1 -U onetee -d onetee -v ON_ERROR_STOP=1 -f schema.sql
+if [ -f accounts-schema.sql ]; then
+  psql -h 127.0.0.1 -U onetee -d onetee -v ON_ERROR_STOP=1 -f accounts-schema.sql
+  echo "accounts schema applied."
+fi
 echo "schema applied."
 
 # ---------- Phase 2: API service ----------
@@ -69,6 +73,13 @@ systemctl enable onetee-api >/dev/null 2>&1 || true
 systemctl restart onetee-api
 sleep 3
 echo "service active: $(systemctl is-active onetee-api)"
+
+# ---------- Phase 2b: /exec self-test — gate query shapes (numbered ?N + accounts) ----------
+ING_TOK="$(grep '^INGEST_TOKEN=' /root/onetee-api.env | cut -d= -f2)"
+echo "---- /exec self-test (gate account query) ----"
+curl -s -X POST http://127.0.0.1:8080/exec \
+  -H "Authorization: Bearer ${ING_TOK}" -H 'Content-Type: application/json' \
+  --data '{"sql":"SELECT count(*) AS n FROM users WHERE tier = ?1","params":["free"]}'; echo
 
 # ---------- Phase 3: seed (only if empty) ----------
 CNT=$(psql -h 127.0.0.1 -U onetee -d onetee -tAc "SELECT count(*) FROM tee_times" | tr -d '[:space:]')
