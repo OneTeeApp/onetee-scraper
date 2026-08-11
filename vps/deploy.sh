@@ -100,11 +100,31 @@ systemctl restart caddy
 sleep 2
 echo "caddy active: $(systemctl is-active caddy) for ${API_HOST} (TLS provisions on first hit)"
 
-# ---------- Phase 5: nightly pg_dump backup ----------
-# On-box safety net (protects against Postgres corruption / bad writes). Offsite
-# (R2/Spaces) still TODO — needs a storage credential — and MUST exist before D1
-# is ever deleted, since until then D1 remains the only off-box copy.
+# ---------- Phase 5: nightly pg_dump backup (local + offsite R2) ----------
+# On-box dump protects against Postgres corruption / bad writes; the R2 copy is
+# the offsite disaster copy. R2 upload is enabled only when R2 creds are supplied
+# (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY workflow secrets); local backups run
+# regardless. This offsite copy MUST exist before D1 is ever deleted.
 mkdir -p /root/backups
+
+# Offsite (Cloudflare R2) credentials, written from workflow secrets if present.
+if [ -n "${R2_ACCESS_KEY_ID:-}" ] && [ -n "${R2_SECRET_ACCESS_KEY:-}" ]; then
+  cat > /root/onetee-r2.env <<R2E
+AWS_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+AWS_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+R2_BUCKET=${R2_BUCKET:-onetee-backups}
+R2_ENDPOINT=${R2_ENDPOINT:-https://1b380acad1c1fd73ecf14983e7bc3a4c.r2.cloudflarestorage.com}
+R2E
+  chmod 600 /root/onetee-r2.env
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "installing awscli..."
+    apt-get install -y awscli >/dev/null 2>&1 || pip3 install --break-system-packages awscli >/dev/null 2>&1 || echo "WARN: awscli install failed"
+  fi
+  echo "R2 offsite backup configured (bucket ${R2_BUCKET:-onetee-backups})"
+else
+  echo "R2 creds not supplied — offsite upload disabled (local backups only)"
+fi
+
 cat > /root/onetee-backup.sh <<'BK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -112,9 +132,25 @@ BK=/root/backups
 mkdir -p "$BK"
 export PGPASSWORD="$(grep '^DB_PASSWORD=' /root/onetee-db.env | cut -d= -f2)"
 TS=$(date +%Y%m%d-%H%M%S)
-pg_dump -h 127.0.0.1 -U onetee -d onetee | gzip > "$BK/onetee-$TS.sql.gz"
-# retain the 14 most recent dumps
+DUMP="$BK/onetee-$TS.sql.gz"
+pg_dump -h 127.0.0.1 -U onetee -d onetee | gzip > "$DUMP"
+gzip -t "$DUMP"                                  # integrity check
+# retain the 14 most recent LOCAL dumps
 ls -1t "$BK"/onetee-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+# offsite copy to Cloudflare R2 (if configured)
+if [ -f /root/onetee-r2.env ]; then
+  set -a; . /root/onetee-r2.env; set +a
+  # R2 rejects aws-cli's default streaming checksums; only send when required.
+  export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED
+  export AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
+  if aws s3 cp "$DUMP" "s3://${R2_BUCKET}/onetee/onetee-${TS}.sql.gz" \
+       --endpoint-url "$R2_ENDPOINT" --only-show-errors; then
+    echo "R2 upload OK: onetee/onetee-${TS}.sql.gz"
+  else
+    echo "R2 upload FAILED for onetee-${TS}.sql.gz" >&2
+    exit 3
+  fi
+fi
 BK
 chmod 700 /root/onetee-backup.sh
 cat > /etc/systemd/system/onetee-backup.service <<'UNIT'
