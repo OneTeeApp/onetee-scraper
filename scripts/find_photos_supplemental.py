@@ -53,6 +53,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -102,6 +103,73 @@ def usgs_url(lat: float, lng: float, span_m: int = 1400, size=(1000, 640)) -> st
         "size": f"{size[0]},{size[1]}", "format": "jpg", "f": "image",
     }
     return USGS_EXPORT + "?" + urllib.parse.urlencode(q)
+
+
+OVERPASS = "https://overpass-api.de/api/interpreter"
+_geo_cache: Dict[str, Optional[tuple]] = {}
+
+
+def geocode_overpass(session, name: str, state: str) -> Optional[tuple]:
+    """
+    Find the course's own polygon in OpenStreetMap and return its centre.
+
+    Neither `directory.json` nor the live `/api/directory` carries coordinates —
+    the geotagging work put them in D1's `venue_geo` and joined them into
+    `/api/tee-times` only, and the merge into the directory is still an open
+    item. Without a lat/lng the geo sources cannot be asked at all, which is
+    why the first supplemental run added nothing.
+
+    Asking OSM for `leisure=golf_course` **inside the state boundary** solves
+    two problems at once. It returns the centre of the actual course rather
+    than the middle of the nearest town, which is what a USGS aerial needs to
+    be framed on the right fairways. And constraining to the state makes the
+    collision that has bitten this directory before impossible: there is a
+    Mountain Meadows in Pomona, California, and it is not in Colorado.
+    """
+    key = f"{state}|{name}".lower()
+    if key in _geo_cache:
+        return _geo_cache[key]
+
+    # Strip the words that appear on every course and carry no signal, so the
+    # regex is matching the distinctive part of the name.
+    stem = re.sub(r"\b(golf|course|club|country|links|municipal|the|at|and|&)\b",
+                  " ", name, flags=re.I)
+    stem = re.sub(r"[^A-Za-z0-9 ]", " ", stem).strip()
+    stem = " ".join(stem.split()[:3])
+    if len(stem) < 3:
+        _geo_cache[key] = None
+        return None
+
+    q = (
+        "[out:json][timeout:25];"
+        f'area["ISO3166-2"="US-{state.upper()}"][admin_level=4]->.a;'
+        "("
+        f'way["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
+        f'relation["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
+        f'node["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
+        ");"
+        "out center 3;"
+    )
+    try:
+        r = session.post(OVERPASS, data={"data": q}, timeout=60,
+                         headers={"User-Agent": UA})
+        if r.status_code != 200:
+            _geo_cache[key] = None
+            return None
+        els = r.json().get("elements") or []
+    except Exception:
+        _geo_cache[key] = None
+        return None
+
+    for el in els:
+        centre = el.get("center") or ({"lat": el.get("lat"), "lon": el.get("lon")}
+                                      if el.get("lat") else None)
+        if centre and centre.get("lat") and centre.get("lon"):
+            out = (float(centre["lat"]), float(centre["lon"]))
+            _geo_cache[key] = out
+            return out
+    _geo_cache[key] = None
+    return None
 
 
 def from_wikimedia(session, course, radius_m=1200, limit=12) -> List[Dict]:
@@ -310,8 +378,18 @@ def main() -> int:
         vid = r["venue_id"]
         d = geo.get(vid) or {}
         lat, lng = d.get("lat"), d.get("lng")
+        geo_from = "directory"
+        if not (lat and lng):
+            found_geo = geocode_overpass(session, r.get("name") or vid,
+                                         d.get("state") or args.state)
+            if found_geo:
+                lat, lng = found_geo
+                geo_from = "osm"
+                time.sleep(max(args.sleep, 1.0))   # Overpass is a shared service
         course = {"name": r.get("name") or vid, "city": d.get("city", ""),
-                  "state": d.get("state", ""), "lat": lat, "lng": lng}
+                  "state": d.get("state", "") or args.state, "lat": lat, "lng": lng}
+        if lat and lng:
+            r["geo"] = {"lat": lat, "lng": lng, "from": geo_from}
 
         found: List[Dict] = []
         if lat and lng:
