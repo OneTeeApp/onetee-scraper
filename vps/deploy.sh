@@ -112,15 +112,23 @@ if [ -n "${R2_ACCESS_KEY_ID:-}" ] && [ -n "${R2_SECRET_ACCESS_KEY:-}" ]; then
   cat > /root/onetee-r2.env <<R2E
 AWS_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 AWS_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+AWS_DEFAULT_REGION=auto
 R2_BUCKET=${R2_BUCKET:-onetee-backups}
 R2_ENDPOINT=${R2_ENDPOINT:-https://1b380acad1c1fd73ecf14983e7bc3a4c.r2.cloudflarestorage.com}
 R2E
   chmod 600 /root/onetee-r2.env
   if ! command -v aws >/dev/null 2>&1; then
     echo "installing awscli..."
-    apt-get install -y awscli >/dev/null 2>&1 || pip3 install --break-system-packages awscli >/dev/null 2>&1 || echo "WARN: awscli install failed"
+    apt-get update -qq || true
+    if apt-get install -y awscli >/dev/null 2>&1; then :
+    elif apt-get install -y python3-pip >/dev/null 2>&1 && pip3 install --break-system-packages awscli >/dev/null 2>&1; then :
+    else echo "WARN: awscli install failed"; fi
   fi
-  echo "R2 offsite backup configured (bucket ${R2_BUCKET:-onetee-backups})"
+  if command -v aws >/dev/null 2>&1; then
+    echo "R2 offsite backup configured (bucket ${R2_BUCKET:-onetee-backups}); $(aws --version 2>&1 | head -1)"
+  else
+    echo "WARN: aws CLI not available — R2 upload will be skipped this run"
+  fi
 else
   echo "R2 creds not supplied — offsite upload disabled (local backups only)"
 fi
