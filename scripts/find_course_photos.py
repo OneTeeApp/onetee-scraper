@@ -226,6 +226,38 @@ def robots_allow(session: requests.Session, url: str) -> bool:
         return True
 
 
+def host_variants(url: str) -> List[str]:
+    """
+    The same site under the spellings a course actually uses.
+
+    Twenty-one Colorado courses came back "home page unreachable" on the first
+    crawl. A single failed GET is not proof a site is down — it is usually the
+    other of www/bare refusing, or a host that only answers on http and
+    redirects. Try the obvious spellings before believing the site is gone.
+    """
+    parts = urllib.parse.urlsplit(url)
+    host = parts.netloc
+    other = host[4:] if host.startswith("www.") else "www." + host
+    seen, out = set(), []
+    for scheme in ("https", "http"):
+        for h in (host, other):
+            u = urllib.parse.urlunsplit((scheme, h, parts.path or "/", parts.query, ""))
+            if u not in seen:
+                seen.add(u)
+                out.append(u)
+    return out
+
+
+def get_html_any(session: requests.Session, url: str) -> Tuple[Optional[str], Optional[str]]:
+    """First spelling of the host that answers with HTML."""
+    for candidate in host_variants(url):
+        final, html = get_html(session, candidate)
+        if html:
+            return final, html
+        time.sleep(0.25)
+    return None, None
+
+
 def get_html(session: requests.Session, url: str) -> Tuple[Optional[str], Optional[str]]:
     """Return (final_url, html). Caps the read so one huge page can't stall us."""
     if not robots_allow(session, url):
@@ -320,18 +352,41 @@ def _int(v) -> Optional[int]:
 
 
 def _widest_from_srcset(value: str) -> Optional[str]:
-    """A srcset lists the same picture at several sizes. Take the biggest."""
-    best, best_w = None, -1
-    for part in value.split(","):
+    """
+    A srcset lists the same picture at several sizes. Take the biggest.
+
+    Split on comma-then-whitespace, not on comma. Wix and Squarespace put bare
+    commas inside their transform URLs (`w_275,h_155,enc_auto`), and splitting
+    on every comma tears a single URL into fragments — which is how Walking
+    Stick ended up with a whole srcset string where its image URL should be.
+
+    Descriptors come in two flavours and both have to count: `1200w` is a
+    width, `2x` is a pixel density. Ranking on width alone silently returns
+    nothing for a density-only srcset, so each entry is scored on whichever it
+    carries, and an entry with no descriptor at all still beats returning None.
+    """
+    best, best_rank = None, float("-inf")
+    for part in re.split(r",\s+", value):
         bits = part.strip().split()
         if not bits:
             continue
         url = bits[0]
-        width = -1
-        if len(bits) > 1 and bits[1].endswith("w"):
-            width = _int(bits[1][:-1]) or -1
-        if width > best_w:
-            best, best_w = url, width
+        rank = 0.0
+        if len(bits) > 1:
+            d = bits[1].strip()
+            if d.endswith("w"):
+                rank = float(_int(d[:-1]) or 0)
+            elif d.endswith("x"):
+                try:
+                    # Densities are left unscaled — they are single digits, so
+                    # a width always outranks one. The two are not supposed to
+                    # appear in the same srcset anyway; this just decides
+                    # sensibly if a hand-written page mixes them.
+                    rank = float(d[:-1])
+                except ValueError:
+                    rank = 0.0
+        if rank > best_rank:
+            best, best_rank = url, rank
     return best
 
 
@@ -341,10 +396,17 @@ def collect_images(page_url: str, html: str) -> List[Dict]:
     seen = set()
 
     def add(src: str, alt: str, w=None, h=None, hero: bool = False):
-        if not src or src.startswith("data:"):
+        # A data: URI is the picture inlined as base64. It is not a URL we can
+        # hand a browser from our own page, and one of them reached the picker
+        # as a 40KB blob where a link should have been.
+        if not src or src.strip().lower().startswith("data:"):
             return
         absolute = urllib.parse.urljoin(page_url, src.strip())
-        if not absolute.lower().startswith("http"):
+        low = absolute.lower()
+        if not low.startswith("http"):
+            return
+        # SVG is a drawing — a logo, a wordmark, an icon. Never a photograph.
+        if low.split("?")[0].endswith(".svg"):
             return
         if absolute in seen:
             return
@@ -455,13 +517,25 @@ def find_photo_for(course: Dict) -> Dict:
 
     session = requests.Session()
     try:
-        home_url, home_html = get_html(session, site)
+        home_url, home_html = get_html_any(session, site)
         if not home_html:
             result["note"] = "home page unreachable"
             return result
 
         scan: List[Tuple[str, str, int]] = [(home_url, home_html, 10)]
-        for p in candidate_pages(home_url, home_html):
+        pages = candidate_pages(home_url, home_html)
+        # Some sites bury the gallery behind a JS menu the crawler cannot read,
+        # so the home page links nowhere useful. These paths cost one request
+        # each and are where galleries usually live.
+        if len(pages) < 3:
+            base = home_url
+            for guess in ("/gallery", "/photos", "/photo-gallery", "/the-course",
+                          "/course", "/golf-course", "/about"):
+                u = urllib.parse.urljoin(base, guess)
+                if u not in pages:
+                    pages.append(u)
+            pages = pages[:7]
+        for p in pages:
             time.sleep(0.4)
             final, html = get_html(session, p)
             if html:
@@ -483,7 +557,7 @@ def find_photo_for(course: Dict) -> Dict:
         # gallery page would mean downloading a hundred image headers.
         candidates = [c for c in candidates if c["prescore"] > -500]
         candidates.sort(key=lambda c: -c["prescore"])
-        shortlist = candidates[:10]
+        shortlist = candidates[:16]
 
         measured: List[Dict] = []
         for cand in shortlist:
@@ -506,7 +580,7 @@ def find_photo_for(course: Dict) -> Dict:
             # Runners-up ride along so a bad pick can be swapped by eye rather
             # than by re-running the whole crawl.
             "alts": [{"image": c["url"], "score": c["score"],
-                      "w": c.get("w"), "h": c.get("h")} for c in measured[1:4]],
+                      "w": c.get("w"), "h": c.get("h")} for c in measured[1:9]],
         })
         return result
     except Exception as exc:  # never let one bad site kill the run
@@ -653,16 +727,21 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Find a photo of each OneTee course.")
     ap.add_argument("--state", default="CO", help="two-letter state, blank for all")
     ap.add_argument("--only", default=None, help="comma-separated venue_ids")
+    ap.add_argument("--only-file", default=None,
+                    help="path to a JSON list of venue_ids — for re-running just "
+                         "the courses whose photo was rejected by eye")
     ap.add_argument("--limit", type=int, default=0, help="stop after N courses (0 = all)")
     ap.add_argument("--workers", type=int, default=6, help="parallel courses")
     ap.add_argument("--out", default="data/course_photos.json")
-    ap.add_argument("--full", default="data/course_photos_full.json",
-                    help="every row incl. runners-up and misses, for rebuilding "
-                         "the review sheet without re-crawling")
     ap.add_argument("--review", default="data/course_photos_review.html")
     args = ap.parse_args()
 
-    courses = load_courses(args.state, args.only)
+    only = args.only
+    if args.only_file:
+        with open(args.only_file, encoding="utf-8") as fh:
+            wanted = json.load(fh)
+        only = ",".join(wanted if isinstance(wanted, list) else wanted.keys())
+    courses = load_courses(args.state, only)
     if args.limit:
         courses = courses[:args.limit]
     if not courses:
@@ -683,7 +762,7 @@ def main() -> int:
 
     rows.sort(key=lambda r: (r.get("name") or "").lower())
 
-    for path in (args.out, args.full, args.review):
+    for path in (args.out, args.review):
         parent = os.path.dirname(path)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -695,16 +774,10 @@ def main() -> int:
     }
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(table, fh, indent=2, sort_keys=True)
-    # The full rows keep the runners-up and the reasons for every miss, so the
-    # review sheet can be rebuilt — or re-styled — without crawling 240 sites
-    # again to answer a question the crawl already answered.
-    with open(args.full, "w", encoding="utf-8") as fh:
-        json.dump(rows, fh, indent=2, sort_keys=True)
     write_review(rows, args.review)
 
     print(f"\nDone. {len(table)}/{len(rows)} courses have a photo.")
     print(f"  table:  {args.out}")
-    print(f"  full:   {args.full}")
     print(f"  review: {args.review}   <- open this before shipping anything")
     return 0
 
