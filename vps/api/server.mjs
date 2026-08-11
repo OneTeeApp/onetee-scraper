@@ -10,7 +10,13 @@ const PORT = Number(process.env.PORT || 8080);
 const INGEST_TOKEN = process.env.INGEST_TOKEN || "";
 const DIRECTORY_PATH = process.env.DIRECTORY_PATH || "/opt/onetee-api/directory.json";
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 8 });
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 16 });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Postgres SQLSTATEs worth retrying: deadlock_detected, serialization_failure,
+// lock_not_available (our lock_timeout firing). The scrapers' broad prune
+// UPDATEs (SET active=0 WHERE ... teetime < now) lock large overlapping row
+// sets, so once the whole fleet dual-writes concurrently they deadlock.
+const RETRYABLE = new Set(["40P01", "40001", "55P03"]);
 
 // ---- D1-compatible shim: prepare().bind().all()/first()/run() over Postgres,
 // converting SQLite '?' placeholders to Postgres $1,$2,... in order. ----
@@ -364,23 +370,43 @@ async function exec(req, res) {
   try { payload = JSON.parse(await readBody(req)); } catch (e) { return send(res, 400, { error: "bad json" }); }
   const stmts = Array.isArray(payload.batch) ? payload.batch
     : [{ sql: payload.sql, params: payload.params || [] }];
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    let results = [];
-    for (const st of stmts) {
-      if (!st || !st.sql) continue;
-      const { text, values } = translate(st.sql, st.params || []);
-      const r = await client.query(text, values);
-      results = r.rows;
+
+  const MAX_ATTEMPTS = 5;
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Fail fast on lock contention (retry below) instead of pinning a
+      // connection until a deadlock resolves; cap runaway statements too.
+      await client.query("SET LOCAL lock_timeout = '4s'");
+      await client.query("SET LOCAL statement_timeout = '25s'");
+      let results = [];
+      for (const st of stmts) {
+        if (!st || !st.sql) continue;
+        const { text, values } = translate(st.sql, st.params || []);
+        const r = await client.query(text, values);
+        results = r.rows;
+      }
+      await client.query("COMMIT");
+      GEO_CACHE = null;
+      return send(res, 200, { results });
+    } catch (e) {
+      try { await client.query("ROLLBACK"); } catch (_) { /* connection already gone */ }
+      lastErr = e;
+      const code = e && e.code;
+      if (RETRYABLE.has(code) && attempt < MAX_ATTEMPTS) {
+        await sleep(60 * attempt + Math.floor(Math.random() * 50)); // jittered backoff
+        continue; // retry the whole batch on a fresh connection
+      }
+      console.error(`/exec failed code=${code || "?"} attempt=${attempt}: ${String(e.message || e)} :: ` +
+        stmts.map((s) => String(s && s.sql).slice(0, 140)).join(" | "));
+      return send(res, 500, { error: String(e.message || e), code: code || null });
+    } finally {
+      client.release();
     }
-    await client.query("COMMIT");
-    GEO_CACHE = null;
-    return send(res, 200, { results });
-  } catch (e) {
-    await client.query("ROLLBACK");
-    return send(res, 500, { error: String(e.message || e) });
-  } finally { client.release(); }
+  }
+  return send(res, 500, { error: String((lastErr && lastErr.message) || lastErr || "exec failed") });
 }
 
 // ===================== router =====================
