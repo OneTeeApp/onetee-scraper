@@ -66,7 +66,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.aggregate import fetch_course, load_registry  # noqa: E402
-from scraper.d1 import D1Rest, SqliteLocal, sync  # noqa: E402
+from scraper.d1 import D1Rest, HttpBackend, SqliteLocal, sync  # noqa: E402
 from scraper.dates import scrape_dates  # noqa: E402
 
 
@@ -102,7 +102,16 @@ def main() -> int:
 
     slugs = [s.strip() for s in a.courses.split(",") if s.strip()]
     reg = {c["slug"]: c for c in load_registry(a.registry)}
-    db = SqliteLocal(a.local) if a.local else D1Rest()
+    if a.local:
+        db = SqliteLocal(a.local)
+    elif os.environ.get("VPS_ONLY") == "1":
+        # Same cutover switch as scraper.d1's CLI: the VPS Postgres is the
+        # sole store, D1 is never touched. Without this the diag trace kept
+        # writing the retired D1 while the site read the VPS.
+        db = HttpBackend()
+        print("VPS-ONLY backend (D1 disabled)", file=sys.stderr)
+    else:
+        db = D1Rest()
     dates = scrape_dates(a.registry, a.days)
 
     print("diag_course_pipeline: registry -> fetch -> D1, in one run")
