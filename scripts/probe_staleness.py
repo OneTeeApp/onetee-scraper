@@ -66,8 +66,8 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scraper.aggregate import fetch_course, load_registry  # noqa: E402
-from scraper.d1 import (D1Rest, SqliteLocal, deactivate_courses,  # noqa: E402
-                        _STATE_TZ, FL_CENTRAL_CITIES)
+from scraper.d1 import (D1Rest, HttpBackend, SqliteLocal,  # noqa: E402
+                        deactivate_courses, _STATE_TZ, FL_CENTRAL_CITIES)
 
 # Every platform family has an hourly writer of its own (scrape :17,
 # clubcaddie :27, cps/supersaas :37, ezlinks :47, golfnow :52), and scrape-fast
@@ -113,7 +113,13 @@ def main() -> int:
                          "never assert it (Meeker: no schedule_id exists)")
     a = ap.parse_args()
 
-    db = SqliteLocal(a.local) if a.local else D1Rest()
+    if a.local:
+        db = SqliteLocal(a.local)
+    elif os.environ.get("VPS_ONLY") == "1":
+        db = HttpBackend()
+        print("VPS-ONLY backend (D1 disabled)", flush=True)
+    else:
+        db = D1Rest()
     now = dt.datetime.now(dt.timezone.utc)
 
     where = "active = 1"
