@@ -1,0 +1,108 @@
+# =============================================================================
+# OneTee — find illustrated course maps
+# =============================================================================
+#
+# WHAT THIS IS
+# A hand-run crawl, not a schedule. It visits each course's own website, follows
+# the "Course Layout" / "Course Tour" link, scores the images it finds, and
+# produces two artefacts you download and look at:
+#
+#   course_maps.json         venue_id -> image URL (the table we would ship)
+#   course_maps_review.html  a contact sheet — every hit rendered as a picture,
+#                            plus a table of the courses that came up empty
+#
+# NOTHING IS COMMITTED AND NOTHING IS DEPLOYED. The crawl guesses; the review
+# sheet is where a human confirms or rejects each guess. Download the HTML,
+# open it, scroll it. That is the whole point of the run.
+#
+# HOW TO RUN IT
+#   Actions -> "Find course maps" -> Run workflow -> pick a state -> Run.
+#   Start with limit 25 to see the shape of the results before doing all 240.
+#
+# WHY IT LIVES HERE
+# The Cowork sandbox has no outbound internet, so the crawl cannot run there.
+# Actions runners do. This workflow reads nothing secret and writes nothing to
+# the repo, so it is safe to run as often as you like.
+# =============================================================================
+
+name: Find course maps
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: 'Two-letter state (blank = every state in the directory)'
+        required: false
+        default: 'CO'
+      limit:
+        description: 'Stop after N courses (0 = all). Use 25 for a first look.'
+        required: false
+        default: '0'
+      workers:
+        description: 'Courses crawled in parallel. 6 is polite; do not raise much.'
+        required: false
+        default: '6'
+      only:
+        description: 'Optional comma-separated venue_ids, for spot checks'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install --quiet requests
+
+      - name: Crawl
+        env:
+          # Through the environment rather than interpolated into the shell —
+          # a venue id with a quote in it would otherwise rewrite the command.
+          IN_STATE: ${{ inputs.state }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_WORKERS: ${{ inputs.workers }}
+          IN_ONLY: ${{ inputs.only }}
+        run: |
+          set -euo pipefail
+          ARGS=(--state "$IN_STATE" --limit "$IN_LIMIT" --workers "$IN_WORKERS")
+          if [ -n "$IN_ONLY" ]; then ARGS+=(--only "$IN_ONLY"); fi
+          python scripts/find_course_maps.py "${ARGS[@]}" \
+            --out data/course_maps.json \
+            --review data/course_maps_review.html
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f data/course_maps.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          t = json.load(open("data/course_maps.json"))
+          overview = sum(1 for v in t.values() if v.get("kind") == "overview")
+          print("## Course maps\n")
+          print(f"Candidates found: **{len(t)}** — of which **{overview}** classified")
+          print("as a full overview map rather than a single hole.\n")
+          print("Download the `course-maps` artifact below and open")
+          print("`course_maps_review.html` — the crawl is a guess until you have")
+          print("looked at the pictures.")
+          PY
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-maps
+          path: data/course_maps*
+          if-no-files-found: warn
+          retention-days: 30
