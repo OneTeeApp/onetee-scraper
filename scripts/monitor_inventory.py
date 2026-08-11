@@ -60,7 +60,7 @@ import sys
 
 import requests
 
-DEFAULT_API = "https://onetee-api.damp-snow-8025.workers.dev"
+DEFAULT_API = "https://api.oneteeapp.com"
 
 # A venue count that swings by more than this between two samples is worth a
 # human look. Deliberately not a slot threshold: slot counts breathe hourly on

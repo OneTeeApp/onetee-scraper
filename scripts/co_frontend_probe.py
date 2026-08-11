@@ -57,7 +57,7 @@ import requests  # noqa: E402
 from scraper.aggregate import ADAPTERS  # noqa: E402
 from scraper.d1 import D1Rest  # noqa: E402
 
-API = os.environ.get("API", "https://onetee-api.damp-snow-8025.workers.dev")
+API = os.environ.get("API", "https://api.oneteeapp.com")
 DATES = [dt.date.today() + dt.timedelta(days=i) for i in (0, 1, 2)]
 
 SUBCOURSE_VENUES = [

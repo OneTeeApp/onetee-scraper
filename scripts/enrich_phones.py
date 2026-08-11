@@ -61,7 +61,7 @@ import requests
 
 DIRECTORY = "directory.json"
 OUT = "local/phones.json"
-API = "https://onetee-api.damp-snow-8025.workers.dev"
+API = "https://api.oneteeapp.com"
 STATUS = "probe-results/state-status.json"
 
 UA = ("Mozilla/5.0 (compatible; OneTeeDirectoryBot/1.0; "
