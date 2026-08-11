@@ -759,16 +759,25 @@ def main() -> int:
                         "behind each platform's %% (the per-course gaps to triage)")
     a = p.parse_args()
 
-    db = SqliteLocal(a.local) if a.local else D1Rest()
-    # Migration dual-write: mirror writes to the VPS when explicitly enabled.
-    # Inert unless VPS_DUALWRITE=1 is set on the workflow — zero risk to D1.
-    if not a.local and os.environ.get("VPS_DUALWRITE") == "1":
-        try:
-            db = DualBackend(db, HttpBackend())
-            print("VPS dual-write ENABLED", file=sys.stderr)
-        except Exception as e:  # noqa: BLE001
-            print(f"VPS dual-write init failed, continuing D1-only: {e}",
-                  file=sys.stderr)
+    if a.local:
+        db = SqliteLocal(a.local)
+    elif os.environ.get("VPS_ONLY") == "1":
+        # Cutover: the VPS Postgres is the sole store — D1 is never touched
+        # (no D1 credentials needed, no D1 writes billed). Reads + writes both
+        # go through the /exec HTTP backend.
+        db = HttpBackend()
+        print("VPS-ONLY backend (D1 disabled)", file=sys.stderr)
+    else:
+        db = D1Rest()
+        # Migration dual-write: mirror writes to the VPS when explicitly enabled.
+        # Inert unless VPS_DUALWRITE=1 is set on the workflow — zero risk to D1.
+        if os.environ.get("VPS_DUALWRITE") == "1":
+            try:
+                db = DualBackend(db, HttpBackend())
+                print("VPS dual-write ENABLED", file=sys.stderr)
+            except Exception as e:  # noqa: BLE001
+                print(f"VPS dual-write init failed, continuing D1-only: {e}",
+                      file=sys.stderr)
 
     if a.cmd == "init":
         init_schema(db)
