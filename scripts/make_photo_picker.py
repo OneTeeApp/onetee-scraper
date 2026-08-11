@@ -49,6 +49,39 @@ def load_json(path, default):
         sys.exit(f"could not read {path}: {exc}")
 
 
+def warnings_for(curated):
+    """
+    Problems a human cannot see in a thumbnail.
+
+    Three kinds, all found in the first real pass: a URL that is not a URL a
+    browser can load, and a picture doing duty for more than one course. The
+    second is not always wrong — two nines on one site legitimately share a
+    photo — so it is a flag to look at, never an automatic rejection.
+    """
+    warn = {}
+    seen = {}
+    for vid, e in curated.items():
+        url = (e.get("image") if isinstance(e, dict) else e) or ""
+        if not url:
+            continue
+        low = url.strip().lower()
+        if low.startswith("data:"):
+            warn[vid] = "This is a base64 blob, not a link — it will not load."
+        elif " 1x," in url or " 2x," in url or url.count("http") > 1:
+            warn[vid] = "This is a whole srcset, not one image URL."
+        elif low.startswith("http://"):
+            warn[vid] = "http:// is blocked as mixed content on the https site."
+        seen.setdefault(url, []).append(vid)
+
+    for url, vids in seen.items():
+        if len(vids) > 1:
+            others = ", ".join(v for v in vids)
+            for vid in vids:
+                if vid not in warn:
+                    warn[vid] = "Same picture as: " + others.replace(vid + ", ", "").replace(", " + vid, "")
+    return warn
+
+
 def build_rows(state, full, directory, curated):
     """
     One entry per course in the directory for this state — including the ones
@@ -57,6 +90,7 @@ def build_rows(state, full, directory, curated):
     leaving it off the page would quietly hide the gap.
     """
     by_vid = {r.get("venue_id"): r for r in full if r.get("venue_id")}
+    warn = warnings_for(curated)
     rows = []
     for c in directory:
         if state and (c.get("state") or "").upper() != state.upper():
@@ -82,6 +116,7 @@ def build_rows(state, full, directory, curated):
             "chosen": curated.get(vid, {}).get("image")
             if isinstance(curated.get(vid), dict) else curated.get(vid),
             "hasChoice": vid in curated,
+            "warn": warn.get(vid, ""),
         })
     rows.sort(key=lambda r: r["name"].lower())
     return rows
@@ -129,14 +164,20 @@ PAGE = """<!doctype html>
          padding:2px 8px; border-radius:999px; background:#eee; color:var(--muted); }}
  .tag.ok {{ background:var(--green); color:#08192b; }}
  .tag.no {{ background:#444; color:#fff; }}
+ .tag.warn {{ background:#c2410c; color:#fff; }}
+ .warnbox {{ margin-top:8px; font-size:12.5px; background:#fff4ed; border:1px solid #f6c9ab;
+             color:#7c2d12; border-radius:8px; padding:7px 10px; }}
+ .card.flag {{ border-color:#f6c9ab; box-shadow:0 0 0 2px #ffe8d9; }}
 </style>
 
 <header>
   <h1>Choose course photos — {state}</h1>
   <span class="stat"><b id="nDone">0</b> of <b>{total}</b> decided ·
-    <b id="nNone">0</b> set to no photo</span>
+    <b id="nNone">0</b> set to no photo &middot;
+    <b id="nWarn">{flagged}</b> flagged to check</span>
   <input type="search" id="q" placeholder="filter by name, city, or id" style="min-width:230px">
   <label class="stat"><input type="checkbox" id="onlyTodo"> only undecided</label>
+  <label class="stat"><input type="checkbox" id="onlyWarn"> only flagged</label>
   <button class="primary" id="dl">Download photos.curated.json</button>
   <button id="clear">Clear all choices</button>
 </header>
@@ -163,12 +204,15 @@ function card(r) {{
   const chosen = (r.venue_id in picks) ? picks[r.venue_id] : undefined;
   const decided = r.venue_id in picks;
   const el = document.createElement('section');
-  el.className = 'card' + (decided ? ' done' : '') + (decided && !chosen ? ' none' : '');
+  el.className = 'card' + (decided ? ' done' : '') + (decided && !chosen ? ' none' : '')
+              + (r.warn ? ' flag' : '');
   el.dataset.vid = r.venue_id;
   el.dataset.hay = (r.name + ' ' + r.city + ' ' + r.venue_id).toLowerCase();
   el.dataset.todo = decided ? '0' : '1';
+  el.dataset.warn = r.warn ? '1' : '0';
 
-  const tag = !decided ? '<span class="tag">undecided</span>'
+  const tag = r.warn ? '<span class="tag warn">check this</span>'
+            : !decided ? '<span class="tag">undecided</span>'
             : (chosen ? '<span class="tag ok">chosen</span>'
                       : '<span class="tag no">no photo</span>');
 
@@ -180,6 +224,7 @@ function card(r) {{
 
   el.innerHTML =
     '<div class="hd"><b>' + esc(r.name) + '</b><span>' + esc(r.city) + ' &middot; ' + tag + '</span></div>' +
+    (r.warn ? '<div class="warnbox">' + esc(r.warn) + '</div>' : '') +
     (chosen ? '<div class="big"><img loading="lazy" src="' + esc(chosen) + '" alt=""></div>' : '') +
     (r.candidates.length
       ? '<div class="shots">' + shots + '</div>'
@@ -240,13 +285,16 @@ grid.addEventListener('click', e => {{
 function filter() {{
   const q = document.getElementById('q').value.trim().toLowerCase();
   const todo = document.getElementById('onlyTodo').checked;
+  const flagged = document.getElementById('onlyWarn').checked;
   grid.querySelectorAll('.card').forEach(c => {{
-    const hit = (!q || c.dataset.hay.includes(q)) && (!todo || c.dataset.todo === '1');
+    const hit = (!q || c.dataset.hay.includes(q)) && (!todo || c.dataset.todo === '1')
+              && (!flagged || c.dataset.warn === '1');
     c.style.display = hit ? '' : 'none';
   }});
 }}
 document.getElementById('q').addEventListener('input', filter);
 document.getElementById('onlyTodo').addEventListener('change', filter);
+document.getElementById('onlyWarn').addEventListener('change', filter);
 
 document.getElementById('dl').addEventListener('click', () => {{
   // Shape mirrors local/phones.curated.json so build_directory.py reads the
@@ -300,11 +348,13 @@ def main() -> int:
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(PAGE.format(state=escape(args.state or "all"),
                              total=len(rows),
+                             flagged=sum(1 for r in rows if r["warn"]),
                              rows=json.dumps(rows)))
 
     withc = sum(1 for r in rows if r["candidates"])
+    flagged = sum(1 for r in rows if r["warn"])
     print(f"wrote {args.out}: {len(rows)} courses, {withc} with at least one candidate, "
-          f"{len(rows) - withc} needing a pasted URL")
+          f"{len(rows) - withc} needing a pasted URL, {flagged} flagged to re-check")
     return 0
 
 
