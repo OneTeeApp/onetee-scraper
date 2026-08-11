@@ -733,6 +733,9 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="stop after N courses (0 = all)")
     ap.add_argument("--workers", type=int, default=6, help="parallel courses")
     ap.add_argument("--out", default="data/course_photos.json")
+    ap.add_argument("--full", default="data/course_photos_full.json",
+                    help="every row incl. runners-up and misses, for rebuilding "
+                         "the review sheet without re-crawling")
     ap.add_argument("--review", default="data/course_photos_review.html")
     args = ap.parse_args()
 
@@ -762,22 +765,57 @@ def main() -> int:
 
     rows.sort(key=lambda r: (r.get("name") or "").lower())
 
-    for path in (args.out, args.review):
+    for path in (args.out, args.full, args.review):
         parent = os.path.dirname(path)
         if parent:
             os.makedirs(parent, exist_ok=True)
 
-    table = {
+    fresh = {
         r["venue_id"]: {"image": r["image"], "page": r["page"],
                         "w": r["w"], "h": r["h"], "score": r["score"]}
         for r in rows if r.get("image")
     }
+
+    # A subset run MERGES; it does not replace. Re-crawling the 71 courses
+    # whose photo was rejected and then writing that over the whole table would
+    # delete the other 169 — the run would report success and quietly destroy
+    # most of the work. A full run still replaces, because there every row was
+    # crawled and a stale leftover would be the bug instead.
+    partial = bool(args.only or args.only_file or args.limit)
+    table: Dict[str, Dict] = {}
+    prev_rows: List[Dict] = []
+    if partial:
+        if os.path.exists(args.out):
+            with open(args.out, encoding="utf-8") as fh:
+                table = json.load(fh) or {}
+        if os.path.exists(args.full):
+            with open(args.full, encoding="utf-8") as fh:
+                prev_rows = json.load(fh) or []
+        # A course we just re-crawled and found nothing for loses its old
+        # entry. Its previous answer is the one a human already rejected, so
+        # keeping it would put that very picture back on the card.
+        for vid in {r["venue_id"] for r in rows}:
+            table.pop(vid, None)
+    table.update(fresh)
+
+    crawled_ids = {r["venue_id"] for r in rows}
+    all_rows = [r for r in prev_rows if r.get("venue_id") not in crawled_ids] + rows
+    all_rows.sort(key=lambda r: (r.get("name") or "").lower())
+
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(table, fh, indent=2, sort_keys=True)
-    write_review(rows, args.review)
+    # The full rows keep the runners-up and the reason for every miss, so the
+    # review sheet and the picker can be rebuilt without crawling 240 sites
+    # again to answer a question the crawl already answered.
+    with open(args.full, "w", encoding="utf-8") as fh:
+        json.dump(all_rows, fh, indent=2, sort_keys=True)
+    write_review(all_rows, args.review)
 
-    print(f"\nDone. {len(table)}/{len(rows)} courses have a photo.")
+    print(f"\nDone. {len(fresh)}/{len(rows)} crawled courses have a photo; "
+          f"{len(table)} in the table overall"
+          + (" — merged into the previous run" if partial else "") + ".")
     print(f"  table:  {args.out}")
+    print(f"  full:   {args.full}")
     print(f"  review: {args.review}   <- open this before shipping anything")
     return 0
 
