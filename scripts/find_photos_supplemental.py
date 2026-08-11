@@ -122,40 +122,88 @@ def _norm(name: str) -> str:
     return " ".join(n.split())
 
 
+# Where OneTee operates. A bounding box is a coarse thing, but for the purpose
+# it is exact enough: it exists to stop a name matching a course two thousand
+# miles away, and any of these boxes does that. Used only if Nominatim, which
+# knows every state, cannot be reached.
+STATE_BBOX = {
+    "AZ": (31.33, -114.82, 37.00, -109.04),
+    "CO": (36.99, -109.06, 41.01, -102.04),
+    "FL": (24.40, -87.64, 31.01, -79.97),
+    "MD": (37.89, -79.49, 39.73, -74.99),
+    "UT": (36.99, -114.05, 42.01, -109.04),
+    "VA": (36.54, -83.68, 39.47, -75.24),
+}
+
+
+def state_bbox(session, state: str) -> Optional[tuple]:
+    """(south, west, north, east) for a state, from Nominatim or the table."""
+    state = state.upper()
+    try:
+        r = session.get("https://nominatim.openstreetmap.org/search",
+                        params={"state": state, "country": "USA", "format": "json",
+                                "limit": 1},
+                        timeout=30, headers={"User-Agent": UA})
+        if r.status_code == 200:
+            j = r.json()
+            if j and j[0].get("boundingbox"):
+                b = [float(x) for x in j[0]["boundingbox"]]
+                return (b[0], b[2], b[1], b[3])
+        print(f"  nominatim: HTTP {r.status_code} — using the built-in box",
+              file=sys.stderr)
+    except Exception as exc:
+        print(f"  nominatim: {exc.__class__.__name__} — using the built-in box",
+              file=sys.stderr)
+    return STATE_BBOX.get(state)
+
+
 def load_state_courses(session, state: str) -> List[Dict]:
     """
-    Fetch every `leisure=golf_course` in the state in ONE query.
+    Fetch every named `leisure=golf_course` in the state in ONE query.
 
-    The first version of this asked Overpass once per course. That was both far
-    too slow — fifty seconds each against a free shared service, so 68 courses
-    did not finish inside the job — and silently useless, because every failure
-    returned None and the run cheerfully reported "supplemented 0" without ever
-    saying it could not reach the service. One request for the whole state
-    returns a few hundred courses, and the name matching then happens locally
-    where it costs nothing and can be inspected.
+    Two earlier shapes of this failed, and both failures are worth keeping in
+    mind. Asking Overpass once per course took fifty seconds each against a
+    free shared service — 68 courses did not finish inside the job. Asking once
+    for the whole state by ADMINISTRATIVE AREA returned 504 from every mirror:
+    building the Colorado area is expensive, and the public instances will not
+    wear it.
+
+    A bounding box is cheap, and for this purpose it is exact enough. The state
+    constraint exists to stop a name matching a course two thousand miles away
+    — this directory has already shipped a Mountain Meadows in Pomona,
+    California in place of the one in Red Feather Lakes — and a box does that
+    perfectly well.
     """
     state = state.upper()
     if state in _state_courses:
         return _state_courses[state]
 
-    q = ("[out:json][timeout:180];"
-         f'area["ISO3166-2"="US-{state}"][admin_level=4]->.a;'
-         '(way["leisure"="golf_course"](area.a);'
-         ' relation["leisure"="golf_course"](area.a);'
-         ' node["leisure"="golf_course"](area.a););'
+    box = state_bbox(session, state)
+    if not box:
+        print(f"  no bounding box for {state} — geo sources will be skipped",
+              file=sys.stderr)
+        _state_courses[state] = []
+        return []
+    bbox = ",".join(f"{v:.4f}" for v in box)
+
+    q = ("[out:json][timeout:120];"
+         "("
+         f'way["leisure"="golf_course"]["name"]({bbox});'
+         f'relation["leisure"="golf_course"]["name"]({bbox});'
+         ");"
          "out center tags;")
 
     for url in OVERPASS_MIRRORS:
         try:
-            r = session.post(url, data={"data": q}, timeout=210,
+            r = session.post(url, data={"data": q}, timeout=150,
                              headers={"User-Agent": UA})
         except Exception as exc:
             print(f"  overpass {url.split('/')[2]}: {exc.__class__.__name__}",
                   file=sys.stderr)
             continue
         if r.status_code != 200:
-            # Say so. A swallowed 429 is what made the first run look like
-            # "there is simply nothing out there".
+            # Say so. A swallowed 429 or 504 is what made an earlier run look
+            # like "there is simply nothing out there".
             print(f"  overpass {url.split('/')[2]}: HTTP {r.status_code}",
                   file=sys.stderr)
             continue
@@ -173,7 +221,8 @@ def load_state_courses(session, state: str) -> List[Dict]:
             if c and nm and c.get("lat") is not None:
                 out.append({"name": nm, "norm": _norm(nm),
                             "lat": float(c["lat"]), "lng": float(c["lon"])})
-        print(f"  overpass: {len(out)} named golf courses in {state}", flush=True)
+        print(f"  overpass: {len(out)} named golf courses in the {state} box",
+              flush=True)
         _state_courses[state] = out
         return out
 
