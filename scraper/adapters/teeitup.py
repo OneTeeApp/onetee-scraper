@@ -73,7 +73,7 @@ API_BASE = "https://phx-api-be-east-1b.kenna.io"
 # this must stay the fallback.
 _STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix",
              "VA": "America/New_York", "MD": "America/New_York",
-             "FL": "America/New_York"}
+             "FL": "America/New_York", "DC": "America/New_York"}
 _TZ_DEFAULT = "America/New_York"
 
 # ---------------------------------------------------------------------------
