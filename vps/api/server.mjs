@@ -352,6 +352,7 @@ const PK = {
 };
 function translate(sql, params) {
   let s = String(sql).trim();
+  // INSERT OR REPLACE INTO <t> (...) -> ON CONFLICT (pk) DO UPDATE (scraper tee tables)
   const m = s.match(/^INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)([\s\S]*)$/i);
   if (m) {
     const [, tbl, cols, rest] = m;
@@ -360,8 +361,18 @@ function translate(sql, params) {
       .filter((c) => !pk.includes(c)).map((c) => `${c}=EXCLUDED.${c}`).join(", ");
     s = `INSERT INTO ${tbl} (${cols})${rest} ON CONFLICT (${pk.join(",")}) DO UPDATE SET ${upd}`;
   }
-  let i = 0;
-  return { text: s.replace(/\?/g, () => "$" + (++i)), values: params || [] };
+  // INSERT OR IGNORE INTO ... -> INSERT INTO ... ON CONFLICT DO NOTHING (gate billing_events)
+  const g = s.match(/^INSERT\s+OR\s+IGNORE\s+INTO\s+([\s\S]+)$/i);
+  if (g) s = `INSERT INTO ${g[1]} ON CONFLICT DO NOTHING`;
+  // Placeholders: the gate uses numbered ?1/?2 (keep the number -> $1/$2); the
+  // scraper uses bare ? (assign sequential $1,$2,...). Never both in one statement.
+  if (/\?\d/.test(s)) {
+    s = s.replace(/\?(\d+)/g, (_, n) => "$" + n);
+  } else {
+    let i = 0;
+    s = s.replace(/\?/g, () => "$" + (++i));
+  }
+  return { text: s, values: params || [] };
 }
 async function exec(req, res) {
   const auth = req.headers["authorization"] || "";
@@ -382,15 +393,22 @@ async function exec(req, res) {
       await client.query("SET LOCAL lock_timeout = '4s'");
       await client.query("SET LOCAL statement_timeout = '25s'");
       let results = [];
+      let changes = 0;
       for (const st of stmts) {
         if (!st || !st.sql) continue;
+        // Skip DDL — the VPS schema is deploy-managed, so the gate's ensureSchema()
+        // (CREATE TABLE ... in SQLite dialect) is a harmless no-op here.
+        if (/^\s*(CREATE|ALTER|DROP)\b/i.test(st.sql)) continue;
         const { text, values } = translate(st.sql, st.params || []);
         const r = await client.query(text, values);
         results = r.rows;
+        changes = r.rowCount ?? 0;
       }
       await client.query("COMMIT");
       GEO_CACHE = null;
-      return send(res, 200, { results });
+      // `changes` = rowCount of the last statement, so the gate's D1 shim can
+      // expose `.meta.changes` (used for its billing-event dedup check).
+      return send(res, 200, { results, changes });
     } catch (e) {
       try { await client.query("ROLLBACK"); } catch (_) { /* connection already gone */ }
       lastErr = e;
