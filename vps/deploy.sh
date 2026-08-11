@@ -187,5 +187,36 @@ else
   echo "(immediate backup failed, continuing)"
 fi
 
+# ---------- Phase 5b: one-time restore verification (pull FROM R2, load it) ----------
+# Proves the offsite copy is a real, restorable backup — not just bytes in a
+# bucket. Downloads the newest R2 object, restores into a scratch DB, counts
+# rows, drops it. Self-disables via a marker so it runs once.
+if [ ! -f /root/.onetee-restore-verified ] && [ -f /root/onetee-r2.env ] && command -v aws >/dev/null 2>&1; then
+  ( set -a; . /root/onetee-r2.env; set +a
+    export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
+    KEY="$(aws s3 ls "s3://${R2_BUCKET}/onetee/" --endpoint-url "$R2_ENDPOINT" 2>/dev/null | sort | tail -1 | awk '{print $NF}')"
+    if [ -n "$KEY" ]; then
+      echo "restore-verify: pulling s3://${R2_BUCKET}/onetee/${KEY} back from R2..."
+      if aws s3 cp "s3://${R2_BUCKET}/onetee/${KEY}" /tmp/onetee-verify.sql.gz --endpoint-url "$R2_ENDPOINT" --only-show-errors \
+         && gzip -t /tmp/onetee-verify.sql.gz; then
+        sudo -u postgres psql -c "DROP DATABASE IF EXISTS onetee_verify;" >/dev/null 2>&1 || true
+        sudo -u postgres psql -c "CREATE DATABASE onetee_verify OWNER onetee;" >/dev/null 2>&1 || true
+        export PGPASSWORD="$(grep '^DB_PASSWORD=' /root/onetee-db.env | cut -d= -f2)"
+        if gunzip -c /tmp/onetee-verify.sql.gz | psql -h 127.0.0.1 -U onetee -d onetee_verify -q >/dev/null 2>&1; then
+          CNT="$(psql -h 127.0.0.1 -U onetee -d onetee_verify -tAc 'SELECT count(*) FROM tee_times' 2>/dev/null | tr -d '[:space:]')"
+          echo "restore-verify OK: R2 copy restored cleanly — ${CNT} tee_times rows"
+          touch /root/.onetee-restore-verified
+        else
+          echo "restore-verify FAILED: dump did not load" >&2
+        fi
+        sudo -u postgres psql -c "DROP DATABASE IF EXISTS onetee_verify;" >/dev/null 2>&1 || true
+        rm -f /tmp/onetee-verify.sql.gz
+      else
+        echo "restore-verify: could not download/verify R2 object" >&2
+      fi
+    fi
+  )
+fi
+
 echo "---- API /api/health (localhost) ----"; curl -s http://127.0.0.1:8080/api/health; echo
 echo "== deploy done OK =="
