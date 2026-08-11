@@ -1,0 +1,20 @@
+{
+  "_readme": [
+    "Hand-picked course photos. This file outranks the crawl and the crawl never writes it.",
+    "",
+    "Produced by scripts/make_photo_picker.py: open data/photo_picker.html, click the",
+    "picture you want for each course, then Download photos.curated.json and drop the",
+    "result here. Read by build_directory.py, which puts the winner on each venue's",
+    "`photo` field.",
+    "",
+    "  \"venue-id\": { \"image\": \"https://...\" }   use this picture",
+    "  \"venue-id\": { \"image\": null }              show no picture at all",
+    "",
+    "A null is a deliberate hold, not a blank: it means every candidate was wrong and",
+    "nothing is better than the wrong thing. build_directory.py tests membership, not",
+    "truthiness, so a null beats the crawl instead of falling through to it.",
+    "",
+    "A venue_id absent from this file falls back to whatever the crawl proposed."
+  ],
+  "courses": {}
+}
