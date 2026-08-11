@@ -64,7 +64,16 @@ except ImportError:  # pragma: no cover
     sys.exit("This script needs `requests` (pip install requests).")
 
 
-DIRECTORY_URL = "https://onetee-api.damp-snow-8025.workers.dev/api/directory"
+# The gate is the front door, and the only one that stays up. `onetee-api`'s
+# own workers.dev subdomain went dark during the VPS cutover on 2026-08-11 and
+# now returns a Cloudflare placeholder 404; the gate still reaches the API over
+# its ORIGIN service binding, which is exactly how the live widget gets this
+# list. Override with ONETEE_DIRECTORY_URL if the host ever moves again.
+DIRECTORY_URLS = [
+    os.environ.get("ONETEE_DIRECTORY_URL") or
+    "https://onetee-gate.damp-snow-8025.workers.dev/api/directory",
+    "https://onetee-api.damp-snow-8025.workers.dev/api/directory",
+]
 
 UA = "OneTeeBot/1.0 (+https://www.oneteeapp.com)"
 HEADERS = {"User-Agent": UA, "Accept": "text/html,application/xhtml+xml"}
@@ -595,10 +604,23 @@ def normalise(row: Dict) -> Dict:
     }
 
 
+def fetch_directory() -> Dict:
+    """Try each known directory host; report all of them if none answers."""
+    problems = []
+    for url in DIRECTORY_URLS:
+        try:
+            r = requests.get(url, timeout=30, headers={"User-Agent": UA})
+            if r.status_code != 200:
+                problems.append(f"{url} -> HTTP {r.status_code}")
+                continue
+            return r.json()
+        except Exception as exc:
+            problems.append(f"{url} -> {exc.__class__.__name__}")
+    raise SystemExit("Could not reach the course directory.\n  " + "\n  ".join(problems))
+
+
 def load_courses(state: str, only: Optional[str]) -> List[Dict]:
-    r = requests.get(DIRECTORY_URL, timeout=30, headers={"User-Agent": UA})
-    r.raise_for_status()
-    payload = r.json()
+    payload = fetch_directory()
 
     if isinstance(payload, list):
         raw = payload
