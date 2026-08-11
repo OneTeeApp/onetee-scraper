@@ -50,7 +50,12 @@ on:
         default: ''
 
 permissions:
-  contents: read
+  # Write, because the run commits its own results under data/. That commit is
+  # made with GITHUB_TOKEN, which by GitHub's rules cannot trigger another
+  # workflow — so nothing downstream fires and nothing deploys. It exists so the
+  # review sheet is readable straight from the repo instead of living inside a
+  # zip that has to be downloaded to be looked at.
+  contents: write
 
 jobs:
   crawl:
@@ -82,6 +87,23 @@ jobs:
           python scripts/find_course_photos.py "${ARGS[@]}" \
             --out data/course_photos.json \
             --review data/course_photos_review.html
+
+      - name: Commit results
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -f data/course_photos.json ]; then
+            echo "nothing to commit"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/course_photos.json data/course_photos_full.json \
+                  data/course_photos_review.html
+          if git diff --cached --quiet; then
+            echo "results identical to last run"; exit 0
+          fi
+          git commit -m "Course photo crawl results [skip ci]"
+          git push
 
       - name: Summary
         if: always()
