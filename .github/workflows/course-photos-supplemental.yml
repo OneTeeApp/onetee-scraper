@@ -1,0 +1,115 @@
+# =============================================================================
+# OneTee — photos for the courses with no usable website
+# =============================================================================
+#
+# WHAT THIS IS
+# `course-photos.yml` reads each course's own site. This one asks elsewhere, for
+# the courses that defeat it — thirteen Colorado courses have no website at all,
+# and rural nine-holers are exactly the cards that will otherwise look broken.
+#
+# It searches by the course's COORDINATES, not its name, because this directory
+# has been bitten by name collisions before: there is a Mountain Meadows in
+# Pomona, California as well as the one in Red Feather Lakes.
+#
+# THE FOUR SOURCES, AND WHAT EACH COSTS
+#   wikimedia  no key, free, every file states its licence. Thin coverage.
+#   flickr     free key, filtered to licences that ALLOW COMMERCIAL USE.
+#   brave      free tier (~1,000/month). Best hit rate, NO LICENCE ATTACHED —
+#              Brave's terms grant no rights to the underlying content, so every
+#              result is labelled "unknown" and outlined in orange in the picker.
+#   usgs       no key, public domain, full coverage. An aerial, not a ground
+#              photo, so it is only offered when nothing else turned up.
+#
+# KEYS (optional — a source with no key is skipped and says so in the log)
+#   Settings -> Secrets and variables -> Actions -> New repository secret
+#     FLICKR_API_KEY   flickr.com/services/apps/create/apply — free, instant
+#     BRAVE_API_KEY    brave.com/search/api — free tier, wants a card on file
+#
+# NOTHING IS CHOSEN HERE. This only adds candidates to
+# data/course_photos_full.json. Run "Find course photos" -> no; run the picker
+# generator, open the page, and choose by eye. Check the licence line under
+# every thumbnail before picking it.
+# =============================================================================
+
+name: Find course photos (other sources)
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: 'Two-letter state'
+        required: false
+        default: 'CO'
+      sources:
+        description: 'Comma-separated: wikimedia,flickr,brave,usgs'
+        required: false
+        default: 'wikimedia,flickr,brave,usgs'
+      only_file:
+        description: 'Optional path to a JSON list of venue_ids (blank = every gap)'
+        required: false
+        default: ''
+
+permissions:
+  # Same reason as the sibling workflow: the run commits its own results so the
+  # picker can be rebuilt from the repo instead of from a downloaded zip. A
+  # GITHUB_TOKEN commit cannot trigger another workflow, so nothing deploys.
+  contents: write
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install --quiet requests
+
+      - name: Look up
+        env:
+          FLICKR_API_KEY: ${{ secrets.FLICKR_API_KEY }}
+          BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          IN_STATE: ${{ inputs.state }}
+          IN_SOURCES: ${{ inputs.sources }}
+          IN_ONLY: ${{ inputs.only_file }}
+        run: |
+          set -euo pipefail
+          ARGS=(--state "$IN_STATE" --sources "$IN_SOURCES")
+          if [ -n "$IN_ONLY" ]; then ARGS+=(--only-file "$IN_ONLY"); fi
+          python scripts/find_photos_supplemental.py "${ARGS[@]}"
+
+      - name: Rebuild the picker
+        if: always()
+        run: |
+          set -euo pipefail
+          python scripts/make_photo_picker.py --state "${{ inputs.state }}" \
+            --out data/photo_picker.html
+
+      - name: Commit results
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/course_photos_full.json data/photo_picker.html
+          if git diff --cached --quiet; then
+            echo "nothing changed"; exit 0
+          fi
+          git commit -m "Supplemental photo candidates [skip ci]"
+          git push
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-photos-supplemental
+          path: |
+            data/course_photos_full.json
+            data/photo_picker.html
+          if-no-files-found: warn
+          retention-days: 30
