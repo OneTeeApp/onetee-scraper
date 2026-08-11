@@ -6,6 +6,12 @@ import http from "node:http";
 import { readFileSync } from "node:fs";
 import pg from "pg";
 
+// Postgres returns bigint (int8: COUNT/SUM, BIGSERIAL ids) as strings by default.
+// D1/SQLite returns them as numbers, and the scraper does arithmetic on counts
+// (e.g. `total += n`) once it reads through /exec in VPS-only mode. Parse int8 as
+// a JS number to match D1 — all our int8 values are far below 2^53.
+pg.types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
+
 const PORT = Number(process.env.PORT || 8080);
 const INGEST_TOKEN = process.env.INGEST_TOKEN || "";
 const DIRECTORY_PATH = process.env.DIRECTORY_PATH || "/opt/onetee-api/directory.json";
