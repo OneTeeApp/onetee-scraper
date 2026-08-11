@@ -105,70 +105,114 @@ def usgs_url(lat: float, lng: float, span_m: int = 1400, size=(1000, 640)) -> st
     return USGS_EXPORT + "?" + urllib.parse.urlencode(q)
 
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
-_geo_cache: Dict[str, Optional[tuple]] = {}
+OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
+
+# Every golf course in a state, fetched once. Keyed by state.
+_state_courses: Dict[str, List[Dict]] = {}
 
 
-def geocode_overpass(session, name: str, state: str) -> Optional[tuple]:
+def _norm(name: str) -> str:
+    """Course names, reduced to the part that actually identifies them."""
+    n = re.sub(r"[^a-z0-9 ]", " ", (name or "").lower())
+    n = re.sub(r"\b(golf|course|club|country|links|municipal|muni|the|at|and|"
+               r"of|a|resort|ranch|park|recreation|district|cc|gc)\b", " ", n)
+    return " ".join(n.split())
+
+
+def load_state_courses(session, state: str) -> List[Dict]:
     """
-    Find the course's own polygon in OpenStreetMap and return its centre.
+    Fetch every `leisure=golf_course` in the state in ONE query.
 
-    Neither `directory.json` nor the live `/api/directory` carries coordinates —
-    the geotagging work put them in D1's `venue_geo` and joined them into
-    `/api/tee-times` only, and the merge into the directory is still an open
-    item. Without a lat/lng the geo sources cannot be asked at all, which is
-    why the first supplemental run added nothing.
-
-    Asking OSM for `leisure=golf_course` **inside the state boundary** solves
-    two problems at once. It returns the centre of the actual course rather
-    than the middle of the nearest town, which is what a USGS aerial needs to
-    be framed on the right fairways. And constraining to the state makes the
-    collision that has bitten this directory before impossible: there is a
-    Mountain Meadows in Pomona, California, and it is not in Colorado.
+    The first version of this asked Overpass once per course. That was both far
+    too slow — fifty seconds each against a free shared service, so 68 courses
+    did not finish inside the job — and silently useless, because every failure
+    returned None and the run cheerfully reported "supplemented 0" without ever
+    saying it could not reach the service. One request for the whole state
+    returns a few hundred courses, and the name matching then happens locally
+    where it costs nothing and can be inspected.
     """
-    key = f"{state}|{name}".lower()
-    if key in _geo_cache:
-        return _geo_cache[key]
+    state = state.upper()
+    if state in _state_courses:
+        return _state_courses[state]
 
-    # Strip the words that appear on every course and carry no signal, so the
-    # regex is matching the distinctive part of the name.
-    stem = re.sub(r"\b(golf|course|club|country|links|municipal|the|at|and|&)\b",
-                  " ", name, flags=re.I)
-    stem = re.sub(r"[^A-Za-z0-9 ]", " ", stem).strip()
-    stem = " ".join(stem.split()[:3])
-    if len(stem) < 3:
-        _geo_cache[key] = None
-        return None
+    q = ("[out:json][timeout:180];"
+         f'area["ISO3166-2"="US-{state}"][admin_level=4]->.a;'
+         '(way["leisure"="golf_course"](area.a);'
+         ' relation["leisure"="golf_course"](area.a);'
+         ' node["leisure"="golf_course"](area.a););'
+         "out center tags;")
 
-    q = (
-        "[out:json][timeout:25];"
-        f'area["ISO3166-2"="US-{state.upper()}"][admin_level=4]->.a;'
-        "("
-        f'way["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
-        f'relation["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
-        f'node["leisure"="golf_course"]["name"~"{stem}",i](area.a);'
-        ");"
-        "out center 3;"
-    )
-    try:
-        r = session.post(OVERPASS, data={"data": q}, timeout=60,
-                         headers={"User-Agent": UA})
+    for url in OVERPASS_MIRRORS:
+        try:
+            r = session.post(url, data={"data": q}, timeout=210,
+                             headers={"User-Agent": UA})
+        except Exception as exc:
+            print(f"  overpass {url.split('/')[2]}: {exc.__class__.__name__}",
+                  file=sys.stderr)
+            continue
         if r.status_code != 200:
-            _geo_cache[key] = None
-            return None
-        els = r.json().get("elements") or []
-    except Exception:
-        _geo_cache[key] = None
-        return None
+            # Say so. A swallowed 429 is what made the first run look like
+            # "there is simply nothing out there".
+            print(f"  overpass {url.split('/')[2]}: HTTP {r.status_code}",
+                  file=sys.stderr)
+            continue
+        try:
+            els = r.json().get("elements") or []
+        except ValueError:
+            print(f"  overpass {url.split('/')[2]}: bad JSON", file=sys.stderr)
+            continue
 
-    for el in els:
-        centre = el.get("center") or ({"lat": el.get("lat"), "lon": el.get("lon")}
-                                      if el.get("lat") else None)
-        if centre and centre.get("lat") and centre.get("lon"):
-            out = (float(centre["lat"]), float(centre["lon"]))
-            _geo_cache[key] = out
-            return out
-    _geo_cache[key] = None
+        out = []
+        for el in els:
+            c = el.get("center") or ({"lat": el.get("lat"), "lon": el.get("lon")}
+                                     if el.get("lat") is not None else None)
+            nm = (el.get("tags") or {}).get("name")
+            if c and nm and c.get("lat") is not None:
+                out.append({"name": nm, "norm": _norm(nm),
+                            "lat": float(c["lat"]), "lng": float(c["lon"])})
+        print(f"  overpass: {len(out)} named golf courses in {state}", flush=True)
+        _state_courses[state] = out
+        return out
+
+    print(f"  overpass: every mirror failed for {state} — no coordinates "
+          f"available, so the geo sources will be skipped", file=sys.stderr)
+    _state_courses[state] = []
+    return []
+
+
+def match_course(courses: List[Dict], name: str) -> Optional[tuple]:
+    """
+    Match one of our courses to an OSM one, by name, within the state.
+
+    Constraining to the state first is what makes this safe: this directory has
+    already shipped a Mountain Meadows in Pomona, California in place of the one
+    in Red Feather Lakes. Inside one state a loose name match is fine; across
+    the country it is a liability.
+    """
+    want = _norm(name)
+    if not want:
+        return None
+    best, best_score = None, 0.0
+    wset = set(want.split())
+    for c in courses:
+        if not c["norm"]:
+            continue
+        if c["norm"] == want:
+            return (c["lat"], c["lng"])
+        cset = set(c["norm"].split())
+        overlap = wset & cset
+        if not overlap:
+            continue
+        score = len(overlap) / max(len(wset), len(cset))
+        if score > best_score:
+            best, best_score = c, score
+    # Two words in common out of three is a match; one word out of four is a
+    # coincidence. 0.6 keeps "Lake Estes" and rejects "Lake Valley".
+    if best and best_score >= 0.6:
+        return (best["lat"], best["lng"])
     return None
 
 
@@ -371,6 +415,9 @@ def main() -> int:
 
     print(f"looking up {len(targets)} courses via {', '.join(sources)}", flush=True)
     session = requests.Session()
+    # One request for the whole state, before the per-course loop starts.
+    osm_courses = load_state_courses(session, args.state) if any(
+        x in sources for x in ("wikimedia", "flickr", "usgs")) else []
     added = 0
     no_coords = []
 
@@ -380,12 +427,10 @@ def main() -> int:
         lat, lng = d.get("lat"), d.get("lng")
         geo_from = "directory"
         if not (lat and lng):
-            found_geo = geocode_overpass(session, r.get("name") or vid,
-                                         d.get("state") or args.state)
+            found_geo = match_course(osm_courses, r.get("name") or vid)
             if found_geo:
                 lat, lng = found_geo
                 geo_from = "osm"
-                time.sleep(max(args.sleep, 1.0))   # Overpass is a shared service
         course = {"name": r.get("name") or vid, "city": d.get("city", ""),
                   "state": d.get("state", "") or args.state, "lat": lat, "lng": lng}
         if lat and lng:
