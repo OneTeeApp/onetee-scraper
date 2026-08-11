@@ -858,6 +858,7 @@ SOURCES = [
     ("florida_golf_courses_booking.csv", "FL"),
     ("maryland_golf_courses_booking.csv", "MD"),
     ("utah_golf_courses_booking.csv", "UT"),
+    ("washington_dc_golf_courses_booking.csv", "DC"),
 ]
 
 
