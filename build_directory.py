@@ -184,6 +184,36 @@ def main() -> None:
             return curated[vid] or ""
         return phones.get(vid) or find_phone(*(r.get("Notes", "") for r in rows))
 
+    # Photos follow the same two-source rule as phones, and for the same
+    # reason. scripts/find_course_photos.py proposes whatever each course's own
+    # website publishes; that is a guess, and no filename can tell us whether
+    # there are people in the frame. local/photos.curated.json holds the picks
+    # a human made in scripts/make_photo_picker.py, is never written by the
+    # crawl, and is read first.
+    #
+    # image=null is a deliberate hold — a course where every candidate was
+    # wrong and showing nothing beats showing the wedding marquee. Membership
+    # is tested rather than truthiness so a null beats the crawl instead of
+    # falling through to the very picture it exists to suppress.
+    photos: dict[str, str] = {}
+    if os.path.exists("data/course_photos.json"):
+        with open("data/course_photos.json") as fh:
+            for vid, e in (json.load(fh) or {}).items():
+                img = e.get("image") if isinstance(e, dict) else e
+                if img:
+                    photos[vid] = img
+
+    photos_curated: dict[str, str | None] = {}
+    if os.path.exists("local/photos.curated.json"):
+        with open("local/photos.curated.json") as fh:
+            for vid, e in (json.load(fh).get("courses") or {}).items():
+                photos_curated[vid] = e.get("image") if isinstance(e, dict) else e
+
+    def photo_for(vid: str) -> str:
+        if vid in photos_curated:
+            return photos_curated[vid] or ""
+        return photos.get(vid, "")
+
     groups: "OrderedDict[tuple, list]" = OrderedDict()
     for src, state in SOURCES:
         try:
@@ -235,6 +265,9 @@ def main() -> None:
             # verifier flags.
             "action_url": booking or website,
             "phone": phone_for(vid, rows),
+            # Empty string, never absent: the widget tests truthiness and a
+            # missing key would read the same as "no photo" only by accident.
+            "photo": photo_for(vid),
             "platforms": sorted({(r.get("Booking Platform") or "").strip()
                                  for r in rows if (r.get("Booking Platform")
                                                    or "").strip()}),
@@ -265,6 +298,8 @@ def main() -> None:
     print("by state:", dict(Counter(c["state"] for c in out)))
     print("by method:", dict(Counter(c["booking_method"] for c in out)))
     print("with phone:", sum(1 for c in out if c["phone"]))
+    print("with photo:", sum(1 for c in out if c["photo"]),
+          f"({sum(1 for c in out if c['venue_id'] in photos_curated)} hand-picked)")
     print("no action_url:", sum(1 for c in out if not c["action_url"]))
 
 
