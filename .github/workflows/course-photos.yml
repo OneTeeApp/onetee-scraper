@@ -1,0 +1,109 @@
+# =============================================================================
+# OneTee — find a photo of each course
+# =============================================================================
+#
+# WHAT THIS IS
+# A hand-run crawl, not a schedule. It visits each course's own website, opens
+# the gallery / "the course" / clubhouse pages, scores every image it finds, and
+# produces two artefacts you download and look at:
+#
+#   course_photos.json         venue_id -> image URL (the table we would ship)
+#   course_photos_review.html  a contact sheet — every pick rendered as a real
+#                              picture with its runners-up beside it, plus a
+#                              table of the courses that came up empty
+#
+# NOTHING IS COMMITTED AND NOTHING IS DEPLOYED. The crawl guesses; the review
+# sheet is where a human confirms or rejects each guess. A filename cannot tell
+# us whether there are people in the frame — only your eyes can, which is the
+# entire reason the contact sheet exists. Download it, open it, scroll it.
+#
+# HOW TO RUN IT
+#   Actions -> "Find course photos" -> Run workflow -> pick a state -> Run.
+#   Start with limit 25 to see the hit rate before doing all 240.
+#
+# WHY IT LIVES HERE
+# The Cowork sandbox has no outbound internet, so the crawl cannot run there.
+# Actions runners do. This workflow reads nothing secret and writes nothing to
+# the repo, so it is safe to run as often as you like.
+# =============================================================================
+
+name: Find course photos
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: 'Two-letter state (blank = every state in the directory)'
+        required: false
+        default: 'CO'
+      limit:
+        description: 'Stop after N courses (0 = all). Use 25 for a first look.'
+        required: false
+        default: '0'
+      workers:
+        description: 'Courses crawled in parallel. 6 is polite; do not raise much.'
+        required: false
+        default: '6'
+      only:
+        description: 'Optional comma-separated venue_ids, for spot checks'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install requests
+        run: pip install --quiet requests
+
+      - name: Crawl
+        env:
+          # Through the environment rather than interpolated into the shell —
+          # a venue id with a quote in it would otherwise rewrite the command.
+          IN_STATE: ${{ inputs.state }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_WORKERS: ${{ inputs.workers }}
+          IN_ONLY: ${{ inputs.only }}
+        run: |
+          set -euo pipefail
+          ARGS=(--state "$IN_STATE" --limit "$IN_LIMIT" --workers "$IN_WORKERS")
+          if [ -n "$IN_ONLY" ]; then ARGS+=(--only "$IN_ONLY"); fi
+          python scripts/find_course_photos.py "${ARGS[@]}" \
+            --out data/course_photos.json \
+            --review data/course_photos_review.html
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f data/course_photos.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          t = json.load(open("data/course_photos.json"))
+          print("## Course photos\n")
+          print(f"Photos found: **{len(t)}**\n")
+          print("Download the `course-photos` artifact below and open")
+          print("`course_photos_review.html`. Every pick is a guess until you have")
+          print("looked at it — check for people in frame, and use the runner-up")
+          print("thumbnails to pick a replacement where the top choice is wrong.")
+          PY
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-photos
+          path: data/course_photos*
+          if-no-files-found: warn
+          retention-days: 30
