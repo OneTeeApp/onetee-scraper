@@ -100,5 +100,48 @@ systemctl restart caddy
 sleep 2
 echo "caddy active: $(systemctl is-active caddy) for ${API_HOST} (TLS provisions on first hit)"
 
+# ---------- Phase 5: nightly pg_dump backup ----------
+# On-box safety net (protects against Postgres corruption / bad writes). Offsite
+# (R2/Spaces) still TODO — needs a storage credential — and MUST exist before D1
+# is ever deleted, since until then D1 remains the only off-box copy.
+mkdir -p /root/backups
+cat > /root/onetee-backup.sh <<'BK'
+#!/usr/bin/env bash
+set -euo pipefail
+BK=/root/backups
+mkdir -p "$BK"
+export PGPASSWORD="$(grep '^DB_PASSWORD=' /root/onetee-db.env | cut -d= -f2)"
+TS=$(date +%Y%m%d-%H%M%S)
+pg_dump -h 127.0.0.1 -U onetee -d onetee | gzip > "$BK/onetee-$TS.sql.gz"
+# retain the 14 most recent dumps
+ls -1t "$BK"/onetee-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+BK
+chmod 700 /root/onetee-backup.sh
+cat > /etc/systemd/system/onetee-backup.service <<'UNIT'
+[Unit]
+Description=OneTee Postgres pg_dump backup
+[Service]
+Type=oneshot
+ExecStart=/root/onetee-backup.sh
+UNIT
+cat > /etc/systemd/system/onetee-backup.timer <<'UNIT'
+[Unit]
+Description=Nightly OneTee Postgres backup
+[Timer]
+OnCalendar=*-*-* 08:15:00 UTC
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable onetee-backup.timer >/dev/null 2>&1 || true
+systemctl start onetee-backup.timer
+# take one snapshot immediately so a backup exists right now
+if /root/onetee-backup.sh; then
+  echo "backup snapshot: $(ls -1t /root/backups/onetee-*.sql.gz | head -1) ($(du -h "$(ls -1t /root/backups/onetee-*.sql.gz | head -1)" | cut -f1))"
+else
+  echo "(immediate backup failed, continuing)"
+fi
+
 echo "---- API /api/health (localhost) ----"; curl -s http://127.0.0.1:8080/api/health; echo
 echo "== deploy done OK =="
