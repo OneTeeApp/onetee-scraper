@@ -656,6 +656,9 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="stop after N courses (0 = all)")
     ap.add_argument("--workers", type=int, default=6, help="parallel courses")
     ap.add_argument("--out", default="data/course_photos.json")
+    ap.add_argument("--full", default="data/course_photos_full.json",
+                    help="every row incl. runners-up and misses, for rebuilding "
+                         "the review sheet without re-crawling")
     ap.add_argument("--review", default="data/course_photos_review.html")
     args = ap.parse_args()
 
@@ -680,7 +683,7 @@ def main() -> int:
 
     rows.sort(key=lambda r: (r.get("name") or "").lower())
 
-    for path in (args.out, args.review):
+    for path in (args.out, args.full, args.review):
         parent = os.path.dirname(path)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -692,10 +695,16 @@ def main() -> int:
     }
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(table, fh, indent=2, sort_keys=True)
+    # The full rows keep the runners-up and the reasons for every miss, so the
+    # review sheet can be rebuilt — or re-styled — without crawling 240 sites
+    # again to answer a question the crawl already answered.
+    with open(args.full, "w", encoding="utf-8") as fh:
+        json.dump(rows, fh, indent=2, sort_keys=True)
     write_review(rows, args.review)
 
     print(f"\nDone. {len(table)}/{len(rows)} courses have a photo.")
     print(f"  table:  {args.out}")
+    print(f"  full:   {args.full}")
     print(f"  review: {args.review}   <- open this before shipping anything")
     return 0
 
