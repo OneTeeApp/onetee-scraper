@@ -100,10 +100,19 @@ def build_rows(state, full, directory, curated):
         cands = []
         if crawled.get("image"):
             cands.append({"url": crawled["image"], "score": crawled.get("score"),
-                          "w": crawled.get("w"), "h": crawled.get("h")})
+                          "w": crawled.get("w"), "h": crawled.get("h"),
+                          "source": "site", "licence": "", "credit": "",
+                          "page": crawled.get("page") or ""})
         for a in (crawled.get("alts") or []):
-            cands.append({"url": a.get("image"), "score": a.get("score"),
-                          "w": a.get("w"), "h": a.get("h")})
+            # Website-crawl alternates carry `image`; the supplemental sources
+            # carry `url` plus where it came from and what licence it is under.
+            cands.append({"url": a.get("image") or a.get("url"),
+                          "score": a.get("score"),
+                          "w": a.get("w"), "h": a.get("h"),
+                          "source": a.get("source") or "site",
+                          "licence": a.get("licence") or "",
+                          "credit": a.get("credit") or "",
+                          "page": a.get("page") or ""})
         rows.append({
             "venue_id": vid,
             "name": c.get("name") or vid,
@@ -152,7 +161,11 @@ PAGE = """<!doctype html>
           border-radius:8px; padding:2px; background:none; }}
  .shot img {{ width:100%; height:88px; object-fit:cover; border-radius:6px; background:#eee; display:block; }}
  .shot.sel {{ border-color:var(--green); }}
- .shot em {{ font-size:10px; color:var(--muted); font-style:normal; display:block; margin-top:3px; }}
+ .shot em {{ font-size:10px; color:var(--muted); font-style:normal; display:block; margin-top:3px;
+             overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
+ .shot em.lic {{ color:#166534; }}
+ .shot em.lic.bad {{ color:#c2410c; }}
+ .shot.risky img {{ outline:2px dashed #f6c9ab; outline-offset:-2px; }}
  .empty {{ font-size:13px; color:var(--muted); padding:12px 0; }}
  .row {{ display:flex; gap:8px; margin-top:10px; align-items:center; }}
  .row input {{ flex:1; min-width:0; }}
@@ -216,11 +229,19 @@ function card(r) {{
             : (chosen ? '<span class="tag ok">chosen</span>'
                       : '<span class="tag no">no photo</span>');
 
-  const shots = r.candidates.map((c, i) =>
-    '<button class="shot' + (chosen === c.url ? ' sel' : '') + '" data-url="' + esc(c.url) + '">' +
+  const SRC = {{ site:'course site', wikimedia:'Wikimedia', flickr:'Flickr',
+               brave:'Brave', usgs:'USGS aerial' }};
+  const shots = r.candidates.map((c, i) => {{
+    const risky = c.source === 'brave';
+    return '<button class="shot' + (chosen === c.url ? ' sel' : '') +
+      (risky ? ' risky' : '') + '" data-url="' + esc(c.url) + '" title="' +
+      esc((c.licence || 'licence not stated') + (c.credit ? ' \u2014 ' + c.credit : '')) + '">' +
       '<img loading="lazy" src="' + esc(c.url) + '" alt="">' +
-      '<em>' + (i === 0 ? 'crawl pick · ' : '') + (c.w || '?') + '\\u00d7' + (c.h || '?') + '</em>' +
-    '</button>').join('');
+      '<em>' + esc(SRC[c.source] || c.source || 'site') + ' &middot; ' +
+        (c.w || '?') + '\u00d7' + (c.h || '?') + '</em>' +
+      (c.licence ? '<em class="lic' + (risky ? ' bad' : '') + '">' + esc(c.licence) + '</em>' : '') +
+    '</button>';
+  }}).join('');
 
   el.innerHTML =
     '<div class="hd"><b>' + esc(r.name) + '</b><span>' + esc(r.city) + ' &middot; ' + tag + '</span></div>' +
