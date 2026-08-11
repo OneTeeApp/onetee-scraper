@@ -139,9 +139,15 @@ class HttpBackend:
         return (r.json() or {}).get("results", [])
 
     def executescript(self, sql: str) -> None:
-        for stmt in (s.strip() for s in sql.split(";")):
-            if stmt:
-                self.execute(stmt)
+        # The VPS schema is deploy-managed: vps/deploy.sh applies schema.sql +
+        # accounts-schema.sql on every deploy, and the /exec endpoint already
+        # skips DDL (CREATE/ALTER/DROP) on purpose. Replaying SCHEMA here is
+        # therefore a no-op in intent — and worse, schema.sql interleaves SQL
+        # comments, so a naive split-on-";" hands Postgres comment-prefixed
+        # fragments that slip past /exec's DDL skip and raise 42601 ("syntax
+        # error at end of input"), killing the push. Treat schema DDL as a
+        # no-op against the VPS, exactly like DualBackend does for its mirror.
+        return
 
 
 class DualBackend:
