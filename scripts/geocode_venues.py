@@ -29,12 +29,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 
 import requests
 
-from scraper.d1 import D1Rest, SqliteLocal
+from scraper.d1 import D1Rest, HttpBackend, SqliteLocal
 
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 # Nominatim's usage policy: a genuine, identifying User-Agent and <= 1 req/sec.
@@ -113,7 +114,15 @@ def main(argv=None) -> int:
     p.add_argument("--directory", default=DIRECTORY)
     a = p.parse_args(argv)
 
-    db = SqliteLocal(a.local) if a.local else D1Rest()
+    if a.local:
+        db = SqliteLocal(a.local)
+    elif os.environ.get("VPS_ONLY") == "1":
+        # Same cutover switch as scraper.d1's CLI: geocodes land in the VPS
+        # Postgres venue_geo, not the retired D1.
+        db = HttpBackend()
+        print("VPS-ONLY backend (D1 disabled)", file=sys.stderr)
+    else:
+        db = D1Rest()
     ensure_table(db)
     have = already_geocoded(db)
 
