@@ -126,9 +126,21 @@ jobs:
             #
             # The full pass covers 0-3 rather than 1-3 on purpose: day 0 is
             # scraped first either way, so its stamp is refreshed at the top of
-            # every pass and the worst-case gap between day-0 refreshes is one
-            # full pass (~2h), still inside the 3h grace.
-            if [ "$FULL_EVERY" -le 1 ] || [ $(( PASS % FULL_EVERY )) -eq 1 ]; then
+            # every pass.
+            #
+            # `-eq 0`, so the full sweep lands on passes 4, 8, 12 — NOT on pass
+            # 1. PASS resets to 0 at the start of every run, and this loop
+            # self-chains every ~5.5h and restarts after any crash or cancel.
+            # With `-eq 1` every run opened with a ~2h full sweep before day 0
+            # got its fast cadence, which spends two thirds of day 0's 3h grace
+            # at precisely the moment it is most likely to be stale. Now a run
+            # opens with three quick day-0 passes and day 0 is refreshed within
+            # ~30-40 min of any restart. Days 1-3 drop to roughly every 3.5h,
+            # comfortably inside their 6h grace.
+            #
+            # The `-le 1` guard is load-bearing, not decoration: FULL_EVERY=0
+            # would make $(( PASS % FULL_EVERY )) a division-by-zero error.
+            if [ "$FULL_EVERY" -le 1 ] || [ $(( PASS % FULL_EVERY )) -eq 0 ]; then
               WINDOW=4
             else
               WINDOW=1
