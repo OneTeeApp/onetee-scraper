@@ -103,7 +103,16 @@ jobs:
             echo "results identical to last run"; exit 0
           fi
           git commit -m "Course photo crawl results [skip ci]"
-          git push
+          # Rebase-and-retry, because a bare push throws away the whole crawl the
+          # moment anything else lands on main first. Run 31563090612 did exactly
+          # that: twenty-one courses crawled successfully, then "failed to push
+          # some refs" and the results were gone. The sibling workflows all learnt
+          # this already; this one had not.
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((i * 5))
+          done
+          echo "could not push the crawl results after 5 attempts"; exit 1
 
       - name: Summary
         if: always()
