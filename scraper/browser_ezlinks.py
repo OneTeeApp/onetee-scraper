@@ -31,6 +31,19 @@ from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
 
+# Cloudflare's managed challenge used to be handled with a flat
+# `wait_for_timeout(7000)` per portal — paid in full by all 65 portals whether
+# the challenge had cleared or not. Measured 2026-08-12: that was 9.2 min of a
+# 10.4 min day-0 pass spent asleep, 88% of the platform's entire runtime, and
+# ezlinks was 43% of the whole six-platform pass.
+#
+# FLOW_JS returns at the init stage within milliseconds when the challenge has
+# NOT cleared, so re-running it is far cheaper than waiting for the worst case.
+# 7s survives as the CAP rather than the COST.
+CHALLENGE_SETTLE_MS = 800     # let the portal's own JS start before probing
+CHALLENGE_POLL_MS = 600       # gap between probes; ~11 probes worst case
+CHALLENGE_CAP_MS = 7000       # same ceiling the flat sleep used
+
 # init + search, run inside the page (real browser TLS + portal origin). Returns
 # the raw r06 rows; EZLinksAdapter.raw_to_slots maps them downstream.
 FLOW_JS = r"""
@@ -86,6 +99,7 @@ def run(date: dt.date, registry_path: str, out_path: str,
 
     tee_times, errors = [], []
     ok_slugs: set[str] = set()
+    challenge_ms: list[int] = []   # what the poll actually cost, per attempt
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=["--no-sandbox"])
         page = browser.new_page(user_agent=USER_AGENT)
@@ -98,8 +112,19 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 try:
                     page.goto(f"https://{portal}.ezlinksgolf.com/index.html#!/search",
                               wait_until="domcontentloaded", timeout=45000)
-                    page.wait_for_timeout(7000)  # let Cloudflare's JS auto-clear
-                    r = page.evaluate(FLOW_JS, [date_mdy])
+                    # Poll for the challenge to clear instead of assuming the
+                    # worst case. A probe that finds it uncleared costs one
+                    # cheap /api/search/init call and returns immediately at
+                    # stage "init"; search is only reached once we are through.
+                    page.wait_for_timeout(CHALLENGE_SETTLE_MS)
+                    waited = CHALLENGE_SETTLE_MS
+                    while True:
+                        r = page.evaluate(FLOW_JS, [date_mdy])
+                        if r.get("stage") != "init" or waited >= CHALLENGE_CAP_MS:
+                            break
+                        page.wait_for_timeout(CHALLENGE_POLL_MS)
+                        waited += CHALLENGE_POLL_MS
+                    challenge_ms.append(waited)
                     last = f"{r.get('stage')} {r.get('status') or r.get('error')}" + (
                         " parse_failed" if r.get("parse_failed") else "")
                     if (r.get("stage") == "search" and r.get("status") == 200
@@ -146,6 +171,14 @@ def run(date: dt.date, registry_path: str, out_path: str,
     out = pathlib.Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(doc, indent=2))
+    if challenge_ms:
+        # Report the thing we just optimised, so the next change to it is
+        # argued from a number instead of an estimate.
+        tot = sum(challenge_ms) / 1000.0
+        log.info("challenge wait: %.0fs total, %.1fs mean over %d probes "
+                 "(flat-7s equivalent would have been %.0fs)",
+                 tot, tot / len(challenge_ms), len(challenge_ms),
+                 len(challenge_ms) * 7.0)
     log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
     return doc
 
