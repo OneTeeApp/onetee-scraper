@@ -75,7 +75,15 @@ DIRECTORY_URLS = [
     "https://onetee-api.damp-snow-8025.workers.dev/api/directory",
 ]
 
-UA = "OneTeeBot/1.0 (+https://www.oneteeapp.com)"
+# Conventional well-behaved-crawler format — the shape Googlebot uses: a
+# "Mozilla/5.0 (compatible; ...)" wrapper around an honest bot identity and a
+# contact URL. The bare "OneTeeBot/1.0" it used before is equally truthful, but
+# a UA with no Mozilla token is rejected out of hand by a great many WordPress
+# and Cloudflare security rules. That is how sites which load perfectly in a
+# browser — Riverdale, the Olde Course at Loveland, Harmony Club — were recorded
+# as "home page unreachable". This still says who we are and still honours
+# robots.txt; it does not pretend to be a person.
+UA = "Mozilla/5.0 (compatible; OneTeeBot/1.0; +https://www.oneteeapp.com)"
 HEADERS = {"User-Agent": UA, "Accept": "text/html,application/xhtml+xml"}
 
 PAGE_TIMEOUT = 12
@@ -248,27 +256,48 @@ def host_variants(url: str) -> List[str]:
     return out
 
 
-def get_html_any(session: requests.Session, url: str) -> Tuple[Optional[str], Optional[str]]:
-    """First spelling of the host that answers with HTML."""
+def get_html_any(session: requests.Session, url: str,
+                 why: Optional[List[str]] = None) -> Tuple[Optional[str], Optional[str]]:
+    """First spelling of the host that answers with HTML.
+
+    Pass `why` to collect the reason each spelling refused, so a caller can say
+    what actually happened instead of guessing.
+    """
     for candidate in host_variants(url):
-        final, html = get_html(session, candidate)
+        final, html = get_html(session, candidate, why)
         if html:
             return final, html
         time.sleep(0.25)
     return None, None
 
 
-def get_html(session: requests.Session, url: str) -> Tuple[Optional[str], Optional[str]]:
-    """Return (final_url, html). Caps the read so one huge page can't stall us."""
-    if not robots_allow(session, url):
+def get_html(session: requests.Session, url: str,
+             why: Optional[List[str]] = None) -> Tuple[Optional[str], Optional[str]]:
+    """Return (final_url, html). Caps the read so one huge page can't stall us.
+
+    Every failure here used to collapse to (None, None), and the caller reported
+    all of them as "home page unreachable" — so a 403 from a bot filter, a
+    robots.txt rule, a non-HTML content type and a real timeout were
+    indistinguishable in the output. That is how twenty-one Colorado courses got
+    written down as having no photo on the internet, when what had actually
+    happened was that the door was shut in four different ways. `why` collects
+    the reason.
+    """
+    def fail(reason: str) -> Tuple[Optional[str], Optional[str]]:
+        if why is not None:
+            why.append(f"{urllib.parse.urlsplit(url).netloc} {reason}")
         return None, None
+
+    if not robots_allow(session, url):
+        return fail("robots.txt disallows us")
     try:
         r = session.get(url, timeout=PAGE_TIMEOUT, headers=HEADERS,
                         allow_redirects=True, stream=True)
         if r.status_code != 200:
-            return None, None
+            return fail(f"HTTP {r.status_code}")
         if "html" not in (r.headers.get("Content-Type") or "").lower():
-            return None, None
+            ct = (r.headers.get("Content-Type") or "?").split(";")[0]
+            return fail(f"not HTML ({ct})")
         chunks, total = [], 0
         for chunk in r.iter_content(16_384):
             chunks.append(chunk)
@@ -277,8 +306,8 @@ def get_html(session: requests.Session, url: str) -> Tuple[Optional[str], Option
                 break
         r.close()
         return r.url, b"".join(chunks).decode(r.encoding or "utf-8", errors="replace")
-    except Exception:
-        return None, None
+    except Exception as exc:  # noqa: BLE001
+        return fail(exc.__class__.__name__)
 
 
 def get_image_header(session: requests.Session, url: str) -> Optional[bytes]:
@@ -517,9 +546,14 @@ def find_photo_for(course: Dict) -> Dict:
 
     session = requests.Session()
     try:
-        home_url, home_html = get_html_any(session, site)
+        why: List[str] = []
+        home_url, home_html = get_html_any(session, site, why)
         if not home_html:
-            result["note"] = "home page unreachable"
+            # Name the refusal. "unreachable" alone reads as "this course has no
+            # website worth crawling", which sent a human hunting for photos
+            # that were sitting on the home page all along.
+            result["note"] = ("home page unreachable — " + "; ".join(why[:2])) \
+                if why else "home page unreachable"
             return result
 
         scan: List[Tuple[str, str, int]] = [(home_url, home_html, 10)]
