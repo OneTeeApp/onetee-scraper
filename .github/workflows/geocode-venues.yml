@@ -1,7 +1,8 @@
 name: Geocode venues (backfill venue_geo)
 
-# Fills the D1 `venue_geo` table (venue_id -> lat/lng) that the Worker LEFT JOINs
-# onto every course, so the "near me" filter has coordinates for the WHOLE
+# Fills the VPS Postgres `venue_geo` table (venue_id -> lat/lng), which the gate
+# LEFT JOINs onto every course and build_directory.py now reads into
+# directory.json, so the "near me" filter has coordinates for the WHOLE
 # directory — not just the CO/AZ/VA courses someone geocoded by hand. Reads
 # directory.json, geocodes each still-missing venue course-precise via Nominatim
 # (city-centre fallback), writes each row as it resolves. Idempotent + resumable:
@@ -41,10 +42,15 @@ jobs:
       - run: pip install requests
 
       - name: Backfill venue_geo
+        # VPS_ONLY is what makes scripts/geocode_venues.py pick HttpBackend.
+        # Without it the script falls through to D1Rest, and D1 was deleted in
+        # the 2026-08-11 cutover — so every run since has been geocoding into a
+        # database that does not exist. That is why `venue_geo` was empty when
+        # build_directory.py first went looking for it: 1,606 venues, 0 rows.
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
         run: |
           set -o pipefail
           ARGS=""
