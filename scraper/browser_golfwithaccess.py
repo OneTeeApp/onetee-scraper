@@ -45,6 +45,15 @@ from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
 
+# Same finding as browser_ezlinks, same fix. Measured 2026-08-12: the day-0
+# pass spent 243s here across 17 tenants, and 17 x (8.0s settle + 1.5s pacing)
+# = 162s of that — 67% — was fixed sleeping. The SPA's own tee-times response
+# is observable the moment it lands, so poll for it and keep 8s as the CAP
+# rather than the COST. The pacing stays; that one is politeness, not waste.
+SETTLE_MS = 800      # let the SPA boot before we start looking
+POLL_MS = 600        # gap between checks
+SETTLE_CAP_MS = 8000 # same ceiling the flat wait used
+
 TEE_TIMES_MARKER = "/api/v1/tee-times"
 RESERVE_URL = "https://golfwithaccess.com/course/{tenant}/reserve-tee-time?date={date}&players=2"
 
@@ -64,7 +73,8 @@ def _slot_key(s: dict) -> tuple:
             d.get("hour"), d.get("minute"), s.get("holesOption"))
 
 
-def _capture_tenant(page, tenant: str, date: dt.date) -> tuple[list[dict], str | None]:
+def _capture_tenant(page, tenant: str, date: dt.date,
+                    settle_ms: list | None = None) -> tuple[list[dict], str | None]:
     """Navigate a tenant's reserve page and return the merged, de-duped raw
     teeTimes captured from the SPA's own request(s). Second element is an error
     string on failure, else None."""
@@ -75,10 +85,26 @@ def _capture_tenant(page, tenant: str, date: dt.date) -> tuple[list[dict], str |
         page.on("response", handler)
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            # Let the SPA boot, clear any managed Cloudflare JS check, and fire
-            # its tee-times request(s). networkidle would be ideal but the page
-            # keeps long-poll/analytics sockets open, so use a fixed settle.
-            page.wait_for_timeout(8000)
+            # Wait for the SPA to boot, clear any managed Cloudflare JS check,
+            # and fire its tee-times request(s). networkidle is no good here —
+            # the page keeps long-poll/analytics sockets open — but we do not
+            # need it: the response listener above tells us the moment the
+            # request we care about lands, so poll for that instead of sleeping
+            # the worst case. A 200 with zero teeTimes is a legitimate "no
+            # inventory" and still ends the wait; what we are waiting for is the
+            # REQUEST firing, not slots existing.
+            page.wait_for_timeout(SETTLE_MS)
+            waited = SETTLE_MS
+            while waited < SETTLE_CAP_MS:
+                try:
+                    if any(r.status == 200 for r in list(resps)):
+                        break
+                except Exception:  # noqa: BLE001 — a response still settling
+                    pass
+                page.wait_for_timeout(POLL_MS)
+                waited += POLL_MS
+            if settle_ms is not None:
+                settle_ms.append(waited)
         except Exception as e:  # noqa: BLE001
             page.remove_listener("response", handler)
             if attempt == 2:
@@ -170,13 +196,14 @@ def run(date: dt.date, registry_path: str, out_path: str,
 
     tee_times, errors = [], []
     ok_slugs: set[str] = set()
+    settle_ms: list[int] = []   # what the poll actually cost, per tenant
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=["--no-sandbox"])
         page = browser.new_page(user_agent=USER_AGENT)
         for i, (tenant, tcourses) in enumerate(tenants.items()):
             if i:
                 page.wait_for_timeout(1500)     # pace between tenants
-            slots, err = _capture_tenant(page, tenant, date)
+            slots, err = _capture_tenant(page, tenant, date, settle_ms)
             if err:
                 for c in tcourses:
                     errors.append({"course": c["slug"], "platform": "golfwithaccess",
@@ -210,6 +237,12 @@ def run(date: dt.date, registry_path: str, out_path: str,
     out = pathlib.Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(doc, indent=2))
+    if settle_ms:
+        tot = sum(settle_ms) / 1000.0
+        log.info("SPA settle: %.0fs total, %.1fs mean over %d tenants "
+                 "(flat-8s equivalent would have been %.0fs)",
+                 tot, tot / len(settle_ms), len(settle_ms),
+                 len(settle_ms) * 8.0)
     log.info("wrote %s (%d tee times, %d errors)", out, len(tee_times), len(errors))
     return doc
 
