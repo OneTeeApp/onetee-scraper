@@ -19,9 +19,28 @@ name: Scrape browser platforms near (days 0-3, self-chaining loop)
 # the account's hosted-runner pool: scheduled maintenance, the cps residential
 # browser job, and ad-hoc runs failed to acquire a runner ("The job was not
 # acquired by Runner of type hosted"). Looping the 6 platforms SEQUENTIALLY in a
-# single job holds ONE runner instead of six; a full 6-platform pass over days
-# 0-3 still finishes in ~15-25 min, far inside the 3h/6h freshness grace, so
-# near stays fresh at a fraction of the runner cost.
+# single job holds ONE runner instead of six.
+#
+# 2026-08-12 — THE "~15-25 min" IN THE NOTE ABOVE WAS NEVER MEASURED. It was an
+# estimate, and it was wrong by a factor of five. Actual logged pass times:
+#
+#   parallel matrix (run 31070246265, one platform per shard)
+#     pass 1  1854s   pass 2  1871s   pass 3  1945s
+#     pass 4  1898s   pass 5  1785s   pass 6  1946s      ~31 min per pass
+#
+#   sequential, all 6 platforms (run 31238525941)
+#     pass 1  7176s   pass 2  7415s                      ~2 HOURS per pass
+#
+# Two hours against a day-0 freshness grace of 3h means day 0 spent most of its
+# life close to expiry, and any hiccup pushed it over — which is what "the tee
+# times are wrong" looked like from the outside. Collapsing to sequential did
+# save five runners, but it cost 4x the cadence, and nobody measured it.
+#
+# THE FIX, and why it is not "go back to the matrix": scrape DAY 0 EVERY PASS
+# and days 1-3 only every FULL_EVERY passes. Day 0 alone is a quarter of the
+# work, so a day-0 pass lands around 30 min — the same cadence the 6-runner
+# matrix achieved, on ONE runner. Days 1-3 refresh every ~3h, well inside their
+# 6h grace, because nobody's Tuesday tee time moves minute to minute.
 
 on:
   schedule:
@@ -49,6 +68,9 @@ concurrency:
 env:
   INTERVAL_SECONDS: 300         # min seconds per pass; a sequential browser pass
                                 # exceeds this, so passes run back-to-back
+  FULL_EVERY: 4                 # every Nth pass also does days 1-3. Every other
+                                # pass is day 0 only. 1 = always full (old
+                                # behaviour); raise it to favour day-0 cadence.
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
 
 jobs:
@@ -97,9 +119,23 @@ jobs:
             PASS=$((PASS + 1))
             T0=$(date +%s)
             mkdir -p output
-            # Days 0-3; dates from scraper.dates (union of local todays).
-            DATES=$(python -m scraper.dates --registry registry.json --days 4)
+            # Day 0 every pass; days 0-3 every FULL_EVERY passes. `--days 1`
+            # is still a UNION of local todays, so near a date boundary it
+            # correctly yields two dates (Denver has ticked over while Phoenix
+            # has not) — this is not "one date", it is "today, everywhere".
+            #
+            # The full pass covers 0-3 rather than 1-3 on purpose: day 0 is
+            # scraped first either way, so its stamp is refreshed at the top of
+            # every pass and the worst-case gap between day-0 refreshes is one
+            # full pass (~2h), still inside the 3h grace.
+            if [ "$FULL_EVERY" -le 1 ] || [ $(( PASS % FULL_EVERY )) -eq 1 ]; then
+              WINDOW=4
+            else
+              WINDOW=1
+            fi
+            DATES=$(python -m scraper.dates --registry registry.json --days "$WINDOW")
             CSV=$(echo "$DATES" | paste -sd, -)
+            echo "pass ${PASS}: window=${WINDOW} day(s) -> $(echo "$DATES" | paste -sd' ' -)"
             for PLAT in $PLATFORMS; do
               case "$PLAT" in
                 clubcaddie)
@@ -107,7 +143,7 @@ jobs:
                   # and writes output/cc_<date>.json per date.
                   D0=$(echo "$DATES" | head -1)
                   echo "::group::clubcaddie near pass ${PASS}"
-                  python -m scraper.browser_clubcaddie --date "$D0" --days 4 --out-dir output || true
+                  python -m scraper.browser_clubcaddie --date "$D0" --days "$WINDOW" --out-dir output || true
                   for DATE in $DATES; do
                     python -m scraper.d1 push --data "output/cc_${DATE}.json" || true
                   done
