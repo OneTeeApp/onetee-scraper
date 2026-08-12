@@ -149,9 +149,21 @@ def main(argv=None) -> int:
                       c.get("state", ""))
         if res:
             lat, lng, src = res
+            # Written as a native upsert rather than SQLite's "INSERT OR
+            # REPLACE", because the VPS /exec endpoint rewrites that form using
+            # a hard-coded primary-key map (vps/api/server.mjs) that lists only
+            # tee_times and sheet_freshness. venue_geo is absent from it, so the
+            # rewrite produced "ON CONFLICT ()" and Postgres rejected every row.
+            # ON CONFLICT DO UPDATE passes straight through, and SQLite has
+            # supported the same syntax since 3.24, so the --local path is
+            # unaffected. (server.mjs's map should still gain venue_geo; that
+            # needs a VPS deploy, and this does not.)
             db.execute(
-                "INSERT OR REPLACE INTO venue_geo (venue_id, lat, lng, source) "
-                "VALUES (?, ?, ?, ?)", [c["venue_id"], lat, lng, src])
+                "INSERT INTO venue_geo (venue_id, lat, lng, source) "
+                "VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (venue_id) DO UPDATE SET "
+                "lat=EXCLUDED.lat, lng=EXCLUDED.lng, source=EXCLUDED.source",
+                [c["venue_id"], lat, lng, src])
             if src == "nominatim-name":
                 name_hits += 1
             else:
