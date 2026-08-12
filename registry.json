@@ -6,7 +6,8 @@
   "florida_golf_courses_booking.csv",
   "maryland_golf_courses_booking.csv",
   "utah_golf_courses_booking.csv",
-  "washington_dc_golf_courses_booking.csv"
+  "washington_dc_golf_courses_booking.csv",
+  "alaska_golf_courses_booking.csv"
  ],
  "courses": [
   {
@@ -18948,6 +18949,217 @@
    "status": "ready",
    "confidence": "high",
    "notes": "Pro shop (202) 554-7660 | 9-hole executive course, par 33; doubles as FootGolf layout | Shared playDCgolf tenant; WHITE is facility 17645 per kenna facilities list 2026-08-11; 61 slots served for 8/12"
+  },
+  {
+   "slug": "anchorage-golf-course",
+   "name": "Anchorage Golf Course",
+   "display_name": "",
+   "city": "Anchorage",
+   "state": "AK",
+   "venue_id": "anchorage-golf-course",
+   "source_role": "primary",
+   "platform": "clubprophet",
+   "booking_url": "https://anchoragegc.cps.golf/onlineresweb/search-teetime",
+   "ids": {
+    "tenant": "anchoragegc"
+   },
+   "status": "needs_ids",
+   "confidence": "high",
+   "notes": "Pro shop (907) 522-3363 | 18 holes par 72, Bill Newcomb 1987; season ~May 15-Oct 1 | Southcentral/Anchorage region | Source sheet only found the JS-gated course site; the MODERN public CPS tenant anchoragegc.cps.golf was found and verified live 2026-08-11 (no login wall, $84 slots for 8/13) - same Lake Arbor pattern. Legacy secure.west.prophetservices.com/AnchorageGC is the old login portal, do not use"
+  },
+  {
+   "slug": "settlers-bay-golf-course",
+   "name": "Settlers Bay Golf Course",
+   "display_name": "",
+   "city": "Wasilla",
+   "state": "AK",
+   "venue_id": "settlers-bay-golf-course",
+   "source_role": "primary",
+   "platform": "clubprophet",
+   "booking_url": "https://settlersbay.cps.golf/onlineresweb/search-teetime",
+   "ids": {
+    "tenant": "settlersbay"
+   },
+   "status": "needs_ids",
+   "confidence": "high",
+   "notes": "Pro shop (907) 376-5466 | 18 holes par 71-72 at Mile 8 Knik Rd | Mat-Su Valley region | Source sheet said vendor unconfirmed: the embedded widget on settlersbay.com/book-a-tee-time is an iframe to the PUBLIC CPS tenant settlersbay.cps.golf (read live 2026-08-11; $53-65 slots served for 8/13, multi-course selector)"
+  },
+  {
+   "slug": "moose-run-golf-course-creek-course",
+   "name": "Moose Run Golf Course - Creek Course",
+   "display_name": "",
+   "city": "Anchorage",
+   "state": "AK",
+   "venue_id": "moose-run-golf-course-creek-course",
+   "source_role": "primary",
+   "platform": "other:cps-login",
+   "booking_url": "https://mooserun.cps.golf/",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "high",
+   "notes": "Pro shop (907) 384-4653 | 18 holes par 72 7324 yds (2000); Army MWR, civilians welcome with base access; Alaska's only 36-hole facility | Southcentral/Anchorage region | NOT scrapeable: mooserun.cps.golf is a LOGIN-WALLED CPS tenant (verified 2026-08-11 - /search-teetime redirects to auth/verify-email, same class as West Woods CO) and their own site links only this. GolfNow carries course-info pages but no tee-time facility. Book on their site with an account"
+  },
+  {
+   "slug": "moose-run-golf-course-hill-course",
+   "name": "Moose Run Golf Course - Hill Course",
+   "display_name": "",
+   "city": "Anchorage",
+   "state": "AK",
+   "venue_id": "moose-run-golf-course-hill-course",
+   "source_role": "primary",
+   "platform": "other:cps-login",
+   "booking_url": "https://mooserun.cps.golf/",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "high",
+   "notes": "Pro shop (907) 384-4653 | 18 holes par 72 6492 yds (1952, redesigned 1996); shares clubhouse and the login-walled Club Prophet tee sheet with the Creek Course | Southcentral/Anchorage region | Same login-walled tenant as Creek - see that row; if the tenant ever goes public like Lake Arbor/Anchorage GC, onboarding is a one-line flip to clubprophet"
+  },
+  {
+   "slug": "chena-bend-golf-course",
+   "name": "Chena Bend Golf Course",
+   "display_name": "",
+   "city": "Fort Wainwright",
+   "state": "AK",
+   "venue_id": "chena-bend-golf-course",
+   "source_role": "primary",
+   "platform": "teeitup",
+   "booking_url": "https://chena-bend-golf-course.book.teeitup.com/?course=18083",
+   "ids": {
+    "alias": "chena-bend-golf-course",
+    "facility_id": "18083"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Pro shop (907) 353-6223 | 18 holes par 72 6476 yds; Army MWR, farthest-north US military course; civilians need a base Recreational Pass (military book 14 days out, civilians 7) | Interior/Fairbanks region | kenna alias verified = vanity host, facility 18083, timeZone America/Anchorage from facility metadata; 37-38 slots served for 8/13-8/15 at probe time 2026-08-11"
+  },
+  {
+   "slug": "kenai-golf-course",
+   "name": "Kenai Golf Course",
+   "display_name": "",
+   "city": "Kenai",
+   "state": "AK",
+   "venue_id": "kenai-golf-course",
+   "source_role": "primary",
+   "platform": "teesnap",
+   "booking_url": "https://kenaigolfcourse.teesnap.net/",
+   "ids": {
+    "subdomain": "kenaigolfcourse"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Pro shop (907) 283-7500 | 18-hole full-service course, opened 1986; only 18-holer on the Kenai Peninsula | Kenai Peninsula region | Source sheet saw a Teesnap maintenance banner Aug 2026 - cleared by 2026-08-11, tenant page loads normally"
+  },
+  {
+   "slug": "palmer-municipal-golf-course",
+   "name": "Palmer Municipal Golf Course",
+   "display_name": "",
+   "city": "Palmer",
+   "state": "AK",
+   "venue_id": "palmer-municipal-golf-course",
+   "source_role": "primary",
+   "platform": "teesnap",
+   "booking_url": "https://palmergc.teesnap.net/",
+   "ids": {
+    "subdomain": "palmergc"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Pro shop (907) 745-4653 | 18 holes par 72, city-owned; also branded Palmer Golf Course; season ~mid-Apr to Oct | Mat-Su Valley region | Teesnap tenant verified loading 2026-08-11"
+  },
+  {
+   "slug": "birch-ridge-golf-course",
+   "name": "Birch Ridge Golf Course",
+   "display_name": "",
+   "city": "Soldotna",
+   "state": "AK",
+   "venue_id": "birch-ridge-golf-course",
+   "source_role": "primary",
+   "platform": "teesnap",
+   "booking_url": "https://birchridgegolf.teesnap.net/",
+   "ids": {
+    "subdomain": "birchridgegolf"
+   },
+   "status": "ready",
+   "confidence": "high",
+   "notes": "Pro shop (907) 262-5270 | 9 holes with alternate tees/greens for 18, Thomas R. Smith 1973, Mile 92 Sterling Hwy | Kenai Peninsula region | Teesnap tenant verified loading 2026-08-11; pro shop also takes phone reservations"
+  },
+  {
+   "slug": "bird-homestead-golf-course",
+   "name": "Bird Homestead Golf Course",
+   "display_name": "",
+   "city": "Soldotna",
+   "state": "AK",
+   "venue_id": "bird-homestead-golf-course",
+   "source_role": "primary",
+   "platform": "golfnow",
+   "booking_url": "https://www.golfnow.com/tee-times/facility/17923-bird-homestead-golf-course/search",
+   "ids": {
+    "golfnow_facility_id": "17923",
+    "golfnow_slug": "bird-homestead-golf-course"
+   },
+   "status": "experimental",
+   "confidence": "high",
+   "notes": "Pro shop (907) 260-4653 | 9 holes par 37 3250 yds on Funny River Rd, built 2004; driving range and teaching pro | Kenai Peninsula region | GolfNow facility 17923 is its only online channel (no course website found)"
+  },
+  {
+   "slug": "midnight-sun-golf-course",
+   "name": "Midnight Sun Golf Course",
+   "display_name": "",
+   "city": "Fairbanks",
+   "state": "AK",
+   "venue_id": "midnight-sun-golf-course",
+   "source_role": "primary",
+   "platform": "other:square",
+   "booking_url": "https://tournaments-104128.square.site/tee-times",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "high",
+   "notes": "Pro shop (907) 415-1264 | 18 holes par 72; formerly North Star Golf Club (1993) - northernmost 18-hole course in the USA | Interior/Fairbanks region | Books through Square Online, no scrapeable tee sheet - directory card points at their Square site"
+  },
+  {
+   "slug": "sleepy-hollow-golf-course",
+   "name": "Sleepy Hollow Golf Course",
+   "display_name": "",
+   "city": "Wasilla",
+   "state": "AK",
+   "venue_id": "sleepy-hollow-golf-course",
+   "source_role": "primary",
+   "platform": "other:square",
+   "booking_url": "https://sleepy-hollow-golf-course.square.site/",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "high",
+   "notes": "Pro shop (907) 521-0151 | 9-hole par-3; open year-round with a GCQuad simulator | Mat-Su Valley region | Square booking site confirmed on the course's own site; not a scrapeable tee sheet"
+  },
+  {
+   "slug": "black-diamond-golf-course",
+   "name": "Black Diamond Golf Course",
+   "display_name": "",
+   "city": "Healy",
+   "state": "AK",
+   "venue_id": "black-diamond-golf-course",
+   "source_role": "primary",
+   "platform": "other:fareharbor",
+   "booking_url": "https://fareharbor.com/embeds/book/blackdiamondtourco/items/236141/",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "high",
+   "notes": "Pro shop (907) 683-4653 | 9-hole tundra course near Denali NP, built 1995; season May 13-Sept 21; rate includes hotel shuttle and clubs | Interior/Fairbanks region | Books through FareHarbor (tour-booking platform), not a scrapeable tee sheet"
+  },
+  {
+   "slug": "homer-golf-course",
+   "name": "Homer Golf Course (The Tips)",
+   "display_name": "",
+   "city": "Homer",
+   "state": "AK",
+   "venue_id": "homer-golf-course",
+   "source_role": "primary",
+   "platform": "other:square",
+   "booking_url": "https://homergolf.com/ola/services/book-a-tee-time",
+   "ids": {},
+   "status": "unsupported",
+   "confidence": "medium",
+   "notes": "Pro shop (907) 301-4021 | 9-hole all-par-3, par 27, ~1000 yds on East End Rd; formerly Kachemak Bay Lynx and Shoreline GC | Kenai Peninsula region | Online booking via a Square Appointments (/ola/) page on their own domain; source notes directory phone listings conflict - verify by phone"
   }
  ]
 }
