@@ -77,10 +77,18 @@ jobs:
       # venue carries lat/lng. Without them it falls back to the committed
       # local/venue_geo.json, and without that the fields are null — i.e. the
       # behaviour before coordinates existed. Never fatal.
+      #
+      # Spelled exactly as every scrape workflow spells it. The first version of
+      # this step read `secrets.ONETEE_API_URL` / `secrets.ONETEE_INGEST_TOKEN`,
+      # which are not secrets that exist; GitHub substitutes an empty string for
+      # an undefined secret rather than failing, so the build silently took the
+      # no-credentials path and published 1,606 null coordinates while reporting
+      # success. An env var that is quietly empty looks exactly like a feature
+      # that is quietly off.
       - name: Build
         env:
-          ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
-          ONETEE_INGEST_TOKEN: ${{ secrets.ONETEE_INGEST_TOKEN }}
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
         run: |
           set -o pipefail
           python3 build_directory.py | tee directory.log
