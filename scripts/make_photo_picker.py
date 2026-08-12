@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from html import escape
 
@@ -47,6 +48,15 @@ def load_json(path, default):
             return json.load(fh)
     except (OSError, ValueError) as exc:
         sys.exit(f"could not read {path}: {exc}")
+
+
+# "More than one http in the string" looked like a srcset test and was not:
+# plenty of CDNs proxy an image through a query parameter — golf-pass and
+# chronogolf both do — so `?url=https%3A%2F%2F…` tripped it and six perfectly
+# good URLs were reported broken. A srcset is a comma followed by another URL,
+# or a width/density descriptor. Test for those.
+SRCSET_RE = re.compile(r",\s+https?://")
+DESCRIPTOR_RE = re.compile(r"\s\d+(?:\.\d+)?[wx](?:,|\s*$)")
 
 
 def warnings_for(curated):
@@ -67,7 +77,7 @@ def warnings_for(curated):
         low = url.strip().lower()
         if low.startswith("data:"):
             warn[vid] = "This is a base64 blob, not a link — it will not load."
-        elif " 1x," in url or " 2x," in url or url.count("http") > 1:
+        elif SRCSET_RE.search(url) or DESCRIPTOR_RE.search(url):
             warn[vid] = "This is a whole srcset, not one image URL."
         elif low.startswith("http://"):
             warn[vid] = "http:// is blocked as mixed content on the https site."
@@ -250,7 +260,7 @@ function card(r) {{
     (r.candidates.length
       ? '<div class="shots">' + shots + '</div>'
       : '<div class="empty">No candidate found' + (r.note ? ' \\u2014 ' + esc(r.note) : '') +
-        '. Open the site and paste a picture URL.</div>') +
+        '. Open the site, right-click the picture you want and choose <b>Copy image address</b>, then paste it below. Copying the picture itself pastes it inline rather than as a link, which cannot be used.</div>') +
     '<div class="row">' +
       '<input type="text" class="url" placeholder="or paste an image URL" value="' +
         (chosen && !r.candidates.some(c => c.url === chosen) ? esc(chosen) : '') + '">' +
@@ -296,6 +306,15 @@ grid.addEventListener('click', e => {{
   if (shot) {{ picks[vid] = shot.dataset.url; return redrawOne(vid); }}
   if (e.target.classList.contains('use')) {{
     const v = cardEl.querySelector('.url').value.trim();
+    // Eighteen picks arrived as base64 blobs last round. Catch it at the point
+    // of pasting, where it can still be explained, not three steps downstream.
+    if (/^data:/i.test(v)) {{
+      alert('That is the picture itself pasted inline, not a link to it.' +
+            String.fromCharCode(10,10) +
+            'Right-click the image and choose "Copy image address" instead.');
+      return;
+    }}
+    if (v && !/^https:/i.test(v)) {{ alert('That needs to be an https address.'); return; }}
     if (v) {{ picks[vid] = v; redrawOne(vid); }}
     return;
   }}
