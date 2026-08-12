@@ -1,38 +1,38 @@
-now Denver: 2026-08-11T02:38:47 | now Phoenix: 2026-08-11T01:38:47
+now Denver: 2026-08-11T19:02:05 | now Phoenix: 2026-08-11T18:02:05
 API: https://api.oneteeapp.com
 
 == /api/health ==
-   {'ok': True, 'last_run': {'generated_at': '2026-08-11T08:38:43.639252+00:00', 'date': '2026-08-11', 'tee_times': 3500, 'courses_ok': 84, 'courses_queried': 107}}
+   {'ok': True, 'last_run': {'generated_at': '2026-08-12T01:01:31.812559+00:00', 'date': '2026-08-14', 'tee_times': 2079, 'courses_ok': 26, 'courses_queried': 28}}
 
 == 1. PAST TIMES: any returned slot earlier than local now? (want 0) ==
    2000 slots returned, 0 in the past
-   include_past=1 sanity (should be > 0): 0
+   include_past=1 sanity (should be > 0): 644
 
 == 2. STATE field ==
    rows missing state: 0
    ?state=AZ rows that aren't AZ: 0
 
 == 3. VENUE DEDUPE: '-golfnow' slugs exposed? (want 0) ==
-   courses: 876 | with -golfnow slug: 0
-    arrowhead-golf-club | ezlinks | 64 slots | CO | Littleton
-    bella-ridge-golf-course | ezlinks | 129 slots | CO | Johnstown
-    cedaredge-golf-club | foreup | 684 slots | CO | Cedaredge
-    ironbridge-golf-club | foreup | 1769 slots | CO | Glenwood Springs
+   courses: 880 | with -golfnow slug: 0
+    arrowhead-golf-club | ezlinks | 199 slots | CO | Littleton
+    bella-ridge-golf-course | ezlinks | 367 slots | CO | Johnstown
+    cedaredge-golf-club | foreup | 599 slots | CO | Cedaredge
+    ironbridge-golf-club | foreup | 1654 slots | CO | Glenwood Springs
 
 == 4. SUB-COURSES: display names ==
-    the-greg-mastriona-golf-courses-at-hyland-hills -> {'Hyland Hills South Par 3': 171, 'Hyland Hills Gold Course': 114, 'Hyland Hills Golf Blue Course': 115}
-      same-time multi-course slots: 141 | example: ('2026-08-11T06:30:00', ['Hyland Hills Gold Course', 'Hyland Hills South Par 3'])
-    kennedy-golf-course -> {'Kennedy Par 3 or Footgolf': 177, 'Kennedy (Babe Lind 9 only)': 9, 'Kennedy (Creek / Babe Lind)': 101, 'Kennedy (West 9 only)': 113}
-      same-time multi-course slots: 132 | example: ('2026-08-11T07:20:00', ['Kennedy (Babe Lind 9 only)', 'Kennedy (Creek / Babe Lind)', 'Kennedy Par 3 or Footgolf'])
-    fox-hollow-golf-course -> {'Fox Hollow (Links)': 58, 'Fox Hollow (Meadow)': 69, 'Fox Hollow (Canyon)': 49, 'Fox Hollow (Links / Canyon)': 94, 'Fox Hollow (Meadow / Links)': 101, 'Fox Hollow (Canyon / Meadow)': 29}
-      same-time multi-course slots: 97 | example: ('2026-08-11T07:09:00', ['Fox Hollow (Links)', 'Fox Hollow (Meadow)'])
-    broken-tee-golf-course -> {'Broken Tee Golf Course · Par 3': 272, 'Broken Tee Golf Course · Championship': 110, 'Broken Tee Golf Course · Championship  Back Nine': 18}
-      same-time multi-course slots: 122 | example: ('2026-08-11T06:50:00', ['Broken Tee Golf Course · Championship', 'Broken Tee Golf Course · Par 3'])
-    foothills-golf-course -> {'Foothills 18 Back Nine': 10, 'Foothills Par 3': 202, 'Foothills 18': 68, 'Foothills Executive 9': 120}
-      same-time multi-course slots: 127 | example: ('2026-08-11T06:20:00', ['Foothills 18 Back Nine', 'Foothills Par 3'])
+    the-greg-mastriona-golf-courses-at-hyland-hills -> {'Hyland Hills Gold Course': 110, 'Hyland Hills Golf Blue Course': 104, 'Hyland Hills South Par 3': 186}
+      same-time multi-course slots: 128 | example: ('2026-08-11T19:10:00', ['Hyland Hills Gold Course', 'Hyland Hills Golf Blue Course', 'Hyland Hills South Par 3'])
+    kennedy-golf-course -> {'Kennedy (Creek / Babe Lind)': 71, 'Kennedy (West 9 only)': 127, 'Kennedy Par 3 or Footgolf': 172, 'Kennedy (Babe Lind 9 only)': 5, 'Kennedy (Creek 9 only)': 1, 'Kennedy (Babe Lind / Creek)': 24}
+      same-time multi-course slots: 139 | example: ('2026-08-11T19:10:00', ['Kennedy (Creek / Babe Lind)', 'Kennedy (West 9 only)'])
+    fox-hollow-golf-course -> {'Fox Hollow (Meadow / Links)': 75, 'Fox Hollow (Links)': 69, 'Fox Hollow (Canyon / Meadow)': 48, 'Fox Hollow (Links / Canyon)': 89, 'Fox Hollow (Canyon)': 51, 'Fox Hollow (Meadow)': 68}
+      same-time multi-course slots: 112 | example: ('2026-08-12T08:12:00', ['Fox Hollow (Canyon / Meadow)', 'Fox Hollow (Meadow / Links)'])
+    broken-tee-golf-course -> {'Broken Tee Golf Course · Par 3': 282, 'Broken Tee Golf Course · Championship': 104, 'Broken Tee Golf Course · Championship  Back Nine': 14}
+      same-time multi-course slots: 108 | example: ('2026-08-12T06:40:00', ['Broken Tee Golf Course · Championship', 'Broken Tee Golf Course · Par 3'])
+    foothills-golf-course -> {'Foothills 18': 80, 'Foothills Executive 9': 117, 'Foothills Par 3': 198, 'Foothills 18 Back Nine': 5}
+      same-time multi-course slots: 124 | example: ('2026-08-11T19:10:00', ['Foothills 18', 'Foothills Executive 9', 'Foothills Par 3'])
 
 == 5. OPEN SPOTS coverage ==
-   220/2000 rows with no open_spots | by platform: {'teesnap': 112, 'golfnow': 106, 'supersaas': 2}
+   214/2000 rows with no open_spots | by platform: {'teesnap': 125, 'golfnow': 87, 'supersaas': 2}
 
 == 6. CITY coverage ==
    rows with no city: 0 | cities with parens: 0
