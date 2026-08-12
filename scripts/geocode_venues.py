@@ -88,13 +88,25 @@ def geocode(session: requests.Session, name: str, city: str,
     city = (city or "").strip()
     state = (state or "").strip()
     tried = []
-    if name:
-        # A venue named "Foo (Bar State Park)" geocodes better without the
-        # parenthetical, which is our disambiguator, not the course's name.
-        clean = name.split(" (")[0].strip()
-        tried.append((f"{clean}, {city}, {state}, USA", "nominatim-name"))
-    if city:
-        tried.append((f"{city}, {state}, USA", "nominatim-city"))
+    # A venue named "Foo (Bar State Park)" geocodes better without the
+    # parenthetical, which is our disambiguator, not the course's name. The
+    # SAME is true of the city, and that was missed the first time round: the
+    # city string went to Nominatim verbatim, so "Anchorage (JBER)",
+    # "Yuma (Yuma Proving Ground)", "Pensacola (Perdido Key)" and
+    # "Ruther Glen (Caroline/Spotsylvania line)" all failed to resolve. Every
+    # single unresolved venue across the whole 1,628-course backfill had a
+    # parenthetical in its city. Strip both.
+    clean_name = name.split(" (")[0].strip()
+    clean_city = city.split(" (")[0].strip()
+    if clean_name and clean_city:
+        tried.append((f"{clean_name}, {clean_city}, {state}, USA", "nominatim-name"))
+    if clean_name:
+        # No city at all. A named course is often unique within one state, and
+        # this rescues the cases where the city field is a base, an unincorporated
+        # locality, or a county line rather than a place Nominatim knows.
+        tried.append((f"{clean_name}, {state}, USA", "nominatim-name-nocity"))
+    if clean_city:
+        tried.append((f"{clean_city}, {state}, USA", "nominatim-city"))
     for q, src in tried:
         hit = _query(session, q)
         time.sleep(DELAY)
