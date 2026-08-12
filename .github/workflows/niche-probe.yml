@@ -148,7 +148,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            for WF in scrape.yml scrape-fast.yml prune-past.yml deploy-worker.yml; do
+            for WF in scrape.yml scrape-fast.yml prune-past.yml; do
               echo "--- last 5 runs of ${WF} ---"
               gh run list --workflow "$WF" --limit 5 --json status,conclusion,createdAt,displayTitle \
                 --template '{{range .}}{{.createdAt}} | {{.status}}/{{.conclusion}} | {{.displayTitle}}{{"\n"}}{{end}}' || true

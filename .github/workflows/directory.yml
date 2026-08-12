@@ -7,9 +7,10 @@ name: Build + verify the course directory
 # [skip ci], which is right for a report nobody deploys — but the directory
 # lands in worker/directory.gen.js, and a commit there that never deploys
 # would leave the API serving the previous directory indefinitely. Pushes made
-# with GITHUB_TOKEN never trigger other workflows (so deploy-worker's worker/**
-# push trigger cannot fire from here); this workflow therefore dispatches
-# deploy-worker.yml itself after a successful push.
+# with GITHUB_TOKEN never trigger other workflows. That used to matter because
+# this job dispatched deploy-worker.yml itself; both that workflow and the
+# onetee-api Worker it deployed are gone since the VPS cutover, so a directory
+# change now reaches the site only when someone updates the gate by hand.
 #
 # The verify step is the one that matters: it fails if a course we are
 # actively selling tee times for is tagged "call the pro shop" or "members
@@ -72,7 +73,14 @@ jobs:
           set -o pipefail
           python3 build_registry.py | tee /tmp/registry.log
 
+      # ONETEE_* let build_directory.py read the VPS `venue_geo` table so every
+      # venue carries lat/lng. Without them it falls back to the committed
+      # local/venue_geo.json, and without that the fields are null — i.e. the
+      # behaviour before coordinates existed. Never fatal.
       - name: Build
+        env:
+          ONETEE_API_URL: ${{ secrets.ONETEE_API_URL }}
+          ONETEE_INGEST_TOKEN: ${{ secrets.ONETEE_INGEST_TOKEN }}
         run: |
           set -o pipefail
           python3 build_directory.py | tee directory.log
@@ -113,6 +121,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add directory.json worker/directory.gen.js
+          # local/venue_geo.json is only rewritten when the VPS answered and
+          # returned rows. A run with no creds, or one that hit a VPS blip and
+          # fell back to the cache, leaves it absent or unchanged — and `git
+          # add` on a path that does not exist is a hard error under `bash -e`,
+          # which would fail this step for a reason that has nothing to do with
+          # the directory. Hence the guard rather than a fourth pathspec above.
+          if [ -f local/venue_geo.json ]; then git add local/venue_geo.json; fi
           git diff --cached --quiet && { echo "directory unchanged"; exit 0; }
           git commit -m "Rebuild course directory from the state CSVs"
           for i in 1 2 3 4 5; do
@@ -122,9 +137,14 @@ jobs:
           done
           echo "could not push the directory after 5 attempts"; exit 1
 
-      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
-        if: steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"
+      # There is deliberately no deploy step. The `onetee-api` Worker was
+      # deleted in the 2026-08-11 VPS cutover along with D1, and
+      # deploy-worker.yml went with it — dispatching a workflow that no longer
+      # exists would fail this job on every run that pushes.
+      #
+      # worker/directory.gen.js is still generated and committed. Nothing serves
+      # it today: /api/directory now comes from the gate's own embedded copy,
+      # and the gate can only be updated by pasting into the Cloudflare
+      # dashboard. The file is the artefact that paste would come from, so it is
+      # kept current rather than left to rot. Publishing a directory change to
+      # the site is, for now, a manual step.

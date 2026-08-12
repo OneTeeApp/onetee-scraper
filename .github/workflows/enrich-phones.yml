@@ -114,12 +114,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # The Worker's bundled copy has to go with it: phones land in
-          # directory.json, and committing that alone would leave the API
-          # serving a directory with no numbers in it. GITHUB_TOKEN pushes
-          # never trigger other workflows (deploy-worker's worker/** push
-          # trigger cannot fire from here), so the step below dispatches
-          # deploy-worker.yml itself when a push actually landed.
+          # The Worker's bundled copy goes with it: phones land in
+          # directory.json, and worker/directory.gen.js is the file a gate
+          # update is pasted from, so the two must not drift apart.
+          #
+          # This step used to end by dispatching deploy-worker.yml, because a
+          # GITHUB_TOKEN push never triggers another workflow. That dispatch is
+          # gone: deploy-worker.yml and the onetee-api Worker it deployed were
+          # both removed in the VPS cutover, so the call could only ever fail.
+          # New phone numbers now reach the site when someone updates the gate
+          # by hand from worker/directory.gen.js.
           git add local/phones.json directory.json worker/directory.gen.js
           git commit -m "Directory phone numbers" || exit 0
           for i in 1 2 3 4 5; do
@@ -128,10 +132,3 @@ jobs:
             sleep $((i * 5))
           done
           echo "could not push phone numbers after 5 attempts"; exit 1
-
-      - name: Deploy the worker (GITHUB_TOKEN pushes never trigger deploy-worker.yml)
-        if: always() && steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh workflow run deploy-worker.yml --ref main --repo "${{ github.repository }}"
