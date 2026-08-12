@@ -46,6 +46,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      # scraper/d1.py imports requests, and build_directory.py imports d1 to
+      # read the VPS `venue_geo` table. Without this the import raises
+      # ModuleNotFoundError, which the geo loader catches and treats as "the VPS
+      # is unreachable" — so the job stays green and quietly publishes null
+      # coordinates. Exactly what run 31552493549 did.
+      - name: Install requests (scraper.d1 needs it to read venue_geo)
+        run: pip install --quiet requests
+
       # `set -o pipefail` is load-bearing in both steps below, not style. A
       # step's exit status is the LAST command in the pipeline, so `cmd | tee`
       # reports tee's status — always 0 — and the failure vanishes. That is not
