@@ -32,3 +32,11 @@ CREATE TABLE IF NOT EXISTS searches (
   results    INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_searches_user ON searches (user_id, id DESC);
+
+-- Phase 1 saved searches (2026-08-12): promote a Recent search to a permanent
+-- Saved one by starring it. saved = 0/1 star flag; name = user-editable
+-- label. Both idempotent so re-running the deploy is a no-op after the first.
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS saved INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS name  TEXT;
+-- Saved-only lookups (the Tee Times chips + the account Saved list) as a range read.
+CREATE INDEX IF NOT EXISTS idx_searches_saved ON searches (user_id, saved, id DESC);
