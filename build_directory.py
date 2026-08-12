@@ -185,6 +185,13 @@ def load_venue_geo() -> dict:
             # An empty answer is not proof there are no coordinates; it is far
             # more likely the query or the table is wrong. Keep the cache.
             print("venue_geo: VPS returned no rows — falling back to the cache")
+        except ImportError as exc:
+            # Not a VPS problem at all: scraper.d1 needs requests, and a runner
+            # that never installed it fails here in a way that reads exactly
+            # like an outage. Say which it is.
+            print(f"venue_geo: cannot import the VPS client ({exc}) — this is a "
+                  f"missing dependency, not an unreachable VPS. Falling back "
+                  f"to the cache")
         except Exception as exc:  # noqa: BLE001
             print(f"venue_geo: VPS read failed ({exc.__class__.__name__}) "
                   f"— falling back to the cache")
