@@ -144,6 +144,61 @@ def clean_url(u: str) -> str:
     return u
 
 
+GEO_CACHE = "local/venue_geo.json"
+
+
+def load_venue_geo() -> dict:
+    """
+    `venue_id -> {lat, lng}` for every venue that has been geocoded.
+
+    The coordinates live in the VPS Postgres table `venue_geo`, written by
+    scripts/geocode_venues.py. Until now they only ever reached `/api/tee-times`
+    via a LEFT JOIN in the Worker, so the DIRECTORY carried no coordinates at
+    all — lat and lng were declared on all 1,600 venues and null on every one.
+    That is why the photo lookup had to geocode each course against
+    OpenStreetMap on every run, and why "near me" could only work for courses
+    that happened to have tee times.
+
+    Read live when the CI credentials are present, and cached to a committed
+    file so a local run — or the Cowork sandbox, which cannot reach the VPS —
+    still produces coordinates and the diff is visible in review. If neither is
+    available the field is simply absent, which is exactly today's behaviour, so
+    this can never make the directory worse than it already is.
+    """
+    if os.environ.get("ONETEE_API_URL") and os.environ.get("ONETEE_INGEST_TOKEN"):
+        try:
+            from scraper.d1 import HttpBackend
+            rows = HttpBackend().execute(
+                "SELECT venue_id, lat, lng FROM venue_geo")
+            live = {r["venue_id"]: {"lat": r["lat"], "lng": r["lng"]}
+                    for r in rows
+                    if r.get("venue_id") and r.get("lat") is not None}
+            if live:
+                parent = os.path.dirname(GEO_CACHE)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                with open(GEO_CACHE, "w") as fh:
+                    json.dump(live, fh, indent=1, sort_keys=True)
+                print(f"venue_geo: {len(live)} rows from the VPS "
+                      f"(refreshed {GEO_CACHE})")
+                return live
+            # An empty answer is not proof there are no coordinates; it is far
+            # more likely the query or the table is wrong. Keep the cache.
+            print("venue_geo: VPS returned no rows — falling back to the cache")
+        except Exception as exc:  # noqa: BLE001
+            print(f"venue_geo: VPS read failed ({exc.__class__.__name__}) "
+                  f"— falling back to the cache")
+
+    if os.path.exists(GEO_CACHE):
+        with open(GEO_CACHE) as fh:
+            cached = json.load(fh) or {}
+        print(f"venue_geo: {len(cached)} rows from {GEO_CACHE}")
+        return cached
+
+    print("venue_geo: no coordinates available — lat/lng will be omitted")
+    return {}
+
+
 def main() -> None:
     # venue_id must agree with registry.json wherever the registry has an
     # opinion, so the widget can join on one key. Seed from it rather than
@@ -209,6 +264,8 @@ def main() -> None:
             for vid, e in (json.load(fh).get("courses") or {}).items():
                 photos_curated[vid] = e.get("image") if isinstance(e, dict) else e
 
+    geo = load_venue_geo()
+
     def photo_for(vid: str) -> str:
         if vid in photos_curated:
             return photos_curated[vid] or ""
@@ -268,6 +325,10 @@ def main() -> None:
             # Empty string, never absent: the widget tests truthiness and a
             # missing key would read the same as "no photo" only by accident.
             "photo": photo_for(vid),
+            # Null rather than absent when a venue has not been geocoded, so a
+            # consumer can tell "no coordinates" from "field never existed".
+            "lat": (geo.get(vid) or {}).get("lat"),
+            "lng": (geo.get(vid) or {}).get("lng"),
             "platforms": sorted({(r.get("Booking Platform") or "").strip()
                                  for r in rows if (r.get("Booking Platform")
                                                    or "").strip()}),
@@ -300,6 +361,8 @@ def main() -> None:
     print("with phone:", sum(1 for c in out if c["phone"]))
     print("with photo:", sum(1 for c in out if c["photo"]),
           f"({sum(1 for c in out if c['venue_id'] in photos_curated)} hand-picked)")
+    print("with coordinates:", sum(1 for c in out if c["lat"] is not None),
+          f"of {len(out)}")
     print("no action_url:", sum(1 for c in out if not c["action_url"]))
 
 
