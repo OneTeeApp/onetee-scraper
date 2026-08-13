@@ -1,0 +1,194 @@
+name: Probe — browser lane parallelism (measurement only)
+
+# WHAT THIS ANSWERS, AND WHY IT EXISTS BEFORE THE REAL CHANGE.
+#
+# scrape-browser-near.yml runs six browser platforms SEQUENTIALLY, so a pass
+# costs the SUM of them (measured 976s on 2026-08-13). Running them in lanes
+# would cost the MAX instead (~381s, golfnow being the floor). Two unknowns
+# decide whether that is real:
+#
+#   1. Are these scrapers WAIT-bound or CPU-bound? ubuntu-latest is 2 vCPU. If
+#      the time is spent waiting on challenges and network, lanes overlap almost
+#      perfectly. If it is spent executing JS, they timeshare and the win
+#      shrinks — possibly to nothing.
+#   2. Do 2-3 headless Chromium fit in 7GB? An OOM-killed lane writes nothing,
+#      and because every invocation in the real loop ends in `|| true`, that
+#      looks EXACTLY like a lane that finished quickly.
+#
+# This project has already been wrong about a browser optimisation: clubcaddie
+# context-reuse predicted -45s and measured +100s (see
+# claude/browser-scrape-timings-2026-08-12.md). So measure first, on a runner
+# that cannot damage anything.
+#
+# WHY IT CANNOT DAMAGE ANYTHING. It never calls `scraper.d1 push`, and it is
+# NOT GIVEN THE DB SECRETS — no CLOUDFLARE_*, no ONETEE_INGEST_TOKEN. Writing to
+# production inventory is not merely avoided here, it is impossible. Output goes
+# to probe-out/ and is read back only to count what was scraped.
+#
+# THE CORRECTNESS ORACLE. Wall time is the headline, but the number that decides
+# whether lanes are SAFE is per-platform course coverage: how many distinct
+# course_slugs came back, and how many errored. Slot totals move between passes
+# as inventory books up; the set of courses that answered does not. A lane that
+# silently half-failed shows up here as fewer courses, not fewer slots.
+#
+# SEQUENCE defaults to seq,par,seq — A/B/A — because a single pass is not a
+# measurement and time-of-day drift is real in BOTH directions on these
+# platforms (clubcaddie slows as sheets empty, golfnow slows as they fill).
+# Two sequential readings bracketing the parallel one make drift visible instead
+# of letting it masquerade as the result.
+
+on:
+  workflow_dispatch:
+    inputs:
+      lanes:
+        description: "lanes for the parallel mode (2 or 3)"
+        default: "3"
+      days:
+        description: "date window; 1 = day 0 only (fast, exercises all 6)"
+        default: "1"
+      sequence:
+        description: "modes to run in order, comma-separated (seq|par)"
+        default: "seq,par,seq"
+
+permissions:
+  contents: read          # deliberately NOT actions:write — this chains nothing
+
+concurrency:
+  group: probe-browser-lanes
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Record the machine
+        run: |
+          echo "nproc: $(nproc)"
+          free -m || true
+          echo "runner: ${RUNNER_OS} ${RUNNER_ARCH}"
+
+      - name: Run the modes
+        env:
+          # cps needs this to pick the plain-direct tenants; it is not a secret.
+          CPS_ONLY: plain
+          LANES: ${{ github.event.inputs.lanes }}
+          WINDOW: ${{ github.event.inputs.days }}
+          SEQUENCE: ${{ github.event.inputs.sequence }}
+        run: |
+          set -u
+          mkdir -p probe-out probe-logs
+
+          DATES=$(python -m scraper.dates --registry registry.json --days "$WINDOW")
+          CSV=$(echo "$DATES" | paste -sd, -)
+          echo "dates: $(echo "$DATES" | paste -sd' ' -)"
+
+          # One platform, all dates, into a given out-dir. Mirrors the real
+          # loop's per-platform invocation shapes exactly (clubcaddie takes a
+          # range; cps takes --dates; the rest are per-date) so the timings are
+          # comparable to production. Emits a machine-readable timing line.
+          run_platform () {
+            PLAT="$1"; OUT="$2"
+            S=$(date +%s)
+            case "$PLAT" in
+              clubcaddie)
+                D0=$(echo "$DATES" | head -1)
+                timeout 1200 python -m scraper.browser_clubcaddie \
+                  --date "$D0" --days "$WINDOW" --out-dir "$OUT" || true
+                ;;
+              cps)
+                timeout 1200 python -m scraper.browser_cps \
+                  --dates "$CSV" --out-dir "$OUT" --registry registry.json || true
+                ;;
+              *)
+                case "$PLAT" in
+                  ezlinks)        MOD=browser_ezlinks;        PFX=ez  ;;
+                  golfnow)        MOD=browser_golfnow;        PFX=gn  ;;
+                  supersaas)      MOD=browser_supersaas;      PFX=ss  ;;
+                  golfwithaccess) MOD=browser_golfwithaccess; PFX=gwa ;;
+                esac
+                for DATE in $DATES; do
+                  timeout 1200 python -m scraper."$MOD" \
+                    --date "$DATE" --out "${OUT}/${PFX}_${DATE}.json" || true
+                done
+                ;;
+            esac
+            E=$(date +%s)
+            echo "TIMING ${PLAT} $((E - S))"
+          }
+
+          ALL="ezlinks clubcaddie cps golfnow supersaas golfwithaccess"
+          if [ "$LANES" = "2" ]; then
+            LANE1="golfnow"; LANE2="ezlinks clubcaddie cps supersaas golfwithaccess"; LANE3=""
+          else
+            LANE1="golfnow"; LANE2="clubcaddie cps golfwithaccess"; LANE3="ezlinks supersaas"
+          fi
+
+          IDX=0
+          for MODE in $(echo "$SEQUENCE" | tr ',' ' '); do
+            IDX=$((IDX + 1))
+            TAG="${MODE}${IDX}"
+            OUT="probe-out/${TAG}"; mkdir -p "$OUT"
+
+            # Sample memory for THIS mode only, so peak RSS is attributable.
+            ( while true; do free -m | awk '/^Mem:/{print $3}'; sleep 2; done ) \
+              > "probe-logs/mem_${TAG}.log" 2>/dev/null &
+            MEMPID=$!
+
+            T0=$(date +%s)
+            if [ "$MODE" = "seq" ]; then
+              for P in $ALL; do run_platform "$P" "$OUT"; done \
+                > "probe-logs/${TAG}.log" 2>&1
+            else
+              # Lanes stagger by 5s so three browsers do not launch into the
+              # same memory spike and the same outbound burst from one IP.
+              PIDS=""; LN=0
+              for LANE in "$LANE1" "$LANE2" "$LANE3"; do
+                [ -z "$LANE" ] && continue
+                LN=$((LN + 1))
+                (
+                  sleep $(( (LN - 1) * 5 ))
+                  for P in $LANE; do run_platform "$P" "$OUT"; done
+                ) > "probe-logs/${TAG}_lane${LN}.log" 2>&1 &
+                PIDS="$PIDS $!:$LN"
+              done
+              # Capture each lane's EXIT CODE. The real loop's `|| true` makes a
+              # dead lane indistinguishable from a fast one; this is the check
+              # that would have caught it.
+              for ENTRY in $PIDS; do
+                PID="${ENTRY%%:*}"; N="${ENTRY##*:}"
+                if wait "$PID"; then RC=0; else RC=$?; fi
+                echo "LANE_RC ${N} ${RC}"
+              done > "probe-logs/${TAG}.log" 2>&1
+              cat probe-logs/${TAG}_lane*.log >> "probe-logs/${TAG}.log"
+            fi
+            T1=$(date +%s)
+            kill "$MEMPID" 2>/dev/null || true
+
+            echo "MODE ${TAG} WALL $((T1 - T0))" >> "probe-logs/${TAG}.log"
+            echo "::group::${TAG} — wall $((T1 - T0))s"
+            cat "probe-logs/${TAG}.log"
+            echo "::endgroup::"
+          done
+
+      - name: Compare the modes
+        if: always()
+        run: python scripts/probe_lanes_report.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-browser-lanes
+          path: |
+            probe-logs/
+            probe-out/
+          retention-days: 7
