@@ -160,6 +160,7 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 except Exception:
                     pass
 
+        _shape_logged = False
         page.on("request", on_request)
 
         for i, c in enumerate(courses):
@@ -178,14 +179,45 @@ def run(date: dt.date, registry_path: str, out_path: str,
                     page.goto(
                         f"https://www.golfnow.com/tee-times/facility/{fid}-{gn_slug}/search",
                         wait_until="domcontentloaded", timeout=45000)
-                    # wait (up to ~12s) for the page to POST its own predicate
-                    for _ in range(24):
-                        page.wait_for_timeout(500)
+                    # Wait (up to ~12s) for the page to POST its own predicate.
+                    # CHECK FIRST, then wait — the SPA often fires this during
+                    # the goto above, and the old order slept a guaranteed 500ms
+                    # per course before ever looking. Across 70 courses that is
+                    # 35s of a pass spent not-looking-at-an-answer-we-had. The
+                    # finer 200ms tick also stops us overshooting a body that
+                    # lands at, say, 1.1s by rounding up to 1.5s.
+                    # Same ~12s ceiling as before: 60 x 200ms.
+                    for _ in range(60):
                         if captured.get("body"):
                             break
+                        page.wait_for_timeout(200)
                     if not captured.get("body"):
                         last = "no search body captured"
                         raise RuntimeError(last)
+                    # One-time diagnostic, first course of the pass only.
+                    # FETCH_JS filters results with `s.facilityId !== fid`,
+                    # which implies the search response spans MORE than the one
+                    # facility — i.e. the predicate may be an area query rather
+                    # than a per-facility one. If it is, 70 page loads per pass
+                    # could collapse to a handful of area searches, which is the
+                    # single largest remaining win in the near loop. Print the
+                    # predicate's shape (keys and any facility/location fields)
+                    # so that question gets answered from data instead of a
+                    # guess. Keys only — never the whole body.
+                    if not _shape_logged:
+                        try:
+                            _b = json.loads(captured["body"])
+                            _keys = sorted(_b.keys())
+                            _scope = {k: _b[k] for k in _keys
+                                      if any(w in k.lower() for w in
+                                             ("facility", "location", "lat",
+                                              "long", "radius", "zip", "region"))}
+                            log.info("  [predicate shape] keys=%s scope=%s",
+                                     _keys, _scope)
+                        except Exception as _e:  # noqa: BLE001
+                            log.info("  [predicate shape] unreadable: %s",
+                                     type(_e).__name__)
+                        _shape_logged = True
                     r = page.evaluate(FETCH_JS, [captured["body"], date_str, fid])
                     last = f"status {r.get('status')}"
                     if r.get("parse_failed"):
