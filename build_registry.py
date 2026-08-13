@@ -138,6 +138,13 @@ EXTRA_IDS = {
     # 27620 is left out of the 18-hole Championship venue on purpose).
     "sand hollow resort - championship course": {"course_ids": [16313]},
     "sand hollow resort - links course": {"course_ids": [23670]},
+    # Star Valley Ranch (WY): Cedar Creek (18) and Aspen Hills (9) are two
+    # OneTee venues on chronogolf club star-valley-ranch (15494), which also
+    # carries a "Simulator at Cedar Creek" course (27877). Pin each venue to
+    # its own course id so neither publishes the other's sheet or the
+    # simulator's empty one (read off /private_api 2026-08-13).
+    "cedar creek golf course": {"course_ids": [17793]},
+    "aspen hills golf course": {"course_ids": [23538]},
 
     # (Buffalo Run's old hardcoded facility_id 12190 was stale -> HTTP 500;
     #  the adapter now discovers facility ids at runtime, so it's removed.)
@@ -864,6 +871,7 @@ SOURCES = [
     ("washington_dc_golf_courses_booking.csv", "DC"),
     ("alaska_golf_courses_booking.csv", "AK"),
     ("vermont_golf_courses_booking.csv", "VT"),
+    ("wyoming_golf_courses_booking.csv", "WY"),
 ]
 
 
