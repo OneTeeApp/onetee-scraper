@@ -113,7 +113,7 @@ def _parse_cards(course: dict, date: dt.date, cards: list) -> list:
     return out
 
 
-def _fetch_course(browser, course: dict, dates: list[dt.date]) -> tuple[dict, str | None]:
+def _fetch_course(pw, course: dict, dates: list[dt.date]) -> tuple[dict, str | None]:
     """Render the widget per date and read the tee-time cards off the DOM.
 
     Returns {date_iso: [TeeTime] | None}. None marks a date whose page failed
@@ -124,12 +124,9 @@ def _fetch_course(browser, course: dict, dates: list[dt.date]) -> tuple[dict, st
     token = ids["view_token"]
     last = None
     for attempt in range(3):
-        # A fresh CONTEXT per attempt, not a fresh browser. Cookie isolation
-        # between courses is the reason this was per-course in the first place,
-        # and a context gives that for free — launching a whole Chromium per
-        # course was paying a process start-up 29 times over per pass.
-        ctx = browser.new_context(user_agent=USER_AGENT)
+        browser = pw.chromium.launch(args=["--no-sandbox"])
         try:
+            ctx = browser.new_context(user_agent=USER_AGENT)
             page = ctx.new_page()
             # Establish the session (Interaction cookie) once, like a golfer
             # opening the widget, before requesting individual dates.
@@ -173,7 +170,7 @@ def _fetch_course(browser, course: dict, dates: list[dt.date]) -> tuple[dict, st
         except Exception as e:  # noqa: BLE001
             last = last or type(e).__name__
         finally:
-            ctx.close()
+            browser.close()
         time.sleep(2 * (attempt + 1))
     return {}, last
 
@@ -194,9 +191,8 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
     per_date_times: dict[str, list] = {d.isoformat(): [] for d in dates}
     errors: dict[str, list] = {d.isoformat(): [] for d in dates}
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=["--no-sandbox"])
         for c in courses:
-            got, err = _fetch_course(browser, c, dates)
+            got, err = _fetch_course(pw, c, dates)
             total = sum(len(v) for v in got.values() if v)
             if err and not got:
                 # nothing captured at all: every requested date is unknown
@@ -219,7 +215,6 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
                         per_date_times[diso].extend(tts)
                 log.info("  %-32s %d times (%d dates, %d failed)", c["slug"],
                          total, sum(1 for v in got.values() if v), failed)
-        browser.close()
 
     out_paths = {}
     outp = pathlib.Path(out_dir)
