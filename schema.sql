@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS tee_times (
   active       INTEGER DEFAULT 1,        -- 0 = slot disappeared (booked/closed)
   first_seen_at TEXT NOT NULL,
   last_seen_at  TEXT NOT NULL,
+  became_active_at TEXT,                 -- stamped when a row returns from
+                                         -- active=0 (a cancellation: the slot was
+                                         -- booked and has just been freed). NULL
+                                         -- if the slot has never been booked.
   -- course_label is in the PK: a 3-course facility (Hyland Hills) has three
   -- legitimate 7:00 slots; a 2-column key made them overwrite each other.
   PRIMARY KEY (course_slug, teetime, course_label)
