@@ -192,6 +192,7 @@ def init_schema(db) -> None:
         "ALTER TABLE tee_times ADD COLUMN venue_id TEXT",
         "ALTER TABLE tee_times ADD COLUMN source_role TEXT DEFAULT 'primary'",
         "ALTER TABLE tee_times ADD COLUMN course_label TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE tee_times ADD COLUMN became_active_at TEXT",
     ):
         try:
             db.execute(ddl)
@@ -598,6 +599,10 @@ def sync(db, doc: dict) -> dict:
                   or e.get("booking_url") != v["booking_url"]
                   or e.get("platform") != v["platform"]
                   or not e["active"]):
+            # A row returning from active=0 is a CANCELLATION: the slot was
+            # booked and has just been freed. first_seen_at deliberately keeps
+            # its original stamp, so that signal needs a column of its own.
+            v["_reactivated"] = not e["active"]
             to_update.append(v)
     to_deactivate = [k for k, e in existing.items()
                      if e["active"] and k not in scraped
@@ -613,13 +618,23 @@ def sync(db, doc: dict) -> dict:
                    f"VALUES {placeholders}", params)
 
     for row in to_update:
-        db.execute(
-            "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
-            "booking_url=?, platform=?, active=1, last_seen_at=? "
-            "WHERE course_slug=? AND teetime=? AND course_label=?",
-            [row["open_spots"], row["price_min"], row["price_max"],
-             row["booking_url"], row["platform"],
-             now, row["course_slug"], row["teetime"], row["course_label"]])
+        if row.get("_reactivated"):
+            db.execute(
+                "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
+                "booking_url=?, platform=?, active=1, last_seen_at=?, "
+                "became_active_at=? "
+                "WHERE course_slug=? AND teetime=? AND course_label=?",
+                [row["open_spots"], row["price_min"], row["price_max"],
+                 row["booking_url"], row["platform"], now, now,
+                 row["course_slug"], row["teetime"], row["course_label"]])
+        else:
+            db.execute(
+                "UPDATE tee_times SET open_spots=?, price_min=?, price_max=?, "
+                "booking_url=?, platform=?, active=1, last_seen_at=? "
+                "WHERE course_slug=? AND teetime=? AND course_label=?",
+                [row["open_spots"], row["price_min"], row["price_max"],
+                 row["booking_url"], row["platform"],
+                 now, row["course_slug"], row["teetime"], row["course_label"]])
 
     for slug, teetime, label in to_deactivate:
         db.execute("UPDATE tee_times SET active=0, last_seen_at=? "
