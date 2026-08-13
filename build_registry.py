@@ -110,6 +110,9 @@ TENFORE_IDS = {
     "sligocreek": "16512", "rattlewood": "16511",
     # Utah (resolved 2026-08-07 via GetGolfCourseByVanity, name-confirmed):
     "theranches": "16515", "coralcanyon": "16516",
+    # Vermont (resolved 2026-08-13 via GetGolfCourseByVanity; vanity
+    # "Woodstockresort" answers with name "Woodstock Inn & Resort"):
+    "woodstockresort": "16581",
 }
 
 EXTRA_IDS = {
@@ -860,6 +863,7 @@ SOURCES = [
     ("utah_golf_courses_booking.csv", "UT"),
     ("washington_dc_golf_courses_booking.csv", "DC"),
     ("alaska_golf_courses_booking.csv", "AK"),
+    ("vermont_golf_courses_booking.csv", "VT"),
 ]
 
 
