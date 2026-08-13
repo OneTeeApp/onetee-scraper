@@ -26,6 +26,15 @@ CREATE TABLE IF NOT EXISTS tee_times (
   PRIMARY KEY (course_slug, teetime, course_label)
 );
 
+-- Forward migration for EXISTING databases. CREATE TABLE IF NOT EXISTS above
+-- does nothing when the table already exists, and the /exec shim in
+-- vps/api/server.mjs deliberately SKIPS all DDL, so scraper/d1.py's ALTER list
+-- never reaches Postgres. This file, applied by vps/deploy.sh with psql, is the
+-- ONLY path by which a new column reaches the live database.
+-- IF NOT EXISTS is required: deploy.sh runs with ON_ERROR_STOP=1, so a plain
+-- ADD COLUMN would abort the whole deploy on the second run.
+ALTER TABLE tee_times ADD COLUMN IF NOT EXISTS became_active_at TEXT;
+
 -- The index that turns a "state + date" lookup into a range read instead of a
 -- full-table scan (the thing that ran up the D1 bill).
 CREATE INDEX IF NOT EXISTS idx_tt_state_date ON tee_times (state, substr(teetime,1,10), active);
