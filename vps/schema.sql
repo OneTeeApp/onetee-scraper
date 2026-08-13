@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS tee_times (
   active        INTEGER DEFAULT 1,
   first_seen_at TEXT NOT NULL,
   last_seen_at  TEXT NOT NULL,
+  became_active_at TEXT,                -- set when a row returns from active=0
+                                        -- (a cancellation). NULL if never booked.
   PRIMARY KEY (course_slug, teetime, course_label)
 );
 
