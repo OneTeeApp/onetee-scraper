@@ -74,7 +74,13 @@ API_BASE = "https://phx-api-be-east-1b.kenna.io"
 _STATE_TZ = {"CO": "America/Denver", "AZ": "America/Phoenix",
              "VA": "America/New_York", "MD": "America/New_York",
              "FL": "America/New_York", "DC": "America/New_York",
-             "AK": "America/Anchorage"}
+             "AK": "America/Anchorage",
+             # Added with Wyoming 2026-08-13. UT and VT were live and missing
+             # too: kenna usually supplies a per-facility timeZone and that
+             # wins, but when it omits one the fallback used to stamp Eastern,
+             # which is two hours off for the Mountain states.
+             "WY": "America/Denver", "UT": "America/Denver",
+             "VT": "America/New_York"}
 _TZ_DEFAULT = "America/New_York"
 
 # ---------------------------------------------------------------------------
