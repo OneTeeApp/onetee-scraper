@@ -41,6 +41,22 @@ concurrency:
 env:
   INTERVAL_SECONDS: 300         # target cadence per pass (the one knob)
   LOOP_MINUTES: 330             # stop looping after this; job timeout is 350
+  # Days 0-1 are refreshed on EVERY pass. Days 2-3 are refreshed only when this
+  # much time has passed since they last were. Every pass previously scraped all
+  # four dates, so day 3 was refreshed exactly as often as today — and days 2-3
+  # are half the work of the single most expensive workflow in the repo (74,292
+  # Actions minutes this month, 32% of the total).
+  #
+  # Deliberately TIME-based rather than "every Nth pass": the loop only sleeps
+  # when a pass finishes inside INTERVAL_SECONDS, so pass duration is not fixed
+  # and an every-Nth rule would give a staleness bound that drifts with load.
+  # This way the bound is stated directly — days 2-3 are at most
+  # FAR_STALE_SECONDS plus one pass old, whatever the pass costs.
+  #
+  # This does not trade freshness away, it moves it: a cheaper average pass means
+  # MORE passes in the same loop budget, so days 0-1 — the ones someone is
+  # actually booking — get refreshed more often than they do today.
+  FAR_STALE_SECONDS: 600        # days 2-3 refresh interval (<= 10 min + a pass)
 
 jobs:
   loop:
@@ -70,6 +86,7 @@ jobs:
         run: |
           START=$(date +%s)
           PASS=0
+          LAST_FAR=0                 # forces days 2-3 on the first pass
           while true; do
             NOW=$(date +%s)
             ELAPSED_MIN=$(( (NOW - START) / 60 ))
@@ -78,7 +95,17 @@ jobs:
             fi
             PASS=$((PASS + 1))
             T0=$(date +%s)
-            for DATE in $(python -m scraper.dates --registry registry.json --days 4); do
+            # Days 0-1 every pass; days 2-3 only when they are FAR_STALE_SECONDS
+            # old. LAST_FAR starts at 0 so the first pass of every run covers the
+            # full window — a fresh runner never inherits a stale day 2.
+            FAR_AGE=$(( T0 - LAST_FAR ))
+            if [ "$FAR_AGE" -ge "$FAR_STALE_SECONDS" ]; then
+              DAYS=4; LAST_FAR=$T0; SCOPE="days 0-3"
+            else
+              DAYS=2; SCOPE="days 0-1"
+            fi
+            echo "pass ${PASS}: ${SCOPE} (days 2-3 were ${FAR_AGE}s old)"
+            for DATE in $(python -m scraper.dates --registry registry.json --days "$DAYS"); do
               OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
               echo "::group::pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.aggregate --date "${DATE}" --workers 10 \
