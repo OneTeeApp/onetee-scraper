@@ -40,6 +40,19 @@ def main() -> int:
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--max-age-days", type=int, default=3,
                    help="windows file older than this is ignored (-> ALL)")
+    p.add_argument("--platform",
+                   help="only consider courses on this platform. A per-platform "
+                        "caller wants a per-platform answer: without it the whole "
+                        "registry comes back and the caller passes ~1,100 slugs "
+                        "on argv to a scraper that owns 384 of them.")
+    p.add_argument("--source",
+                   help="judge staleness by sources[<name>].as_of instead of the "
+                        "file's top-level as_of. The top-level stamp belongs to "
+                        "scrape-far.yml's plain sweep; a browser tier that trusted "
+                        "it would silently stop pruning whenever the PLAIN tier "
+                        "stalled, and keep pruning on its own stale windows if it "
+                        "stalled itself. Each contributor should be judged on its "
+                        "own freshness.")
     a = p.parse_args()
 
     wpath = pathlib.Path(a.windows)
@@ -47,7 +60,16 @@ def main() -> int:
         print("ALL")
         return 0
     w = json.loads(wpath.read_text())
-    as_of = dt.date.fromisoformat(w["as_of"])
+    stamp = w.get("as_of")
+    if a.source:
+        stamp = (w.get("sources") or {}).get(a.source, {}).get("as_of") or ""
+    try:
+        as_of = dt.date.fromisoformat(stamp)
+    except (TypeError, ValueError):
+        # No usable stamp — never derived, or a merge wrote an empty one. That
+        # is ignorance, and ignorance reads as "scrape it".
+        print("ALL")
+        return 0
     if (dt.date.today() - as_of).days > a.max_age_days:
         print("ALL")
         return 0
@@ -59,6 +81,8 @@ def main() -> int:
     grace = int(w.get("grace", 3))
 
     reg = json.loads(pathlib.Path(a.registry).read_text())["courses"]
+    if a.platform:
+        reg = [c for c in reg if c.get("platform") == a.platform]
     eligible = []
     for c in reg:
         win = w["windows"].get(c["slug"])
