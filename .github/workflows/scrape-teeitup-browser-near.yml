@@ -46,6 +46,14 @@ env:
   INTERVAL_SECONDS: 300         # min seconds per pass; a plain pass (3 dates)
                                 # usually exceeds this, so passes run back-to-back
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
+  # Days 0-1 every pass; days 2-3 only when this stale. Every pass previously
+  # scraped all four dates, so day 3 was refreshed as often as today across 383
+  # teeitup courses — 34,510 Actions minutes this month, second only to
+  # scrape-near. Time-based rather than every-Nth because the loop only sleeps
+  # when a pass finishes inside INTERVAL_SECONDS, so an every-Nth bound would
+  # drift with load; stated this way days 2-3 are at most FAR_STALE_SECONDS plus
+  # one pass old. Same knob and same reasoning as scrape-near.yml.
+  FAR_STALE_SECONDS: 600        # days 2-3 refresh interval (<= 10 min + a pass)
 
 jobs:
   loop:
@@ -90,6 +98,7 @@ jobs:
         run: |
           START=$(date +%s)
           PASS=0
+          LAST_FAR=0                 # forces days 2-3 on the first pass
           while true; do
             NOW=$(date +%s)
             ELAPSED_MIN=$(( (NOW - START) / 60 ))
@@ -98,9 +107,19 @@ jobs:
             fi
             PASS=$((PASS + 1))
             T0=$(date +%s)
-            # Days 0-3 (scraper.dates --days 4). Dates come from
-            # scraper.dates (union of local todays across timezones).
-            for DATE in $(python -m scraper.dates --registry registry.json --days 4); do
+            # Days 0-1 every pass, days 2-3 only once they are FAR_STALE_SECONDS
+            # old. Dates come from scraper.dates (union of local todays across
+            # timezones). LAST_FAR starts at 0 so the first pass of every run
+            # covers the full window and a fresh runner never inherits a stale
+            # day 2 across the self-chain handover.
+            FAR_AGE=$(( T0 - LAST_FAR ))
+            if [ "$FAR_AGE" -ge "$FAR_STALE_SECONDS" ]; then
+              DAYS=4; LAST_FAR=$T0; SCOPE="days 0-3"
+            else
+              DAYS=2; SCOPE="days 0-1"
+            fi
+            echo "pass ${PASS}: ${SCOPE} (days 2-3 were ${FAR_AGE}s old)"
+            for DATE in $(python -m scraper.dates --registry registry.json --days "$DAYS"); do
               OUT="output/tun_${DATE}_s${{ matrix.shard }}.json"
               echo "::group::teeitup near plain pass ${PASS} ${DATE} shard ${{ matrix.shard }}"
               python -m scraper.browser_teeitup --date "${DATE}" \
