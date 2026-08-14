@@ -1,0 +1,155 @@
+name: Probe — golfnow area batching (measurement only)
+
+# WHAT THIS ANSWERS.
+#
+# golfnow is the single most expensive thing in the browser tier: ~369s of a
+# 976s day-0 pass, and ~2,108s of the ~4,020s four-date sweep — 52% — because
+# it costs MORE on future dates (d0 396s, d1 631s, d2 554s). Its cost is one
+# page load per facility, 69 of them.
+#
+# GolfNow's predicate is an AREA query (latitude/longitude/radius) that the
+# facility page narrows to one facilityId. Probed live 2026-08-14: `facilityIds`
+# is ignored while `facilityId` is set, and `facilityId: 0` under
+# `searchType: "Facility"` is a 500 — so facilities cannot be folded into one
+# FACILITY search. But the site's own area search renders 17 distinct facilities
+# in a single page load, and greedy set-cover puts all 69 courses inside 32
+# 35-mile circles. That is 69 page loads -> 32, a 54% cut.
+#
+# TWO THINGS DECIDE WHETHER IT IS REAL.
+#
+#   1. Does the area response actually carry TEE TIMES? The rendered card shows
+#      a course's name, city and review count — not its times. If the JSON
+#      behind it lists facilities for display only, batching buys nothing. The
+#      report prints this first and stops there if the answer is no.
+#   2. Does an area search return the SAME courses as 15 separate facility
+#      searches? A 35-mile circle over Phoenix spans far more GolfNow
+#      facilities than the 15 we track, and a result cap would drop some of
+#      ours. This is the dangerous failure: browser_golfnow ends every
+#      invocation in `|| true`, and d1.sync only deactivates courses PRESENT in
+#      the scrape, so a course the area path silently dropped would keep
+#      serving stale tee times instead of going dark. It would not go red.
+#
+# WHY IT CANNOT DAMAGE ANYTHING. It never calls `scraper.d1 push`, and it is NOT
+# GIVEN THE DB SECRETS — no CLOUDFLARE_*, no ONETEE_INGEST_TOKEN, no
+# VPS_INGEST_TOKEN. Writing to production inventory is not merely avoided, it is
+# impossible. Output goes to probe-out/ and is read back only to compare.
+#
+# THE CONTROL IS PRODUCTION CODE, UNMODIFIED. The facility passes run
+# `scraper.browser_golfnow` exactly as the near tier does. Only the comparison
+# is new. A control that reimplements the thing it is controlling for is not a
+# control.
+#
+# START DEFAULTS TO 5, NOT 0 — learned from the lane probe (run 31753986162),
+# whose coverage oracle was destroyed by day-0 inventory emptying over a 38
+# minute evening window: golfnow went 12 -> 10 -> 4 courses across three passes
+# purely from the clock. Day +5 inventory barely moves in an hour, which is what
+# makes a per-course comparison mean anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      radius:
+        description: "cluster radius in miles (35 = 32 searches for 69 courses)"
+        default: "35"
+      start:
+        description: "day offset to probe; keep >=3 so inventory is stable"
+        default: "5"
+      top:
+        description: "how many of the biggest clusters to probe (+1 singleton control)"
+        default: "3"
+      max_pages:
+        description: "pagination cap per area search"
+        default: "15"
+
+permissions:
+  contents: read          # deliberately NOT actions:write — this chains nothing
+
+concurrency:
+  group: probe-golfnow-batching
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + Chromium
+        run: |
+          pip install requests playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Record the machine
+        run: |
+          echo "nproc: $(nproc)"
+          free -m || true
+
+      - name: Plan the clusters
+        env:
+          RADIUS: ${{ github.event.inputs.radius }}
+          TOP: ${{ github.event.inputs.top }}
+        run: |
+          set -o pipefail
+          python -m scripts.golfnow_clusters \
+            --radius "$RADIUS" --top "$TOP" --out clusters.json
+
+      - name: Run facility / area / facility
+        env:
+          START: ${{ github.event.inputs.start }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages }}
+        run: |
+          set -u
+          mkdir -p probe-out probe-logs
+
+          # One date. The point here is per-course parity, not the date sweep —
+          # and a single date keeps the two facility control passes close
+          # together in time, which is what makes the drift bracket tight.
+          DATE=$(python -m scraper.dates --registry registry.json --days 1 \
+                   --start "$START" | head -1)
+          echo "probing date: $DATE (today + $START)"
+
+          # A/B/A. The facility passes bracket the area pass so inventory drift
+          # is visible as a fac1/fac3 delta instead of being charged to the area
+          # path. Each pass is timed; `|| true` mirrors production, and the
+          # report reads the docs rather than trusting exit codes.
+          for STEP in gn_fac1 gn_area2 gn_fac3; do
+            S=$(date +%s)
+            case "$STEP" in
+              gn_area2)
+                timeout 2400 python -m scraper.browser_golfnow_area \
+                  --clusters clusters.json --date "$DATE" \
+                  --max-pages "$MAX_PAGES" \
+                  --out "probe-out/${STEP}.json" > "probe-logs/${STEP}.log" 2>&1 \
+                  || true
+                ;;
+              *)
+                timeout 2400 python -m scraper.browser_golfnow \
+                  --date "$DATE" --registry registry.json \
+                  --out "probe-out/${STEP}.json" \
+                  > "probe-logs/${STEP}.log" 2>&1 || true
+                ;;
+            esac
+            E=$(date +%s)
+            echo "TIMING ${STEP} $((E - S))" | tee -a probe-logs/timings.log
+            echo "::group::${STEP} — $((E - S))s"
+            tail -n 120 "probe-logs/${STEP}.log"
+            echo "::endgroup::"
+          done
+          cat probe-logs/timings.log
+
+      - name: Compare facility vs area
+        if: always()
+        run: python scripts/probe_golfnow_report.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-golfnow-batching
+          path: |
+            clusters.json
+            probe-logs/
+            probe-out/
+          retention-days: 7
