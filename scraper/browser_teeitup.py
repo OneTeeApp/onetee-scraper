@@ -317,19 +317,53 @@ def _run_plain(date: dt.date, courses: list, out_path: str) -> dict:
 
     log.info("teeitup plain-HTTP %s: served=%d throttled=%d of %d",
              date, served, throttled, len(courses))
-    return _finish(date, len(courses), served, tee_times, errors, out_path)
+    return _finish(date, courses, served, tee_times, errors, out_path)
 
 
-def _finish(date: dt.date, queried: int, served: int,
+def _finish(date: dt.date, courses: list, served: int,
             tee_times: list, errors: list, out_path: str) -> dict:
     """Shared epilogue: assemble the doc, write it, return it (browser + plain
     produce byte-identical shapes)."""
+    # courses_empty: the courses that answered CLEANLY with zero rows. Same
+    # contract as aggregate.py's field of the same name, and it exists for the
+    # same consumer — scripts/derive_windows.py can only learn that a course's
+    # booking window is SHORT by seeing it answer empty; a course simply absent
+    # from the doc is indistinguishable from one that was never asked. Without
+    # this, teeitup (384 sources, the largest platform in the registry) can
+    # never appear in booking-windows.json, so the far tier scrapes all 384 on
+    # all 28 days even though only ~65 publish anything past day 16.
+    #
+    # Two guards, both load-bearing:
+    #   1. An errored course is never empty — its absence is ignorance, not
+    #      evidence. kenna throttles show up as errors, so this matters.
+    #   2. PLATFORM LIVENESS: empties count only if at least one OTHER teeitup
+    #      course served rows this run. kenna soft-throttles our IP and can
+    #      return empty-200 across a whole sweep; trusting that would record a
+    #      7-day window for the entire fleet and permanently stop scraping it.
+    #      384 courses do not close their sheets in the same second.
+    #
+    # DELIBERATELY NOT NAMED `courses_empty`. d1.sync() consumes that exact key
+    # to DEACTIVATE a course's leftover rows for the date. Adopting the name
+    # here would quietly change what happens to 384 courses' inventory in the
+    # same commit that adds a measurement — and if the liveness guard were ever
+    # wrong, it would close out real tee times rather than merely mis-record a
+    # window. This field is read only by scripts/derive_windows.py. Promoting
+    # it to `courses_empty` is a separate, deliberate change, worth making once
+    # the derived windows have been checked against live inventory.
+    errored = {e.get("course") for e in errors
+               if isinstance(e, dict) and e.get("course")}
+    with_rows = {t.course_slug for t in tee_times}
+    courses_empty = (
+        sorted(c["slug"] for c in courses
+               if c["slug"] not in errored and c["slug"] not in with_rows)
+        if with_rows else [])
     doc = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "date": date.isoformat(),
-        "courses_queried": queried,
+        "courses_queried": len(courses),
         "courses_ok": served,
         "tee_times": [t.to_dict() for t in tee_times],
+        "courses_empty_observed": courses_empty,
         "errors": errors,
     }
     out = pathlib.Path(out_path)
@@ -476,7 +510,7 @@ def _run_browser(date: dt.date, courses: list, out_path: str) -> dict:
 
     log.info("teeitup browser %s: served=%d throttled=%d of %d",
              date, served, throttled, len(courses))
-    return _finish(date, len(courses), served, tee_times, errors, out_path)
+    return _finish(date, courses, served, tee_times, errors, out_path)
 
 
 def main(argv: list[str] | None = None) -> int:
