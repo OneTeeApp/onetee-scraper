@@ -30,7 +30,7 @@ on:
       - ".github/workflows/scrape-teeitup-browser.yml"
 
 permissions:
-  contents: read
+  contents: write        # the derive-windows job commits booking-windows.json
 
 concurrency:
   group: scrape-teeitup-browser
@@ -80,3 +80,75 @@ jobs:
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
           done
+
+      - name: Upload sweep outputs (booking-window derivation)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: teeitup-far-${{ github.run_id }}-s${{ matrix.shard }}
+          path: output/tu_*.json
+          retention-days: 3
+
+  derive-windows:
+    # LEARNING ONLY — this job changes nothing about what gets scraped. It
+    # records how far out each teeitup course actually publishes, so the far
+    # loop can later stop asking 384 courses about days nothing answers on.
+    #
+    # WHY IT DID NOT EXIST. scrape-far.yml derives booking windows, but it
+    # EXCLUDES teeitup (and every other browser-owned platform) because
+    # separate workflows own them. The result, measured 2026-08-14: 892 of
+    # 1,158 courses had no window recorded at all, every browser platform
+    # among them, and eligible_courses.py reads an unknown course as "scrape
+    # it". So the pruning existed and could not fire where it mattered most.
+    # Live inventory says teeitup has 167 courses with rows at day +8, 141 at
+    # +12, 72 at +16 and 62 at +25 — against 384 asked on every one of days
+    # 3-30, every two hours.
+    #
+    # --merge keeps this strictly additive: only the slugs this sweep saw are
+    # touched, and as_of is left alone because that stamp is scrape-far.yml's
+    # own "have I run a full sweep today" flag.
+    needs: scrape
+    if: needs.scrape.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Skip unless a day has passed
+        id: gate
+        run: |
+          W=probe-results/booking-windows.json
+          TODAY=$(date -u +%F)
+          AS_OF=$(python3 -c "import json;print((json.load(open('$W')).get('sources',{}).get('teeitup-far',{})).get('as_of',''))" 2>/dev/null || echo "")
+          if [ "$AS_OF" = "$TODAY" ]; then
+            echo "run=no" >> "$GITHUB_OUTPUT"; echo "already derived today ($AS_OF)"
+          else
+            echo "run=yes" >> "$GITHUB_OUTPUT"; echo "deriving (last: ${AS_OF:-never})"
+          fi
+      - name: Download sweep outputs
+        if: steps.gate.outputs.run == 'yes'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: teeitup-far-${{ github.run_id }}-*
+          path: output
+          merge-multiple: true
+      - name: Derive + merge + commit
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          python scripts/derive_windows.py \
+            --outputs 'output/tu_*.json' \
+            --registry registry.json \
+            --out probe-results/booking-windows.json \
+            --merge --source teeitup-far
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add probe-results/booking-windows.json
+          git diff --cached --quiet && { echo "windows unchanged"; exit 0; }
+          git commit -m "Booking windows: teeitup far sweep [skip ci]"
+          for i in 1 2 3; do
+            git push && exit 0
+            git pull --rebase && continue
+          done
+          exit 1
