@@ -62,6 +62,12 @@ def main() -> int:
                    help="glob of aggregate output docs from ONE full sweep")
     p.add_argument("--registry", default="registry.json")
     p.add_argument("--out", default="probe-results/booking-windows.json")
+    p.add_argument("--merge", action="store_true",
+                   help="update only the slugs seen in --outputs, keeping every "
+                        "other course's window and the file's as_of stamp")
+    p.add_argument("--source", default="",
+                   help="with --merge, a label recorded under sources[] so each "
+                        "contributor's freshness is visible")
     a = p.parse_args()
 
     reg = json.loads(pathlib.Path(a.registry).read_text())["courses"]
@@ -77,7 +83,13 @@ def main() -> int:
         doc = json.loads(pathlib.Path(f).read_text())
         date = dt.date.fromisoformat(doc["date"])
         with_rows = {t["course_slug"] for t in doc["tee_times"]}
-        empties = set(doc.get("courses_empty", []))
+        # aggregate.py writes `courses_empty`, which d1.sync also consumes to
+        # deactivate rows. browser_teeitup.py writes the same information as
+        # `courses_empty_observed` precisely so it does NOT feed that path
+        # while these windows are still being validated. Both mean "answered
+        # cleanly with zero rows" and both are equally good evidence here.
+        empties = set(doc.get("courses_empty")
+                      or doc.get("courses_empty_observed") or [])
         for slug in with_rows | empties:
             tz = zoneinfo.ZoneInfo(tz_by_slug.get(slug, _STATE_TZ_FALLBACK))
             offset = (date - dt.datetime.now(tz).date()).days
@@ -94,13 +106,53 @@ def main() -> int:
 
     out = pathlib.Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({
+
+    # MERGE MODE exists because the window file has more than one contributor.
+    # scrape-far.yml derives windows for the PLAIN platforms only — it excludes
+    # clubprophet, ezlinks, golfnow, clubcaddie, supersaas, golfwithaccess,
+    # teeitup, totale, trutee and teesnap, because separate workflows own those.
+    # So 892 of 1,158 courses were never in this file at all, every browser
+    # platform among them, and "unknown course -> eligible" meant they were
+    # scraped on every far date forever. A browser tier can now contribute its
+    # own courses' windows without touching anyone else's.
+    #
+    # as_of is NOT restamped on a merge. It is the plain far tier's own "have I
+    # run a full sweep today" flag (scrape-far.yml's plan job reads it), and a
+    # merging workflow stamping it would silently suppress that full sweep —
+    # which is the one thing that keeps the plain windows honest.
+    payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc)
                           .isoformat(timespec="seconds"),
         "as_of": dt.date.today().isoformat(),
         "floor": FLOOR, "grace": GRACE,
         "windows": windows,
-    }, indent=1, sort_keys=True))
+    }
+    if a.merge:
+        prior = {}
+        if out.is_file():
+            try:
+                prior = json.loads(out.read_text())
+            except Exception as e:  # noqa: BLE001
+                raise SystemExit(f"--merge given but {out} is unreadable ({e}); "
+                                 "refusing to overwrite it with a partial file")
+        merged = dict(prior.get("windows") or {})
+        merged.update(windows)                     # only the slugs we just saw
+        payload["windows"] = merged
+        # Absent as_of means "no full plain sweep yet", which reads as stale
+        # everywhere it matters — the conservative direction.
+        payload["as_of"] = prior.get("as_of", "")
+        payload["floor"] = prior.get("floor", FLOOR)
+        payload["grace"] = prior.get("grace", GRACE)
+        sources = dict(prior.get("sources") or {})
+        if a.source:
+            sources[a.source] = {"as_of": dt.date.today().isoformat(),
+                                 "courses": len(windows)}
+        if sources:
+            payload["sources"] = sources
+        print(f"merge: {len(windows)} slugs from this sweep into "
+              f"{len(prior.get('windows') or {})} existing -> {len(merged)}")
+        windows = merged
+    out.write_text(json.dumps(payload, indent=1, sort_keys=True))
     caps = sum(1 for w in windows.values()
                if w["max_offset_with_rows"] < w["checked_through"])
     print(f"wrote {out}: {len(windows)} courses, "
