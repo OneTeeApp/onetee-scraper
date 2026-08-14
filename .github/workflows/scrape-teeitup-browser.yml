@@ -68,7 +68,13 @@ jobs:
           W=probe-results/booking-windows.json
           if [ ! -f "$W" ]; then
             FULL=yes                       # no windows at all: must derive
-          else
+          elif [ "$(date -u +%H)" -ge 10 ]; then
+            # >= 10:00 UTC is ~04:00 Denver, which is where scrape-far.yml puts
+            # its full sweep and why. A full sweep costs roughly double a
+            # windowed one (~20 min against ~9), and the first version of this
+            # gate fired on the bare UTC date rollover — 18:00 Denver, the
+            # busiest hour for booking and the worst possible time to double the
+            # load on kenna. Same stamp, same retry behaviour, civilised hour.
             AS_OF=$(python3 -c "import json;print((json.load(open('$W')).get('sources',{}).get('teeitup-far',{})).get('as_of',''))" 2>/dev/null || echo "")
             [ "$AS_OF" != "$(date -u +%F)" ] && FULL=yes
           fi
