@@ -22,6 +22,10 @@ on:
   schedule:
     - cron: "17 */2 * * *"
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Ignore booking windows (full sweep + re-derive)"
+        default: "no"
   push:
     branches: [main]
     paths:
@@ -37,7 +41,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    # ONE mode decision for the whole run, consumed by every shard AND by the
+    # derivation, so they can never disagree. Copied from scrape-far.yml, which
+    # learned this the hard way: when each job judged the clock for itself, a
+    # derive step that drifted past the hour boundary committed WINDOWED output
+    # as full-sweep evidence.
+    #
+    # Full once a day. This is not a nicety — a windowed sweep only looks where
+    # the windows already point, so deriving from one would let each day's
+    # windows shrink to fit the previous day's pruning, and a course that widens
+    # its booking window could never be rediscovered. The full sweep is the only
+    # thing that can grow a window back.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.mode.outputs.full }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decide full vs windowed
+        id: mode
+        env:
+          INPUT_FULL: ${{ github.event.inputs.full }}
+        run: |
+          FULL=no
+          W=probe-results/booking-windows.json
+          if [ ! -f "$W" ]; then
+            FULL=yes                       # no windows at all: must derive
+          else
+            AS_OF=$(python3 -c "import json;print((json.load(open('$W')).get('sources',{}).get('teeitup-far',{})).get('as_of',''))" 2>/dev/null || echo "")
+            [ "$AS_OF" != "$(date -u +%F)" ] && FULL=yes
+          fi
+          [ "${INPUT_FULL}" = "yes" ] && FULL=yes
+          echo "full=${FULL}" >> "$GITHUB_OUTPUT"
+          echo "teeitup far sweep mode: full=${FULL}"
+
   scrape:
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -74,9 +114,31 @@ jobs:
           # run covers so the union fills the 3-30 window over a few sweeps.
           for DATE in $(python -m scraper.dates --registry registry.json --start 3 --days 28 | shuf); do
             OUT="output/tu_${DATE}_s${{ matrix.shard }}.json"
+            # Windowed sweeps ask each course only about days it has actually
+            # published on, plus the file's grace margin. Measured 2026-08-14:
+            # 384 courses asked on all 28 days, against 167 with rows at day +8,
+            # 72 at +16 and 62 at +25 — about half of every sweep spent on
+            # questions the platform has already answered with "not open yet".
+            #
+            # eligible_courses.py fails OPEN in every direction that matters: an
+            # unknown course, an offset beyond what the sweep ever checked, a
+            # missing file and a stale stamp all print ALL. --source makes the
+            # staleness judgement teeitup's own, so a stalled PLAIN far tier
+            # cannot silently disable this and a stalled teeitup tier cannot
+            # keep pruning on windows nobody has refreshed.
+            ARGS=""
+            if [ "${{ needs.plan.outputs.full }}" != "yes" ]; then
+              ELIG=$(python scripts/eligible_courses.py --date "${DATE}" \
+                       --platform teeitup --source teeitup-far)
+              if [ "$ELIG" = "NONE" ]; then
+                echo "skip ${DATE}: no teeitup booking window reaches it"
+                continue
+              fi
+              [ "$ELIG" != "ALL" ] && ARGS="--courses ${ELIG}"
+            fi
             echo "::group::teeitup plain ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.browser_teeitup --date "${DATE}" \
-              --shard "${{ matrix.shard }}/8" --out "${OUT}" || true
+              --shard "${{ matrix.shard }}/8" --out "${OUT}" ${ARGS} || true
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
           done
@@ -107,8 +169,8 @@ jobs:
     # --merge keeps this strictly additive: only the slugs this sweep saw are
     # touched, and as_of is left alone because that stamp is scrape-far.yml's
     # own "have I run a full sweep today" flag.
-    needs: scrape
-    if: needs.scrape.result == 'success'
+    needs: [plan, scrape]
+    if: needs.plan.outputs.full == 'yes' && needs.scrape.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -116,26 +178,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Skip unless a day has passed
-        id: gate
-        run: |
-          W=probe-results/booking-windows.json
-          TODAY=$(date -u +%F)
-          AS_OF=$(python3 -c "import json;print((json.load(open('$W')).get('sources',{}).get('teeitup-far',{})).get('as_of',''))" 2>/dev/null || echo "")
-          if [ "$AS_OF" = "$TODAY" ]; then
-            echo "run=no" >> "$GITHUB_OUTPUT"; echo "already derived today ($AS_OF)"
-          else
-            echo "run=yes" >> "$GITHUB_OUTPUT"; echo "deriving (last: ${AS_OF:-never})"
-          fi
       - name: Download sweep outputs
-        if: steps.gate.outputs.run == 'yes'
         uses: actions/download-artifact@v4
         with:
           pattern: teeitup-far-${{ github.run_id }}-*
           path: output
           merge-multiple: true
       - name: Derive + merge + commit
-        if: steps.gate.outputs.run == 'yes'
         run: |
           python scripts/derive_windows.py \
             --outputs 'output/tu_*.json' \
