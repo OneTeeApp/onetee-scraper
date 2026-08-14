@@ -44,8 +44,11 @@ on:
         description: "lanes for the parallel mode (2 or 3)"
         default: "3"
       days:
-        description: "date window; 1 = day 0 only (fast, exercises all 6)"
+        description: "date window; 1 = one date (fast, exercises all 6)"
         default: "1"
+      start:
+        description: "day offset; keep >=3 so inventory is stable (0 = today)"
+        default: "5"
       sequence:
         description: "modes to run in order, comma-separated (seq|par)"
         default: "seq,par,seq"
@@ -83,12 +86,23 @@ jobs:
           CPS_ONLY: plain
           LANES: ${{ github.event.inputs.lanes }}
           WINDOW: ${{ github.event.inputs.days }}
+          START: ${{ github.event.inputs.start }}
           SEQUENCE: ${{ github.event.inputs.sequence }}
         run: |
           set -u
           mkdir -p probe-out probe-logs
 
-          DATES=$(python -m scraper.dates --registry registry.json --days "$WINDOW")
+          # START defaults to 5, NOT 0. Probe #1 (run 31753986162) proved the
+          # SPEED question — 2.56x, no timesharing penalty — and proved nothing
+          # about correctness, because day-0 inventory emptied underneath it over
+          # a 38-minute evening window: golfnow answered on 12 courses, then 10,
+          # then 4, across three passes, purely from the clock. The A/B/A design
+          # caught it, but the coverage oracle was worthless on that window.
+          # Day +5 inventory barely moves in an hour; the teeitup work later
+          # confirmed the point, with a facility sweep returning 2,207 tee times
+          # twice, thirteen minutes apart, with identical errors.
+          DATES=$(python -m scraper.dates --registry registry.json \
+                    --days "$WINDOW" --start "$START")
           CSV=$(echo "$DATES" | paste -sd, -)
           echo "dates: $(echo "$DATES" | paste -sd' ' -)"
 
