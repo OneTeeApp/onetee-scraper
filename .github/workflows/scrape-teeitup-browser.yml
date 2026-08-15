@@ -202,8 +202,31 @@ jobs:
           git add probe-results/booking-windows.json
           git diff --cached --quiet && { echo "windows unchanged"; exit 0; }
           git commit -m "Booking windows: teeitup far sweep [skip ci]"
+          # RE-DERIVE ONTO LATEST rather than rebase. On 2026-08-15 this file was
+          # rewritten wholesale by the other contributor between derive and push;
+          # `git pull --rebase` hit a conflict, left the runner mid-rebase on a
+          # detached HEAD with unmerged files, and every retry then failed with
+          # "Pulling is not possible because you have unmerged files". The job
+          # went red and the windows were lost for the day.
+          #
+          # Merge-mode derivation is idempotent and only touches this
+          # contributor's own slugs, so the safe recovery is to throw the local
+          # commit away, take the other side's file whole, and re-apply our
+          # slugs on top. No conflict is possible because we never ask git to
+          # reconcile the JSON.
           for i in 1 2 3; do
-            git push && exit 0
-            git pull --rebase && continue
+            git push origin HEAD:main && exit 0
+            echo "push rejected (attempt $i) — re-deriving onto the latest main"
+            git rebase --abort 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            python scripts/derive_windows.py \
+              --outputs 'output/tu_*.json' \
+              --registry registry.json \
+              --out probe-results/booking-windows.json \
+              --merge --source teeitup-far
+            git add probe-results/booking-windows.json
+            git diff --cached --quiet && { echo "nothing to add after re-derive"; exit 0; }
+            git commit -m "Booking windows: teeitup far sweep [skip ci]"
           done
           exit 1
