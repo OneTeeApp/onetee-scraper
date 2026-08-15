@@ -1,4 +1,4 @@
-name: Scrape Golf With Access via browser (0-13 every 2h, 0-30 daily)
+name: Scrape Golf With Access via browser (0-13 every 2h, 14-30 every 8h)
 
 # WHY. golfwithaccess.com's public /api/v1/tee-times returns a clean HTTP 200
 # with an EMPTY teeTimes list to our plain client — even from a residential IP
@@ -19,7 +19,14 @@ name: Scrape Golf With Access via browser (0-13 every 2h, 0-30 daily)
 
 on:
   schedule:
-    - cron: "37 */2 * * *"
+    # SHALLOW, days 0-13. Every 2h except the three deep slots below, so the
+    # twelve-runs-a-day cadence is unchanged.
+    - cron: "37 0,4,6,8,12,14,16,20,22 * * *"
+    # DEEP TAIL, days 14-30. Three slots 8h apart, matched by their exact cron
+    # string in the step below. See the long comment there for why.
+    - cron: "37 2 * * *"
+    - cron: "37 10 * * *"
+    - cron: "37 18 * * *"
   workflow_dispatch:
     inputs:
       deep:
@@ -63,20 +70,53 @@ jobs:
           ONETEE_API_URL: https://api.oneteeapp.com
           ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
         run: |
-          # Every 2h covers days 0-13 (Access munis rarely open further); the
-          # 10:xx UTC run and a manual deep dispatch stretch to the full 30-day
-          # horizon as a safety net for any resort with a longer window.
+          # WHY THIS IS GATED ON github.event.schedule AND NOT ON THE CLOCK.
+          # It used to read:
+          #     [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          # an exact wall-clock hour equality evaluated INSIDE the job, so it
+          # only held if the runner reached this line during the 10:00 UTC hour.
+          # GitHub delivers scheduled events late under load and sometimes drops
+          # a slot outright. Observed on this very workflow: the 10:37 cron
+          # landed at 10:38 on 2026-08-13, NOT AT ALL on 08-14 (nothing ran
+          # between 09:47 and 14:29), and at 11:01 on 08-15. Two consecutive
+          # misses left days 14-30 unrefreshed for more than 30 hours, which is
+          # exactly the read API's far-freshness cut (FRESH_FAR_MIN = 30h in
+          # vps/api/server.mjs) — so at ~17:00 UTC on 08-14 the site silently
+          # stopped serving them. The 8 long-window resorts (Westin Kierland,
+          # Starr Pass, Mystic Dunes, both World Golf Village courses, Arizona
+          # National, Eagle Mountain, Rollingstone Ranch) lost ~8,000 tee times,
+          # 45% of the platform. Nothing alerted: alert-landed-zero only fires
+          # when a platform lands zero rows, and this one stayed "live".
+          #
+          # github.event.schedule is the cron expression that FIRED, so delivery
+          # jitter cannot move a run out of its slot. Three slots 8h apart mean a
+          # dropped delivery costs 8 hours instead of a day, and two in a row
+          # still lands inside the 30h cut.
+          #
+          # ezlinks (deep at 02/10/18) and cps (already matched on
+          # github.event.schedule) are the two platforms that kept a full 30-day
+          # horizon through all of this. This is their pattern.
           DEEP=no
-          [ "$(date -u +%H)" = "10" ] && DEEP=yes
-          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
-          LAST=13
-          [ "$DEEP" = "yes" ] && LAST=30
+          case "${{ github.event.schedule }}" in
+            "37 2 * * *"|"37 10 * * *"|"37 18 * * *") DEEP=tail ;;
+          esac
+          # A manual dispatch sweeps the WHOLE horizon. That is the recovery
+          # lever for when the tail has already gone dark; the scheduled deep
+          # only needs the tail, because 0-13 is covered every 2h anyway.
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=full
+          case "$DEEP" in
+            full) START=0;  WINDOW=31 ;;
+            tail) START=14; WINDOW=17 ;;
+            *)    START=0;  WINDOW=14 ;;
+          esac
+          echo "golfwithaccess horizon: mode=${DEEP}, days ${START}-$((START + WINDOW - 1))"
           # Shuffle the date order (as scrape-far.yml / scrape.yml do): if a run
           # is short of budget it leaves a DIFFERENT gap each time, so the union
           # across runs still covers the horizon instead of permanently starving
           # the tail dates. Dates from scraper.dates (union of local todays
           # across the AZ/CO/VA/FL timezones), not `date -u`.
-          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))" | shuf); do
+          for DATE in $(python -m scraper.dates --registry registry.json \
+                          --days "$WINDOW" --start "$START" | shuf); do
             echo "::group::golfwithaccess browser ${DATE}"
             python -m scraper.browser_golfwithaccess --date "${DATE}" \
               --out "output/gwa_${DATE}.json" || true
