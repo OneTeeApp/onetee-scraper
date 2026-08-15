@@ -1,4 +1,4 @@
-name: Scrape GolfNow via browser (0-6 hourly, 0-30 daily)
+name: Scrape GolfNow via browser (0-6 hourly, 7-30 in halves every 6h)
 
 # GolfNow shows no interactive challenge to a real browser, but the plain HTTP
 # client is blocked. A headless Chromium loads each facility's search page,
@@ -10,7 +10,16 @@ name: Scrape GolfNow via browser (0-6 hourly, 0-30 daily)
 
 on:
   schedule:
-    - cron: "52 * * * *"
+    # SHALLOW, days 0-6. Every hour except the four tail slots below, so the
+    # twenty-four-runs-a-day cadence is unchanged.
+    - cron: "52 0,1,2,3,5,6,7,8,9,11,12,13,14,15,17,18,19,20,21,23 * * *"
+    # TAIL A, days 7-18, and TAIL B, days 19-30. Matched by their exact cron
+    # strings in the step below. See the long comment there for why the horizon
+    # is split in half and why this is not a clock test.
+    - cron: "52 4 * * *"
+    - cron: "52 16 * * *"
+    - cron: "52 10 * * *"
+    - cron: "52 22 * * *"
   workflow_dispatch:
     inputs:
       deep:
@@ -53,19 +62,53 @@ jobs:
           ONETEE_API_URL: https://api.oneteeapp.com
           ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
         run: |
-          # Hourly runs cover days 0-6; the 10:xx UTC run (~4am Denver) and a
-          # manual deep dispatch stretch to the full 30-day horizon. Browser
-          # scrapes are too slow to loop at the near tier's cadence, so daily
-          # is the far-tier freshness for these platforms.
-          DEEP=no
-          [ "$(date -u +%H)" = "10" ] && DEEP=yes
-          [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
-          LAST=6
-          [ "$DEEP" = "yes" ] && LAST=30
+          # TWO BUGS WERE FIXED HERE ON 2026-08-15, AND THEY COMPOUNDED.
+          #
+          # (1) The horizon gate read:
+          #         [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          #     an exact wall-clock hour equality evaluated INSIDE the job, so
+          #     it only held if the runner reached this line during the 10:00
+          #     UTC hour. GitHub delivers scheduled events late under load and
+          #     sometimes drops a slot outright — this workflow's cron missed
+          #     hour 10 entirely on 08-11 — and a miss silently costs the whole
+          #     day's horizon. github.event.schedule is the cron expression that
+          #     FIRED, so delivery jitter cannot move a run out of its slot.
+          #     (The same bug took ~8,000 golfwithaccess tee times off the site
+          #     on 08-14; see that workflow for the full write-up.)
+          #
+          # (2) Even when it DID fire, it never finished. Every hour-10 run from
+          #     08-09 to 08-15 ran 170-180 minutes against timeout-minutes: 170
+          #     — i.e. it was killed mid-sweep, every single day. The dates were
+          #     NOT shuffled, so it died at the same place each time and the
+          #     tail was permanently starved: the API served golfnow to about
+          #     day 18 and nothing beyond.
+          #
+          # So the horizon is now SPLIT IN HALF and each half runs twice a day,
+          # 12 hours apart. Twelve dates comfortably fits the budget, both
+          # halves stay inside the read API's 30h far-freshness cut even if one
+          # delivery is dropped, and the four tail runs together cost about what
+          # the one timing-out run cost. Shuffled as well, so if a run IS short
+          # of budget it leaves a different gap each time.
+          MODE=near
+          case "${{ github.event.schedule }}" in
+            "52 4 * * *"|"52 16 * * *")  MODE=tail-a ;;
+            "52 10 * * *"|"52 22 * * *") MODE=tail-b ;;
+          esac
+          # A manual dispatch sweeps the WHOLE horizon: the recovery lever for
+          # when the tail has already gone dark.
+          [ "${{ github.event.inputs.deep }}" = "yes" ] && MODE=full
+          case "$MODE" in
+            full)   START=0;  WINDOW=31 ;;
+            tail-a) START=7;  WINDOW=12 ;;
+            tail-b) START=19; WINDOW=12 ;;
+            *)      START=0;  WINDOW=7  ;;
+          esac
+          echo "golfnow horizon: mode=${MODE}, days ${START}-$((START + WINDOW - 1))"
           # Dates from scraper.dates (union of local todays across covered
           # timezones), not `date -u`: after ~5pm Mountain the UTC date is
           # already tomorrow and a UTC "today" skips the real one.
-          for DATE in $(python -m scraper.dates --registry registry.json --days "$((LAST + 1))"); do
+          for DATE in $(python -m scraper.dates --registry registry.json \
+                          --days "$WINDOW" --start "$START" | shuf); do
             echo "::group::golfnow browser ${DATE}"
             python -m scraper.browser_golfnow --date "${DATE}" \
               --out "output/gn_${DATE}.json" || true
