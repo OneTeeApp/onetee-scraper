@@ -72,6 +72,26 @@ env:
                                 # pass is day 0 only. 1 = always full (old
                                 # behaviour); raise it to favour day-0 cadence.
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
+  # LANE PARALLELISM, OFF BY DEFAULT. 1 = sequential, byte-for-byte the current
+  # behaviour. 2 = golfnow alone in lane 1, the other five in lane 2. Set the
+  # repo variable BROWSER_LANES to 2 to turn it on; unset or set it back to 1 to
+  # revert instantly, with no commit and no deploy.
+  #
+  # 2 and not 3. Measured on day +5, seq/par/seq, runs 31823871401 (3 lanes) and
+  # 31828206175 (2 lanes):
+  #
+  #            wall    speedup   golfnow in the parallel pass
+  #   3 lanes  755s     1.46x    46 courses 10 errors  <- WORSE than both seq passes
+  #   2 lanes  745s     1.68x    48 courses  8 errors  <- BEST of the three passes
+  #
+  # golfnow is the most challenge-sensitive of the six and it sets the floor —
+  # parallel wall time equals golfnow's own runtime in both probes. Give it a
+  # lane to itself and it is unaffected; make it share with two other browsers
+  # and it loses courses and gains errors. Two lanes is both faster AND safer.
+  #
+  # Concurrent lanes are safe to push: d1.sync scopes deactivation to the courses
+  # present in that scrape, and every platform writes its own output prefix.
+  BROWSER_LANES: ${{ vars.BROWSER_LANES || 1 }}
 
 jobs:
   loop:
@@ -148,7 +168,8 @@ jobs:
             DATES=$(python -m scraper.dates --registry registry.json --days "$WINDOW")
             CSV=$(echo "$DATES" | paste -sd, -)
             echo "pass ${PASS}: window=${WINDOW} day(s) -> $(echo "$DATES" | paste -sd' ' -)"
-            for PLAT in $PLATFORMS; do
+            run_platform () {
+              PLAT="$1"
               case "$PLAT" in
                 clubcaddie)
                   # clubcaddie takes a RANGE in one widget-load-per-course call
@@ -186,7 +207,36 @@ jobs:
                   done
                   ;;
               esac
-            done
+            }
+
+            if [ "$BROWSER_LANES" -ge 2 ]; then
+              # Lane 1 is golfnow alone, deliberately: it is the slowest
+              # platform and the only one measured to degrade under
+              # contention. Lane 2 carries the other five, which together
+              # cost less than golfnow does.
+              #
+              # Output is buffered per lane and printed after the join, so
+              # the ::group:: markers stay readable instead of interleaving.
+              ( run_platform golfnow ) > "lane1.log" 2>&1 &
+              L1=$!
+              sleep 5                     # stagger the browser launches
+              ( for P in ezlinks clubcaddie cps supersaas golfwithaccess; do
+                  run_platform "$P"
+                done ) > "lane2.log" 2>&1 &
+              L2=$!
+              # Capture exit codes explicitly. This catches a lane KILLED
+              # outright — OOM, signal, runner eviction — which would otherwise
+              # look exactly like a lane that finished quickly. It does NOT
+              # catch individual scraper failures: those already end in
+              # `|| true` on purpose (one dead platform must not abort the
+              # pass) and surface as zero rows plus the landed-zero alert.
+              if wait "$L1"; then RC1=0; else RC1=$?; fi
+              if wait "$L2"; then RC2=0; else RC2=$?; fi
+              cat lane1.log lane2.log; rm -f lane1.log lane2.log
+              echo "pass ${PASS}: lanes=2 exit codes lane1=${RC1} lane2=${RC2}"
+            else
+              for PLAT in $PLATFORMS; do run_platform "$PLAT"; done
+            fi
             T1=$(date +%s)
             TOOK=$((T1 - T0))
             SLEEP=$((INTERVAL_SECONDS - TOOK))
