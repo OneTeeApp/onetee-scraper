@@ -68,6 +68,12 @@ def main() -> int:
     p.add_argument("--source", default="",
                    help="with --merge, a label recorded under sources[] so each "
                         "contributor's freshness is visible")
+    p.add_argument("--stamp-as-of", action="store_true",
+                   help="with --merge, ALSO restamp the top-level as_of. Only "
+                        "scrape-far.yml's plain sweep may do this: its plan job "
+                        "reads that stamp to decide whether it has run a full "
+                        "sweep today, so if it merged without restamping it "
+                        "would run a full sweep every two hours forever.")
     a = p.parse_args()
 
     reg = json.loads(pathlib.Path(a.registry).read_text())["courses"]
@@ -140,7 +146,8 @@ def main() -> int:
         payload["windows"] = merged
         # Absent as_of means "no full plain sweep yet", which reads as stale
         # everywhere it matters — the conservative direction.
-        payload["as_of"] = prior.get("as_of", "")
+        payload["as_of"] = (dt.date.today().isoformat() if a.stamp_as_of
+                            else prior.get("as_of", ""))
         payload["floor"] = prior.get("floor", FLOOR)
         payload["grace"] = prior.get("grace", GRACE)
         sources = dict(prior.get("sources") or {})
