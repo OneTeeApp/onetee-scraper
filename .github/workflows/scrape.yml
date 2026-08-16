@@ -151,3 +151,50 @@ jobs:
           name: tee-times-${{ github.run_id }}-s${{ matrix.shard }}
           path: output/tee_times_*.json
           retention-days: 7
+
+  chain:
+    # REFRESH INTERVAL = RUN DURATION. Days 3-7 used to refresh roughly hourly
+    # for these ~480 courses, not because the scan is slow — it is 12 minutes —
+    # but because the run finished and then waited for a cron. Dispatching the
+    # successor as soon as the scan completes makes the cadence the run's own
+    # duration, ~14 minutes including setup.
+    #
+    # NO SLEEP TO PACE, unlike the chain job scrape-far.yml used to carry. That
+    # one slept out the remainder of a 2-hour window and held a runner idle ~72%
+    # of the time it existed; it was removed on 2026-08-16. Here the sleep below
+    # is a FLOOR, not a pacer: it only engages if the run finished suspiciously
+    # fast.
+    #
+    # Why the floor is not optional. `if: always()` means a failing scan chains
+    # too — deliberately, so a transient failure cannot end the loop. But a scan
+    # that fails in thirty seconds would then respawn every thirty seconds and
+    # burn the runner pool. Holding to a 10-minute minimum bounds a broken state
+    # to six runs an hour instead of a hundred.
+    #
+    # Cron stays as the crash backstop and watchdog-near-loops.yml as the second
+    # one, so a dropped dispatch cannot leave the mid tier dark.
+    needs: scrape
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch the next mid-tier scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MIN_INTERVAL_SECONDS: "600"
+        run: |
+          START=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+                    --jq .run_started_at)
+          ELAPSED=$(( $(date +%s) - $(date -d "$START" +%s) ))
+          FLOOR=$(( MIN_INTERVAL_SECONDS - ELAPSED ))
+          if [ "$FLOOR" -gt 0 ]; then
+            echo "run took ${ELAPSED}s — holding ${FLOOR}s so a fast failure cannot spin"
+            sleep "$FLOOR"
+          else
+            echo "run took ${ELAPSED}s — chaining immediately"
+          fi
+          gh workflow run scrape.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" \
+            || echo "dispatch failed; cron and the supervisor will restart it"
