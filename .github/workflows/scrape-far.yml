@@ -28,6 +28,21 @@ name: Scrape far tier (days 8-30, every 2 hours)
 
 on:
   schedule:
+    # CADENCE IS CRON + SUPERVISOR, NOT A SELF-CHAIN (2026-08-16).
+    #
+    # This workflow used to end with a `chain` job that slept out the remainder
+    # of the 2-hour window and then dispatched its own successor, because the
+    # scheduler had once gone 9+ hours without firing anything. The sleep did
+    # its job, and it cost more than it looked: measured 87-89 minutes per
+    # cycle, around the clock, holding a runner slot idle roughly 72% of the
+    # time it existed. Runner contention is not theoretical here —
+    # scrape-teeitup-browser-near sat queued for two hours on 2026-08-14 and was
+    # cancelled before it ever acquired a runner.
+    #
+    # watchdog-near-loops.yml now dispatches this workflow whenever its last run
+    # is more than 5 hours old, so the scheduler is no longer a single point of
+    # failure and the sleep is redundant. Days 8-30 tolerate 30 hours
+    # (FRESH_FAR_MIN in vps/api/server.mjs), so a 5-hour worst case is ample.
     - cron: "43 */2 * * *"
   workflow_dispatch:
     inputs:
@@ -80,7 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -91,11 +106,17 @@ jobs:
 
       - name: Stagger shards
         # The initial full sweep 429-shredded kenna past ~day 9 with all four
-        # shards hitting it in lockstep. 90s offsets desynchronise the date
-        # loops without meaningfully slowing the sweep.
-        run: sleep $(( ${{ matrix.shard }} * 90 ))
+        # shards hitting it in lockstep, so shards are offset from each other.
+        #
+        # The offset used to be `shard * 90`. That is fine at 4 shards (worst
+        # case 4m30s) and self-defeating at 8: the last shard would idle 10m30s
+        # before starting, and a matrix run takes as long as its slowest shard.
+        # A bounded random offset desynchronises just as well and costs at most
+        # 3 minutes however many shards there are. The date loop below is also
+        # shuffled, which is the stronger desynchroniser of the two.
+        run: sleep $(( RANDOM % 180 ))
 
-      - name: Scrape + push shard ${{ matrix.shard }}/4 (days 8-30)
+      - name: Scrape + push shard ${{ matrix.shard }}/8 (days 8-30)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -125,7 +146,7 @@ jobs:
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::far ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
-              --shard "${{ matrix.shard }}/4" \
+              --shard "${{ matrix.shard }}/8" \
               --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,teesnap \
               ${ARGS} --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
@@ -214,28 +235,3 @@ jobs:
             git commit -m "Booking windows from full far sweep [skip ci]"
           done
           exit 1
-
-  chain:
-    # The cron scheduler went 9+ hours without firing anything in this repo,
-    # so the 2-hour cadence cannot depend on it (same lesson as scrape-near).
-    # This job waits out the remainder of the 2-hour window from run start,
-    # then dispatches the successor. if: always() so a failed sweep still
-    # chains; the concurrency group holds at most one pending run either way.
-    needs: [scrape, derive-windows]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 150
-    steps:
-      - name: Wait out the cadence, then dispatch the next run
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          START=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq .run_started_at)
-          ELAPSED=$(( $(date +%s) - $(date -d "$START" +%s) ))
-          SLEEP=$(( 7200 - ELAPSED ))
-          if [ "$SLEEP" -gt 0 ]; then
-            echo "sweep took ${ELAPSED}s; sleeping ${SLEEP}s to hold the 2h cadence"
-            sleep "$SLEEP"
-          fi
-          gh workflow run scrape-far.yml --ref main --repo "${{ github.repository }}" \
-            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
