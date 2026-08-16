@@ -1,4 +1,4 @@
-name: Scrape CPS (plain tenants hourly; challenged near = self-chaining loop, deep daily)
+name: Scrape CPS (plain tenants every 10 min; challenged near = self-chaining loop, deep daily)
 
 # Club Prophet (cps.golf). Two cost profiles on two cadences:
 #
@@ -23,7 +23,23 @@ name: Scrape CPS (plain tenants hourly; challenged near = self-chaining loop, de
 
 on:
   schedule:
-    - cron: "37 * * * *"     # PLAIN, near (0-3): hourly  — free
+    # PLAIN, near (0-3): every 10 minutes — free, and the job runs in 1-2 min.
+    #
+    # WAS hourly, and that was the least fresh near tier in the fleet: every
+    # other near platform re-reads days 0-3 on a 5-minute self-chaining loop,
+    # and the challenged cps tenants get a 30-minute one, but these 17
+    # plain-direct courses were re-read once an hour. Worse, GitHub delivers
+    # this cron late or not at all under load — observed gaps on 2026-08-15 of
+    # 83 and 118 minutes (17:39 -> 19:37) — so the real worst case was about two
+    # hours. A slot booked just after a run stayed on the site for that whole
+    # window, which is how Walnut Creek came to advertise a 12:30 that the
+    # booking site no longer had.
+    #
+    # Six short runs an hour cost ~10 runner-minutes; scrape-near.yml holds a
+    # runner continuously for five hours. This is the cheapest freshness in the
+    # fleet, and spreading it across six slots also means a dropped delivery
+    # costs 10 minutes instead of an hour.
+    - cron: "2,12,22,32,42,52 * * * *"
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
     - cron: "7 10 * * *"     # BROWSER, deep (4-30): daily  — free (Patchright, no proxy)
   workflow_dispatch:
@@ -43,7 +59,8 @@ jobs:
   plain:
     if: >-
       (github.event_name == 'schedule' &&
-        (github.event.schedule == '37 * * * *' || github.event.schedule == '17 8 * * *'))
+        (github.event.schedule == '2,12,22,32,42,52 * * * *'
+          || github.event.schedule == '17 8 * * *'))
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'plain' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
@@ -68,6 +85,10 @@ jobs:
           ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
           CPS_ONLY: plain            # only _DC_DIRECT_TENANTS (no proxy, no bandwidth)
         run: |
+          # Matched on the cron STRING, not the clock: github.event.schedule is
+          # the expression that fired, so a late delivery cannot silently turn a
+          # deep sweep into a near one. (The three browser workflows learned
+          # this the hard way on 2026-08-14 — see scrape-golfwithaccess-browser.)
           DEEP=no
           [ "${{ github.event.schedule }}" = "17 8 * * *" ] && DEEP=yes
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
