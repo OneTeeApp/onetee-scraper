@@ -69,6 +69,26 @@ GONE_ALERT = 3
 # Slots are informational, but a collapse is a collapse.
 SLOT_ALERT_PCT = 15.0
 
+# --- horizon probes -------------------------------------------------------
+# WHY THIS EXISTS. On 2026-08-14 golfwithaccess lost days 14-30 for its eight
+# long-window resorts: ~8,000 tee times, 45% of the platform, gone from the
+# site for a day and a half. This monitor did not notice, and could not have.
+# It samples /api/courses, which reports one slot total per venue across the
+# WHOLE horizon, so a course that stops serving days 14-30 but keeps serving
+# days 0-13 just looks like a smaller number — indistinguishable from an
+# afternoon of bookings. Every venue was still "serving", so `gone` was empty
+# and no threshold moved. The loss was found by a human looking at the site.
+#
+# A horizon collapse has a signature this file was blind to: not WHICH venues
+# serve, but HOW FAR OUT they serve. So probe a handful of day offsets per
+# platform and record the furthest one that still answers. One row is enough
+# to answer "is there anything out there", hence limit=1 — these are ~100 of
+# the cheapest possible queries per hour, not a second inventory scan.
+HORIZON_OFFSETS = (7, 14, 21, 28)
+# Below this many slots fleet-wide a platform's horizon is noise: supersaas
+# has been sitting at single-digit rows for weeks and would flap every sample.
+HORIZON_MIN_SLOTS = 500
+
 
 def fetch_state(api: str, state: str) -> dict:
     """Venue -> slot count for one state, as the frontend sees it.
@@ -84,6 +104,56 @@ def fetch_state(api: str, state: str) -> dict:
                                "name": c.get("course_name"),
                                "platform": c.get("platform")}
             for c in courses}
+
+
+def fetch_horizon(api: str, platforms: list[str]) -> dict[str, int]:
+    """Furthest HORIZON_OFFSETS day at which each platform still serves rows.
+
+    -1 means "nothing even at the nearest probe". The value is an offset, not
+    a count, because that is the thing that collapses cleanly: a platform whose
+    daily full-horizon sweep stops running keeps its near days fresh and loses
+    the tail all at once.
+    """
+    today = dt.datetime.now(dt.timezone.utc).date()
+    out: dict[str, int] = {}
+    for plat in platforms:
+        reach = -1
+        for off in HORIZON_OFFSETS:
+            day = (today + dt.timedelta(days=off)).isoformat()
+            r = requests.get(f"{api}/api/tee-times",
+                             params={"date": day, "platform": plat,
+                                     "limit": 1}, timeout=30)
+            r.raise_for_status()
+            if r.json().get("count"):
+                reach = off
+        out[plat] = reach
+    return out
+
+
+def horizon_alerts(cur: dict[str, int], prior: list[dict],
+                   slots: dict[str, int]) -> list[str]:
+    """Platforms whose reach fell below where the last TWO samples both had it.
+
+    Two samples, not one, on purpose. A platform sitting exactly on a booking
+    window boundary crosses a probe offset every time the window rolls, and
+    alerting on that would train the reader to ignore this line. Requiring the
+    drop to be against a reach both previous samples agreed on turns a rolling
+    boundary into at most one quiet sample, and a sweep that stopped running
+    into an alert within two hours.
+    """
+    out: list[str] = []
+    if len(prior) < 2:
+        return out
+    a, b = prior[-1], prior[-2]
+    for plat, now_reach in sorted(cur.items()):
+        if slots.get(plat, 0) < HORIZON_MIN_SLOTS:
+            continue
+        was = min(a.get(plat, -1), b.get(plat, -1))
+        if was >= HORIZON_OFFSETS[0] and now_reach < was:
+            where = (f"day +{now_reach}" if now_reach >= 0
+                     else f"nothing at day +{HORIZON_OFFSETS[0]}")
+            out.append(f"{plat}: horizon fell from day +{was} to {where}")
+    return out
 
 
 def main() -> int:
@@ -136,11 +206,19 @@ def main() -> int:
 
     # --- compare against the previous sample --------------------------------
     prev = None
+    prior_horizons: list[dict] = []
     if os.path.exists(a.history):
         with open(a.history) as fh:
             lines = [ln for ln in fh.read().splitlines() if ln.strip()]
         if lines:
             prev = json.loads(lines[-1])
+            # horizon_alerts wants the last two samples that actually carried a
+            # horizon block; a sample whose probe failed carries none and must
+            # not be read as "reached nothing".
+            for ln in lines[-6:]:
+                h = json.loads(ln).get("horizon")
+                if h:
+                    prior_horizons.append(h)
 
     # How far apart these two samples ACTUALLY are. The :57 cron is the
     # intent, not the guarantee — GitHub drops and delays scheduled runs, and
@@ -207,6 +285,33 @@ def main() -> int:
             alerts.append(f"{st}: {len(gone)} venues went silent"
                           f"{span or ' since the last sample'} "
                           f"({', '.join(gone[:8])})")
+
+    # --- how far out each platform still serves -----------------------------
+    # In its own try: a horizon probe that fails is a lost signal, not a lost
+    # sample. The same rule as the health counter above.
+    try:
+        plats = sorted({v["platform"] for cs in per_state_courses.values()
+                        for v in cs.values() if v.get("platform")})
+        slots_by_plat: dict[str, int] = {}
+        for cs in per_state_courses.values():
+            for v in cs.values():
+                if v.get("platform"):
+                    slots_by_plat[v["platform"]] = (
+                        slots_by_plat.get(v["platform"], 0) + (v["slots"] or 0))
+        horizon = fetch_horizon(a.api, plats)
+        sample["horizon"] = horizon
+        print("\nhorizon (furthest day offset still serving):")
+        for plat in sorted(horizon, key=lambda k: (-horizon[k], k)):
+            if slots_by_plat.get(plat, 0) < HORIZON_MIN_SLOTS:
+                continue
+            reach = horizon[plat]
+            print(f"  {plat:<18} "
+                  + (f"day +{reach}" if reach >= 0 else "under day +7")
+                  + f"   ({slots_by_plat.get(plat, 0)} slots)")
+        alerts += horizon_alerts(horizon, prior_horizons, slots_by_plat)
+    except Exception as e:                                   # noqa: BLE001
+        sample["horizon_error"] = str(e)[:200]
+        print(f"\nhorizon probe failed: {str(e)[:200]}")
 
     if alerts:
         print("\n!! ALERT")
