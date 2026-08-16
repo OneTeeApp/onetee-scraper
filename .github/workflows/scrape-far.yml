@@ -95,7 +95,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        # From a repo VARIABLE so the count moves without a commit, the same
+        # lever as BROWSER_LANES and GOLFNOW_SHARDS. Was 4, went to 8 on
+        # 2026-08-16 to halve the ~30m shards, and back to 6 an hour later when
+        # queue delay on scrape.yml climbed from 0 to 48 minutes — sharding buys
+        # wall-clock by spending concurrent runner slots, and the pool ran out.
+        # Set FAR_SHARDS to widen or narrow it.
+        shard: ${{ fromJSON(vars.FAR_SHARDS || '[0,1,2,3,4,5]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -116,7 +122,7 @@ jobs:
         # shuffled, which is the stronger desynchroniser of the two.
         run: sleep $(( RANDOM % 180 ))
 
-      - name: Scrape + push shard ${{ matrix.shard }}/8 (days 8-30)
+      - name: Scrape + push shard ${{ matrix.shard }} (days 8-30)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -146,7 +152,7 @@ jobs:
             OUT="output/tee_times_${DATE}_s${{ matrix.shard }}.json"
             echo "::group::far ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
-              --shard "${{ matrix.shard }}/8" \
+              --shard "${{ matrix.shard }}/${{ strategy.job-total }}" \
               --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,teesnap \
               ${ARGS} --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
