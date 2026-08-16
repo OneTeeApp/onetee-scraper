@@ -1,4 +1,4 @@
-name: Scrape CPS plain tenants near (days 0-3, self-chaining 5-min loop)
+name: Scrape CPS plain tenants near (days 0-7, self-chaining 5-min loop)
 
 # WHY THIS IS A LOOP AND NOT A CRON (2026-08-16).
 #
@@ -28,7 +28,7 @@ name: Scrape CPS plain tenants near (days 0-3, self-chaining 5-min loop)
 # cron is a crash backstop, not a clock. Anything whose freshness matters has to
 # chain itself.
 #
-# OWNERSHIP (no double-write). This loop owns the PLAIN tenants' days 0-3. The
+# OWNERSHIP (no double-write). This loop owns the PLAIN tenants' days 0-7. The
 # daily deep in scrape-cps-browser.yml owns the same tenants' full 0-30 sweep
 # once a day; that overlap predates this loop and is harmless (same source, same
 # rows, and d1.sync reconciles per date). The CHALLENGED tenants are a disjoint
@@ -67,7 +67,7 @@ jobs:
       - name: Install deps (once per run)
         run: pip install requests     # plain HTTP only — no Chromium, no proxy
 
-      - name: Loop plain cps tenants over days 0-3 (5-min cadence)
+      - name: Loop plain cps tenants over days 0-7 (5-min cadence)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -89,9 +89,19 @@ jobs:
             T0=$(date +%s)
             mkdir -p output
             rm -f output/cps_*.json        # never re-push a prior pass's file
-            # Days 0-3 from scraper.dates (union of local todays), not `date -u`:
+            # Days 0-7, not 0-3. Days 4-7 used to belong to the DAILY deep in
+            # scrape-cps-browser.yml, which meant 46 courses refreshed their
+            # days 4-7 once every 24 hours — the worst refresh figure in the
+            # fleet, and worse than the hourly mid tier it sat alongside.
+            #
+            # It fits: a four-date pass measures 45-60 seconds, so eight dates is
+            # about two minutes against a 300-second interval. If that ever stops
+            # being true the loop degrades gracefully — SLEEP goes negative, the
+            # pass simply runs back-to-back, and the log says so.
+            #
+            # Dates from scraper.dates (union of local todays), not `date -u`:
             # after ~5pm Mountain the UTC date is already tomorrow.
-            DATES=$(python -m scraper.dates --registry registry.json --days 4)
+            DATES=$(python -m scraper.dates --registry registry.json --days 8)
             CSV=$(echo "$DATES" | paste -sd, -)
             echo "::group::cps plain near pass ${PASS} (${CSV})"
             python -m scraper.browser_cps --dates "${CSV}" --out-dir output \
