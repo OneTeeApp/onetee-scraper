@@ -23,23 +23,18 @@ name: Scrape CPS (plain tenants every 10 min; challenged near = self-chaining lo
 
 on:
   schedule:
-    # PLAIN, near (0-3): every 10 minutes — free, and the job runs in 1-2 min.
+    # NO near cron here any more. Days 0-3 for the plain tenants moved to
+    # scrape-cps-plain-near.yml, a self-chaining 5-minute loop.
     #
-    # WAS hourly, and that was the least fresh near tier in the fleet: every
-    # other near platform re-reads days 0-3 on a 5-minute self-chaining loop,
-    # and the challenged cps tenants get a 30-minute one, but these 17
-    # plain-direct courses were re-read once an hour. Worse, GitHub delivers
-    # this cron late or not at all under load — observed gaps on 2026-08-15 of
-    # 83 and 118 minutes (17:39 -> 19:37) — so the real worst case was about two
-    # hours. A slot booked just after a run stayed on the site for that whole
-    # window, which is how Walnut Creek came to advertise a 12:30 that the
-    # booking site no longer had.
-    #
-    # Six short runs an hour cost ~10 runner-minutes; scrape-near.yml holds a
-    # runner continuously for five hours. This is the cheapest freshness in the
-    # fleet, and spreading it across six slots also means a dropped delivery
-    # costs 10 minutes instead of an hour.
-    - cron: "2,12,22,32,42,52 * * * *"
+    # The history is worth keeping because the intermediate step was wrong. This
+    # was hourly, which made it the least fresh near tier in the fleet and let
+    # Walnut Creek advertise a 12:30 the club had already sold. The obvious fix
+    # was more cron slots — "2,12,22,32,42,52 * * * *" — and it does not work:
+    # GitHub delivers roughly ONE scheduled event per hour per workflow to this
+    # repo however many slots are declared (watchdog-near-loops.yml asks for four
+    # an hour and averages one), and delivery stops entirely for hours at a time.
+    # Only a self-chaining loop, which dispatches its successor from inside a
+    # running job, is independent of that.
     - cron: "17 8 * * *"     # PLAIN, deep (0-30): daily   — free
     - cron: "7 10 * * *"     # BROWSER, deep (4-30): daily  — free (Patchright, no proxy)
   workflow_dispatch:
