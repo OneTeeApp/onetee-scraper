@@ -645,12 +645,37 @@ def run(dates, registry_path: str, out_paths_by_iso: dict,
             else:
                 errors.append({"course": c["slug"], "platform": "clubprophet",
                                "error": (entry or {}).get("error", "no result")})
+        # COURSES THAT ANSWERED CLEANLY WITH ZERO ROWS.
+        #
+        # d1.sync closes out a course's leftover rows only if that course is in
+        # `scraped_courses`, which is {courses with rows} | courses_empty. A
+        # course that empties COMPLETELY is therefore invisible to deactivation
+        # unless it is named here — its last slots sit at active=1 until they
+        # elapse. Live on 2026-08-16: fossil-trace-golf-club showed a 14:50 slot
+        # on the site that cps.golf had already sold out of entirely.
+        #
+        # THE LIVENESS GUARD IS WHY THIS IS SAFE. A challenged cps tenant that
+        # Cloudflare walls returns a clean empty, indistinguishable from a
+        # genuinely sold-out sheet — and acting on it would delete real
+        # inventory. So an empty only counts as evidence when at least one OTHER
+        # course on this platform served rows for the same date in the same run.
+        # If the whole platform came back empty, that is an outage, not a sell
+        # out, and courses_empty stays empty so nothing is deactivated.
+        # (aggregate.py applies the identical rule for the plain tiers.)
+        errored_slugs = {e["course"] for e in errors}
+        with_rows = {c["slug"] for c in courses
+                     if (per_course.get(c["slug"], {}).get(iso) or {}).get("tts")}
+        courses_empty = (sorted(c["slug"] for c in courses
+                                if c["slug"] not in errored_slugs
+                                and c["slug"] not in with_rows)
+                         if with_rows else [])
         doc = {
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "date": iso,
             "courses_queried": len(courses),
             "courses_ok": len(courses) - len(errors),
             "tee_times": [t.to_dict() for t in tee_times],
+            "courses_empty": courses_empty,
             "errors": errors,
         }
         out = pathlib.Path(out_paths_by_iso[iso])
