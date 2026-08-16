@@ -147,26 +147,51 @@ class ClubProphetAdapter(Adapter):
 
     @staticmethod
     def _open_spots(slot: dict) -> int | None:
-        """Remaining seats = the largest party the slot will still accept.
+        """How many golfers can still book this slot.
 
-        `availableParticipantNo` is an ARRAY of the party sizes still bookable —
-        [1,2,3,4] on an empty slot, [1,2] when two of the four seats are taken —
-        so its max is the open-seat count (live-verified at indianpeaks: empty
-        slots return 4, partially-booked ones return 2 and 3). An earlier version
-        read it as a scalar (`isinstance(spots, (int, float))`), which is False
-        for a list, so EVERY Club Prophet row published open_spots=None and got
-        dropped by the widget's group-size filter. Falls back to maxPlayer when
-        the array is absent, then to None.
+        `availableParticipantNo` is a list of the SEAT POSITIONS still free on
+        the foursome — NOT, as this docstring used to claim, the party sizes
+        still bookable. Taking max() of it was wrong in the one direction that
+        matters: a slot with only the fourth seat open returns [4] and was
+        published as FOUR open spots. On 2026-08-17 Indian Peaks had 16 of its
+        18 slots advertised as 4 golfers when the sheet was offering 1 or 2.
+
+        Live evidence, indianpeaks and fossiltrace, every row of both sheets:
+
+            availableParticipantNo   maxPlayer   playersDisplay
+            [1]                      1           "1 GOLFERS"
+            [2]                      1           "1 GOLFERS"
+            [4]                      1           "1 GOLFERS"
+            [2,3]                    2           "1 - 2 GOLFERS"
+            [3,4]                    2           "1 - 2 GOLFERS"
+            [1,3,4]                  3           "1 - 3 GOLFERS"
+            [1,2,3,4]                4           "1 - 4 GOLFERS"
+
+        [1,3,4] settles it. Read as party sizes that says "book 1, 3 or 4 but
+        not 2", which no tee sheet offers; read as seat positions it is a
+        foursome with the second seat sold, three seats left — and the SPA
+        agrees. len() matched maxPlayer on all 20 rows; max() on 6.
+
+        maxPlayer leads because it is what the SPA itself renders, and because
+        if a tenant ever caps online party size below the free-seat count that
+        cap is the number a golfer can actually book. len() is the fallback for
+        a tenant that omits it.
+
+        Whatever this returns must not be None: the widget's group-size filter
+        drops rows without a seat count, which is how every Club Prophet row
+        once vanished from the site.
         """
+        mp = slot.get("maxPlayer")
+        if isinstance(mp, (int, float)) and int(mp) > 0:
+            return int(mp)
         a = slot.get("availableParticipantNo")
         if isinstance(a, list):
-            nums = [int(x) for x in a if isinstance(x, (int, float))]
-            if nums:
-                return max(nums)
+            free = sum(1 for x in a if isinstance(x, (int, float)))
+            if free:
+                return free
         if isinstance(a, (int, float)):
             return int(a)
-        mp = slot.get("maxPlayer")
-        return int(mp) if isinstance(mp, (int, float)) else None
+        return None
 
     @staticmethod
     def _holes(slot: dict) -> list[int]:
