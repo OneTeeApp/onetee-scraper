@@ -36,7 +36,9 @@ on:
       - ".github/workflows/scrape-golfnow-browser.yml"
 
 permissions:
-  contents: read
+  # write, because the full sweep now derives each course's booking window from
+  # its own output and commits it. Read was enough while nothing here wrote.
+  contents: write
 
 concurrency:
   group: scrape-golfnow-browser
@@ -145,6 +147,41 @@ jobs:
             # push the same output/gn_<date>.json and clobber the others.
             # d1.sync only deactivates courses present in the scrape it is
             # given, so a per-shard push touches only that shard's courses.
+            # PER-COURSE PRUNING, on the tails only.
+            #
+            # eligible_courses.py answers, per DATE, which individual courses
+            # have a booking window that actually reaches it — the windows file
+            # is keyed by slug, not by platform. ONLY_COURSES is how the browser
+            # scrapers consume that (see scraper/sharding.py); aggregate.py has
+            # had --courses for this all along.
+            #
+            # Deliberately NOT applied to mode=near. derive_windows.py floors
+            # every window at 7 days precisely because the near and mid tiers
+            # cover days 0-7 unconditionally, so on a 0-6 pass every course is
+            # eligible by construction and the call would be pure overhead.
+            #
+            # `|| echo ALL` and the ALL default keep this failing open: a
+            # missing or unreadable windows file must cost requests, never
+            # coverage.
+            ELIG=ALL
+            case "$MODE" in
+              tail-a|tail-b)
+                # `ELIG=$(cmd) || ELIG=ALL`, NOT `$(cmd || echo ALL)`. The
+                # second form concatenates whatever the command printed before
+                # it died WITH the word ALL, so a crash after partial output
+                # yields a truncated slug list that looks authoritative and
+                # silently prunes real courses. This form throws the partial
+                # output away.
+                ELIG=$(python scripts/eligible_courses.py --date "${DATE}" \
+                         --platform golfnow) || ELIG=ALL
+                if [ -z "$ELIG" ]; then ELIG=ALL; fi
+                if [ "$ELIG" = "NONE" ]; then
+                  echo "skip ${DATE}: no golfnow course's window reaches it"
+                  continue
+                fi
+                ;;
+            esac
+            export ONLY_COURSES="$ELIG"
             OUT="output/gn_${DATE}_s${SHARD}.json"
             echo "::group::golfnow browser ${DATE} shard ${SHARD}"
             python -m scraper.browser_golfnow --date "${DATE}" \
@@ -152,3 +189,81 @@ jobs:
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
           done
+
+      - name: Upload sweep outputs (windows derivation + debugging)
+        if: github.event.inputs.window == 'full' || github.event.inputs.deep == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gn-tee-times-${{ github.run_id }}-s${{ matrix.shard }}
+          path: output/gn_*.json
+          retention-days: 7
+
+  derive-windows:
+    # Only after a FULL 0-30 sweep, and only once rather than per shard: pull
+    # every shard's output back down and measure each course's real booking
+    # window from what the sweep itself saw. Zero extra requests — it reads the
+    # run's own output.
+    #
+    # The gate is the dispatch input, not a recomputed clock and not the mode
+    # variable inside the matrix job: `full` is reachable only by dispatch, so
+    # the same condition that produced the sweep decides whether to derive from
+    # it. needs.scrape.result == 'success' because windows may only SHRINK on a
+    # full sweep's evidence, and a sweep with a dead shard is not full evidence —
+    # deriving from five shards would shrink the sixth shard's courses to their
+    # floor.
+    needs: scrape
+    if: >-
+      needs.scrape.result == 'success' &&
+      (github.event.inputs.window == 'full' || github.event.inputs.deep == 'yes')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download sweep outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gn-tee-times-${{ github.run_id }}-*
+          path: output
+          merge-multiple: true
+      - name: Derive windows + commit
+        run: |
+          # --merge and a --source label of our own: this file has several
+          # contributors and a wholesale overwrite once deleted all 382 teeitup
+          # windows (c9434c8). NO --stamp-as-of: the top-level as_of belongs to
+          # scrape-far.yml's plain sweep, which reads it to decide whether it has
+          # run a full sweep today.
+          python scripts/derive_windows.py \
+            --outputs 'output/gn_*.json' \
+            --registry registry.json \
+            --out probe-results/booking-windows.json \
+            --merge --source golfnow-deep
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add probe-results/booking-windows.json
+          git diff --cached --quiet && { echo "windows unchanged"; exit 0; }
+          git commit -m "Booking windows from full golfnow sweep [skip ci]"
+          # RE-DERIVE ONTO LATEST rather than rebase — merge-mode derivation is
+          # idempotent and touches only this contributor's slugs, so on a
+          # rejected push we throw our commit away, take the other side whole,
+          # and re-apply. git is never asked to reconcile the JSON, so it cannot
+          # wedge the runner mid-rebase the way `git pull --rebase` did on
+          # 2026-08-15.
+          for i in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            echo "push rejected (attempt $i) — re-deriving onto the latest main"
+            git rebase --abort 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            python scripts/derive_windows.py \
+              --outputs 'output/gn_*.json' \
+              --registry registry.json \
+              --out probe-results/booking-windows.json \
+              --merge --source golfnow-deep
+            git add probe-results/booking-windows.json
+            git diff --cached --quiet && { echo "nothing to add after re-derive"; exit 0; }
+            git commit -m "Booking windows from full golfnow sweep [skip ci]"
+          done
+          exit 1
