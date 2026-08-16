@@ -57,10 +57,23 @@ permissions:
 jobs:
   # -------- FREE plain-direct tenants: hourly near + daily deep, no Chromium ----
   plain:
+    # INVERTED ON PURPOSE: run on every scheduled delivery EXCEPT the browser
+    # job's slot, rather than listing the two crons this job owns.
+    #
+    # The listing form has a silent, total failure mode. If the string GitHub
+    # reports in github.event.schedule ever differs by even one character from
+    # the literal here — and the every-10-minutes cron below is the first
+    # comma-list expression in this repo, so that equality is untested for this
+    # form — the condition is false on every scheduled run, the job is SKIPPED,
+    # and 17 courses go dark with a green tick on every run. Inverted, the same
+    # mismatch costs one extra 1-minute plain sweep a day at 10:07 and nothing
+    # else. Both directions of the risk are asymmetric and this is the cheap one.
+    #
+    # DEEP is still decided by an exact match on '17 8 * * *' inside the step,
+    # which is fail-safe for the opposite reason: a mismatch there yields a near
+    # sweep instead of a deep one, not silence.
     if: >-
-      (github.event_name == 'schedule' &&
-        (github.event.schedule == '2,12,22,32,42,52 * * * *'
-          || github.event.schedule == '17 8 * * *'))
+      (github.event_name == 'schedule' && github.event.schedule != '7 10 * * *')
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'plain' || github.event.inputs.set == 'all'))
     runs-on: ubuntu-latest
