@@ -168,9 +168,11 @@ def _teetimes(course: dict, slots: list[dict]) -> list:
         if not t:
             continue
         prices = ClubProphetAdapter._prices(s)
-        # open_spots via the shared helper: availableParticipantNo is an ARRAY of
-        # bookable party sizes, so max() = remaining seats (see adapters/
-        # clubprophet.py). The old inline scalar check dropped every row to None.
+        # open_spots via the shared helper, so the browser path and the plain
+        # path always agree. availableParticipantNo is an array of the SEAT
+        # POSITIONS still free, not of bookable party sizes — see the long note
+        # in adapters/clubprophet.py for the live evidence and for why reading
+        # it the other way advertised single seats as foursomes.
         out.append(ClubProphetAdapter.base_tee_time(
             course, teetime=str(t), holes=ClubProphetAdapter._holes(s),
             course_label=(s.get("courseName") or "") if multi else "",
