@@ -22,8 +22,11 @@ on:
     - cron: "52 22 * * *"
   workflow_dispatch:
     inputs:
+      window:
+        description: "near (0-6) | tail-a (7-18) | tail-b (19-30) | full (0-30)"
+        default: ""
       deep:
-        description: "Scrape the full 0-30 day horizon"
+        description: "yes = full 0-30 (kept for callers that predate `window`)"
         default: "no"
   push:
     branches: [main]
@@ -43,6 +46,22 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 170
+    # SHARDED, and the shard count lives in a repo VARIABLE so it can be dialled
+    # without a commit — the same instant-revert lever as BROWSER_LANES.
+    #
+    # golfnow was the slowest thing in the fleet by a distance: 60 minutes for
+    # the seven-date shallow pass, measured over 20 runs, because it is ~69
+    # browser page-loads per date with nothing shared between them. Six shards
+    # take that to roughly ten minutes of work.
+    #
+    # Set GOLFNOW_SHARDS to a JSON array to change it, e.g. "[0,1,2,3]" to fall
+    # back to four if six turns out to draw more challenges from golfnow.com.
+    # The count is read back from strategy.job-total, so the --shard argument
+    # can never disagree with the matrix.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(vars.GOLFNOW_SHARDS || '[0,1,2,3,4,5]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -61,6 +80,8 @@ jobs:
           VPS_ONLY: "1"
           ONETEE_API_URL: https://api.oneteeapp.com
           ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
         run: |
           # TWO BUGS WERE FIXED HERE ON 2026-08-15, AND THEY COMPOUNDED.
           #
@@ -94,8 +115,14 @@ jobs:
             "52 4 * * *"|"52 16 * * *")  MODE=tail-a ;;
             "52 10 * * *"|"52 22 * * *") MODE=tail-b ;;
           esac
-          # A manual dispatch sweeps the WHOLE horizon: the recovery lever for
-          # when the tail has already gone dark.
+          # A dispatch can name any window. Before this input existed the only
+          # manual lever was deep=yes (the whole 0-30), which at the measured
+          # rate was ~267 minutes against a 170-minute timeout — so a tail that
+          # had gone dark could not actually be repaired by hand, only waited
+          # for. That is also what stopped the supervisor from healing a golfnow
+          # horizon collapse: it could dispatch the workflow, but only into the
+          # shallow window.
+          [ -n "${{ github.event.inputs.window }}" ] && MODE="${{ github.event.inputs.window }}"
           [ "${{ github.event.inputs.deep }}" = "yes" ] && MODE=full
           case "$MODE" in
             full)   START=0;  WINDOW=31 ;;
@@ -103,15 +130,25 @@ jobs:
             tail-b) START=19; WINDOW=12 ;;
             *)      START=0;  WINDOW=7  ;;
           esac
-          echo "golfnow horizon: mode=${MODE}, days ${START}-$((START + WINDOW - 1))"
+          echo "golfnow horizon: mode=${MODE}, days ${START}-$((START + WINDOW - 1)), shard ${SHARD}"
+          # Offset the shards from each other so they do not hit golfnow in
+          # lockstep. Bounded, not proportional to the shard index: a matrix run
+          # costs as much as its slowest shard, so a per-index offset would tax
+          # exactly the shard that finishes last.
+          sleep $(( RANDOM % 90 ))
           # Dates from scraper.dates (union of local todays across covered
           # timezones), not `date -u`: after ~5pm Mountain the UTC date is
           # already tomorrow and a UTC "today" skips the real one.
           for DATE in $(python -m scraper.dates --registry registry.json \
                           --days "$WINDOW" --start "$START" | shuf); do
-            echo "::group::golfnow browser ${DATE}"
+            # Per-shard output filename. Without it every shard would write and
+            # push the same output/gn_<date>.json and clobber the others.
+            # d1.sync only deactivates courses present in the scrape it is
+            # given, so a per-shard push touches only that shard's courses.
+            OUT="output/gn_${DATE}_s${SHARD}.json"
+            echo "::group::golfnow browser ${DATE} shard ${SHARD}"
             python -m scraper.browser_golfnow --date "${DATE}" \
-              --out "output/gn_${DATE}.json" || true
-            python -m scraper.d1 push --data "output/gn_${DATE}.json" || true
+              --shard "${SHARD}/${SHARDS}" --out "${OUT}" || true
+            python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
           done
