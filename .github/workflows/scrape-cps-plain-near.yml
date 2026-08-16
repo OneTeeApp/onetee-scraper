@@ -1,0 +1,121 @@
+name: Scrape CPS plain tenants near (days 0-3, self-chaining 5-min loop)
+
+# WHY THIS IS A LOOP AND NOT A CRON (2026-08-16).
+#
+# These 17 plain-direct cps tenants used to refresh days 0-3 from an hourly cron
+# in scrape-cps-browser.yml. That was the least fresh near tier in the fleet, and
+# it produced a user-visible fault: Walnut Creek advertised a 12:30 that had
+# already been booked on the club's own site.
+#
+# The obvious fix was more cron slots — every 10 minutes instead of hourly. It
+# does not work, and the evidence is unambiguous. GitHub delivers roughly ONE
+# scheduled event per hour per workflow to this repository no matter how many
+# slots a workflow declares:
+#
+#   watchdog-near-loops.yml is configured "*/15 * * * *", four per hour.
+#   Its ACTUAL gaps on 2026-08-15 were 20, 46, 55, 19, 52, 59, 50, 72, 50, 57,
+#   19, 51 and 66 minutes. Median 51. It fires about once an hour.
+#
+# And delivery stops altogether for hours at a time. At 02:35 UTC on 2026-08-16
+# EVERY workflow in this repo had its last scheduled run between 23:39 and
+# 00:00 — two and a half hours with not one scheduled event. The only jobs still
+# running were the self-chaining loops, because a loop dispatches its own
+# successor from inside a job that is already running and never asks the
+# scheduler for anything.
+#
+# That is the whole lesson of 2026-08-14/16, which cost us the golfwithaccess
+# far horizon (~8,000 tee times) and Walnut Creek's phantom slot: in this repo
+# cron is a crash backstop, not a clock. Anything whose freshness matters has to
+# chain itself.
+#
+# OWNERSHIP (no double-write). This loop owns the PLAIN tenants' days 0-3. The
+# daily deep in scrape-cps-browser.yml owns the same tenants' full 0-30 sweep
+# once a day; that overlap predates this loop and is harmless (same source, same
+# rows, and d1.sync reconciles per date). The CHALLENGED tenants are a disjoint
+# tenant set handled by scrape-cps-browser-near.yml.
+#
+# COST. A pass is one short token->TeeTimes flow per tenant per date over plain
+# HTTP — no Chromium, no proxy. The whole sweep measured 45-60 seconds across ten
+# consecutive runs, so a 5-minute cadence is ~20% duty cycle on one runner.
+
+on:
+  schedule:
+    - cron: "33 * * * *"        # crash backstop ONLY; self-chain is primary
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write                # the loop chains the next run
+
+concurrency:
+  group: scrape-cps-plain-near
+  cancel-in-progress: false     # queued successor waits; never kill the loop
+
+env:
+  INTERVAL_SECONDS: 300         # one pass per 5 min, matching the other near tiers
+  LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 335
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps (once per run)
+        run: pip install requests     # plain HTTP only — no Chromium, no proxy
+
+      - name: Loop plain cps tenants over days 0-3 (5-min cadence)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
+          CPS_ONLY: plain           # only _DC_DIRECT_TENANTS (no proxy, no bandwidth)
+        run: |
+          START=$(date +%s)
+          PASS=0
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED_MIN=$(( (NOW - START) / 60 ))
+            if [ "$ELAPSED_MIN" -ge "$LOOP_MINUTES" ]; then
+              echo "loop budget spent after $PASS passes"; break
+            fi
+            PASS=$((PASS + 1))
+            T0=$(date +%s)
+            mkdir -p output
+            rm -f output/cps_*.json        # never re-push a prior pass's file
+            # Days 0-3 from scraper.dates (union of local todays), not `date -u`:
+            # after ~5pm Mountain the UTC date is already tomorrow.
+            DATES=$(python -m scraper.dates --registry registry.json --days 4)
+            CSV=$(echo "$DATES" | paste -sd, -)
+            echo "::group::cps plain near pass ${PASS} (${CSV})"
+            python -m scraper.browser_cps --dates "${CSV}" --out-dir output \
+              --registry registry.json || true
+            for DATE in $DATES; do
+              [ -e "output/cps_${DATE}.json" ] && \
+                python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
+            done
+            echo "::endgroup::"
+            T1=$(date +%s)
+            TOOK=$((T1 - T0))
+            SLEEP=$((INTERVAL_SECONDS - TOOK))
+            if [ "$SLEEP" -gt 0 ]; then
+              echo "pass ${PASS} took ${TOOK}s; sleeping ${SLEEP}s"
+              sleep "$SLEEP"
+            else
+              echo "pass ${PASS} took ${TOOK}s (over interval; no sleep)"
+            fi
+          done
+
+      - name: Chain the next loop run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run scrape-cps-plain-near.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
