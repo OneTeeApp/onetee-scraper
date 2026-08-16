@@ -1,4 +1,4 @@
-name: Scrape CPS challenged tenants near (days 0-3, self-chaining 30-min loop)
+name: Scrape CPS challenged tenants near (days 0-3, self-chaining loop)
 
 # WHY (2026-08-07). The Cloudflare-CHALLENGED cps.golf tenants (indian-tree etc.)
 # refresh their near window (days 0-3) here on a self-chaining 30-min loop.
@@ -34,7 +34,23 @@ concurrency:
   cancel-in-progress: false     # queued successor waits; never kill the loop
 
 env:
-  INTERVAL_SECONDS: 1800        # one pass per 30 min (padded; a pass is shorter)
+  # 300, from a repo VARIABLE so it reverts without a commit.
+  #
+  # This was 1800 and the comment said "padded; a pass is shorter". Measured
+  # 2026-08-16 across a full 5.25h run: a pass takes 230s median (min 212, max
+  # 258) and the cadence was 1801s. The loop was sleeping 26 of every 30 minutes,
+  # which made these the only near-tier courses refreshing at 30 minutes while
+  # every other loop in the fleet runs at 5.
+  #
+  # THE RISK IS NOT RUNNER COST — the job is held for the full 5.25h either way.
+  # It is that these are the Cloudflare-CHALLENGED tenants, cleared by Patchright
+  # + headful Chrome, and this is a 6x increase in request rate against them. If
+  # challenge rates rise, set the repo variable CPS_NEAR_INTERVAL back to 1800.
+  # No commit, no deploy, takes effect on the next loop run.
+  #
+  # The per-pass health line below is the signal to watch: a collapse in tee
+  # times or courses means we are being challenged, not that inventory moved.
+  INTERVAL_SECONDS: ${{ vars.CPS_NEAR_INTERVAL || 300 }}
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
 
 jobs:
@@ -54,7 +70,7 @@ jobs:
           # channel="chrome"; this bundled patched chromium is the fallback + brings
           # the system libs.
           patchright install --with-deps chromium
-      - name: Loop challenged cps tenants over days 0-3 (30-min cadence)
+      - name: Loop challenged cps tenants over days 0-3
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,6 +106,12 @@ jobs:
               [ -e "output/cps_${DATE}.json" ] && python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
             done
             echo "::endgroup::"
+            # PER-PASS HEALTH, so a challenge wall is visible in the log without
+            # reading the whole thing. Rows AND distinct courses: rows alone fall
+            # naturally through the day as slots are booked, but the course count
+            # is flat unless something is blocking us.
+            HEALTH=$(python -c "import glob,json;rs=[t for f in glob.glob('output/cps_*.json') for t in (json.load(open(f)).get('tee_times') or [])];print(len(rs), len({t.get('course_slug') for t in rs}))" 2>/dev/null || echo "?? ??")
+            echo "pass ${PASS} health: ${HEALTH} (tee_times, distinct courses)"
             T1=$(date +%s)
             TOOK=$((T1 - T0))
             SLEEP=$((INTERVAL_SECONDS - TOOK))
