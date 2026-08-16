@@ -1,79 +1,188 @@
-name: Watchdog — revive dead self-chaining near loops
+name: Supervisor — revive dead loops, dispatch overdue cron jobs
 
-# WHY (2026-08-06). The near-window loops (scrape-teeitup-browser-near,
-# scrape-browser-near) run on "self-chain is primary, hourly cron is only a
-# backstop": each job loops for ~5.25h and dispatches its own successor at the
-# end. On 2026-08-06 a GitHub Actions incident (~17:40 UTC) killed BOTH at once —
-# the self-chain successor never dispatched AND the cron backstop never fired — so
-# the loops stayed dead ~7h until a human re-dispatched them, and ~157 teeitup
-# courses' near dates (days 0-2, incl. tomorrow) aged out of the freshness window
-# and went dark on the site. This watchdog closes that single point of failure.
+# WHY THIS IS ITSELF A LOOP NOW (2026-08-16).
 #
-# HOW. Every 15 min it asks, per loop: does it have ANY active run (status not
-# "completed" — i.e. queued / in_progress / waiting / requested)? A HEALTHY loop
-# always does: it runs for hours and, under its cancel-in-progress:false
-# concurrency group, queues its successor before the current job ends, so there is
-# never a gap with zero active runs. ZERO active runs therefore means the loop is
-# DEAD, and the watchdog re-dispatches it. A redundant dispatch is safe: the
-# loop's concurrency group makes an extra run just queue as the successor — it can
-# never create two overlapping loops.
+# This file used to be a plain cron workflow that revived dead self-chaining
+# loops. That is a guard against cron failure which is itself delivered by cron,
+# and on 2026-08-16 that circularity stopped being theoretical.
 #
-# This does NOT change the loop architecture; it only observes and revives.
+# Measured, from this repo's own run history:
 #
-# LIMITATION. The watchdog is itself a GitHub-cron workflow, so a long enough
-# Actions incident can suppress it too. It shrinks the dead-loop window from
-# "until a human notices" (7h on 2026-08-06) to "one cron tick after the incident
-# clears" — the best a purely in-GitHub guard can do. A truly incident-proof
-# guard would live off GitHub (external heartbeat), which is a bigger change.
+#   * It asks for "*/15 * * * *" — four ticks an hour. Its ACTUAL gaps on
+#     2026-08-15 were 20, 46, 55, 19, 52, 59, 50, 72, 50, 57, 19, 51 and 66
+#     minutes. Median 51. GitHub delivers this repo roughly ONE scheduled event
+#     per hour per workflow no matter how many slots are declared.
+#
+#   * Delivery stops outright for hours. At 02:53 UTC on 2026-08-16 EVERY
+#     workflow here had its last scheduled run between 23:39 and 00:00 — nearly
+#     three hours with not one scheduled event, this watchdog included. The only
+#     things still running were the self-chaining loops, because a loop
+#     dispatches its successor from inside a job that is already running and
+#     never asks the scheduler for anything.
+#
+# That unreliability is the single root cause behind three user-visible faults in
+# 36 hours: golfwithaccess losing days 14-30 (~8,000 tee times) when its daily
+# horizon sweep's cron was dropped two days running; Walnut Creek advertising a
+# 12:30 the club had already sold, from an hourly cron whose real gaps reached
+# two hours; and a shipped open_spots fix sitting undelivered for an hour.
+#
+# So this job now runs the same way the loops do — it ticks every 15 minutes for
+# ~5.25 hours inside ONE job and dispatches its own successor — and it takes on a
+# second duty: dispatching the cron-driven scrapers when they are overdue. Cron
+# stays as a crash backstop for the supervisor itself. It is the only workflow
+# whose death is not covered by anything else, which is exactly why it must not
+# depend on the scheduler to stay alive.
+#
+# WHY DISPATCHING CANNOT RUN AWAY.
+#   * A dispatch creates a run, which resets that workflow's age, so the same
+#     workflow cannot be dispatched twice in a row by this rule.
+#   * Every target has its own concurrency group, so a redundant dispatch queues
+#     as a successor instead of running a second copy.
+#   * MAX_DISPATCH_PER_TICK caps a mass revival after a long stall, so we refill
+#     the runner pool gradually instead of asking for sixteen runners at once.
+#     The next tick picks up whatever was left.
+#   * Thresholds are ~2.5x the nominal interval, so ordinary jitter never
+#     triggers a dispatch — only a genuine miss does.
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # every 15 min — near grace is 3h/6h, so this revives
-                             # a dead loop long before its dates age out
+    - cron: "*/15 * * * *"   # crash backstop ONLY; the self-chain is primary
   workflow_dispatch: {}
 
 permissions:
-  actions: write             # list runs + dispatch the loop workflows
+  actions: write             # list runs + dispatch the workflows it supervises
 
 concurrency:
   group: watchdog-near-loops
-  cancel-in-progress: false
+  cancel-in-progress: false  # queued successor waits; never kill the supervisor
+
+env:
+  TICK_SECONDS: 900          # one sweep per 15 min
+  LOOP_MINUTES: 315          # stop looping after this; job timeout is 335
+  MAX_DISPATCH_PER_TICK: 4   # gradual refill after a stall
 
 jobs:
-  watchdog:
+  supervisor:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 335
     steps:
-      - name: Revive any self-chaining near loop with no active run
+      - name: Supervise every tier
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          # The self-chaining near loops guarded here. (The far / cps-DEEP jobs
-          # are plain cron short-jobs — idle between runs by design — so the "no
-          # active run" test does not apply to them; a missed cron there just
-          # resumes next tick.)
+          # SELF-CHAINING LOOPS. Healthy == at least one run whose status is not
+          # "completed". A live loop always has one: it runs for hours and, under
+          # cancel-in-progress:false, queues its successor before the current job
+          # ends, so there is never a gap with zero active runs. Zero means dead.
+          LOOPS="scrape-near.yml
+          scrape-teeitup-browser-near.yml
+          scrape-browser-near.yml
+          scrape-cps-browser-near.yml
+          scrape-cps-plain-near.yml
+          scrape-teesnap.yml"
+
+          # CRON-DRIVEN SHORT JOBS: workflow|max_age_minutes|extra gh args.
+          # These are idle between runs by design, so "no active run" says
+          # nothing; AGE since the last run of any kind is the signal.
           #
-          # scrape-cps-plain-near.yml joined this list on 2026-08-16, when the
-          # plain cps near tier stopped being a cron short-job and became a loop.
-          LOOPS="scrape-teeitup-browser-near.yml scrape-browser-near.yml scrape-cps-browser-near.yml scrape-cps-plain-near.yml"
-          for WF in $LOOPS; do
-            # "active" = any recent run whose status is not completed
-            # (queued | in_progress | waiting | requested | pending).
-            ACTIVE=$(gh run list --repo "$REPO" --workflow "$WF" --limit 15 \
-                       --json status \
-                       --jq '[.[] | select(.status != "completed")] | length' \
-                     2>/dev/null || echo "err")
-            if [ "$ACTIVE" = "err" ]; then
-              echo "::warning::could not query runs for $WF — skipping this tick"
-              continue
+          # scrape-cps-browser is dispatched with explicit inputs because its
+          # defaults (set=all, deep=no) would run a near sweep the plain loop
+          # already owns and skip the daily 0-30 deep that is the whole point.
+          # Its threshold is 30h to match FRESH_FAR_MIN in vps/api/server.mjs:
+          # past that the far rows stop being served, which is the failure this
+          # is here to prevent.
+          OVERDUE="scrape.yml|150|
+          prune-past.yml|150|
+          monitor-inventory.yml|150|
+          scrape-ezlinks-browser.yml|150|
+          scrape-golfnow-browser.yml|150|
+          scrape-clubcaddie-browser.yml|150|
+          scrape-supersaas-browser.yml|150|
+          scrape-totale-browser.yml|150|
+          scrape-trutee-browser.yml|150|
+          scrape-golfwithaccess-browser.yml|300|
+          scrape-teeitup-browser.yml|300|
+          scrape-teesnap-far.yml|300|
+          scrape-far.yml|300|
+          alert-landed-zero.yml|900|
+          scrape-cps-browser.yml|1800|-f set=all -f deep=yes"
+
+          START=$(date +%s)
+          TICK=0
+          while true; do
+            NOW=$(date +%s)
+            if [ $(( (NOW - START) / 60 )) -ge "$LOOP_MINUTES" ]; then
+              echo "supervisor budget spent after ${TICK} ticks"; break
             fi
-            if [ "$ACTIVE" -eq 0 ]; then
-              echo "::warning::$WF has NO active run — reviving"
-              gh workflow run "$WF" --repo "$REPO" --ref main \
-                && echo "revived $WF" \
+            TICK=$((TICK + 1))
+            SENT=0
+            echo "::group::tick ${TICK} ($(date -u +%H:%M:%SZ))"
+
+            for WF in $LOOPS; do
+              ACTIVE=$(gh run list --repo "$REPO" --workflow "$WF" --limit 15 \
+                         --json status --jq '[.[] | select(.status != "completed")] | length' \
+                       < /dev/null 2>/dev/null || echo "err")
+              if [ "$ACTIVE" = "err" ]; then
+                echo "::warning::could not query runs for $WF — skipping this tick"
+                continue
+              fi
+              if [ "$ACTIVE" -eq 0 ]; then
+                if [ "$SENT" -ge "$MAX_DISPATCH_PER_TICK" ]; then
+                  echo "$WF is dead but the dispatch cap is spent — next tick"
+                  continue
+                fi
+                echo "::warning::$WF has NO active run — reviving"
+                gh workflow run "$WF" --repo "$REPO" --ref main < /dev/null \
+                  && { SENT=$((SENT + 1)); echo "revived $WF"; } \
+                  || echo "::error::dispatch failed for $WF (next tick will retry)"
+              else
+                echo "$WF alive ($ACTIVE active run(s))"
+              fi
+            done
+
+            while IFS='|' read -r WF MAXAGE EXTRA; do
+              [ -z "$WF" ] && continue
+              # A FAILED QUERY IS NOT AN OVERDUE WORKFLOW. gh exits non-zero on
+              # an API error and zero-with-empty-output when the workflow simply
+              # has no runs yet. Collapsing those two would turn a GitHub API
+              # outage into a dispatch of every workflow in the table at once —
+              # hammering the API precisely when it is already failing.
+              LAST=$(gh run list --repo "$REPO" --workflow "$WF" --limit 1 \
+                       --json createdAt --jq '.[0].createdAt' \
+                     < /dev/null 2>/dev/null) || LAST="__ERR__"
+              if [ "$LAST" = "__ERR__" ]; then
+                echo "::warning::could not query runs for $WF — skipping this tick"
+                continue
+              fi
+              if [ -z "$LAST" ] || [ "$LAST" = "null" ]; then
+                AGE=999999                 # never run: genuinely due
+              else
+                AGE=$(( ( $(date +%s) - $(date -d "$LAST" +%s) ) / 60 ))
+              fi
+              if [ "$AGE" -lt "$MAXAGE" ]; then
+                echo "$WF ok (${AGE}m old, limit ${MAXAGE}m)"
+                continue
+              fi
+              if [ "$SENT" -ge "$MAX_DISPATCH_PER_TICK" ]; then
+                echo "$WF overdue (${AGE}m) but the dispatch cap is spent — next tick"
+                continue
+              fi
+              echo "::warning::$WF is ${AGE}m old (limit ${MAXAGE}m) — dispatching"
+              gh workflow run "$WF" --repo "$REPO" --ref main $EXTRA < /dev/null \
+                && { SENT=$((SENT + 1)); echo "dispatched $WF"; } \
                 || echo "::error::dispatch failed for $WF (next tick will retry)"
-            else
-              echo "$WF alive ($ACTIVE active run(s))"
-            fi
+            done <<< "$OVERDUE"
+
+            echo "tick ${TICK}: ${SENT} dispatch(es)"
+            echo "::endgroup::"
+            sleep "$TICK_SECONDS"
           done
+
+      - name: Chain the next supervisor run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run watchdog-near-loops.yml --ref main --repo "${{ github.repository }}" \
+            && echo "successor dispatched" || echo "dispatch failed; cron backstop will restart"
