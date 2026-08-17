@@ -10,7 +10,13 @@ name: Scrape EZLinks via browser (0-6 hourly, 0-30 daily)
 
 on:
   schedule:
-    - cron: "47 * * * *"
+    # Split so the DEEP slots have their own cron STRINGS to match on — a
+    # single "47 * * * *" makes every hour indistinguishable to
+    # github.event.schedule. Three deep slots, 8h apart.
+    - cron: "47 0,1,3,4,5,6,7,8,9,11,12,13,14,15,16,17,19,20,21,22,23 * * *"
+    - cron: "47 2 * * *"
+    - cron: "47 10 * * *"
+    - cron: "47 18 * * *"
   workflow_dispatch:
     inputs:
       deep:
@@ -66,7 +72,21 @@ jobs:
           # fills the tail. (2) deep now runs every 8h instead of once/day, so
           # each far date is re-hit well within the 30h far-freshness grace.
           DEEP=no
-          case "$(date -u +%H)" in 02|10|18) DEEP=yes ;; esac
+          # WHY THIS MATCHES THE CRON STRING AND NOT THE CLOCK.
+          #
+          # This gate used to read:
+          #     [ "$(date -u +%H)" = "10" ] && DEEP=yes
+          # a wall-clock hour equality evaluated INSIDE the job, so it only held
+          # if the runner reached this line during that UTC hour. GitHub delivers
+          # scheduled events late under load and drops slots outright, and a
+          # queued job can start an hour after its slot — so the deep sweep was
+          # silently skipped whenever either happened, taking days 7-30 with it.
+          # That exact bug cost ~8,000 golfwithaccess tee times on 2026-08-14.
+          # github.event.schedule is the cron expression that FIRED, so delivery
+          # jitter cannot move a run out of its slot.
+          case "${{ github.event.schedule }}" in
+            "47 2 * * *"|"47 10 * * *"|"47 18 * * *") DEEP=yes ;;
+          esac
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=6
           [ "$DEEP" = "yes" ] && LAST=30
