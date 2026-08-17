@@ -127,7 +127,15 @@ jobs:
           # no reCAPTCHA) scraped by the plain near/mid/far tiers via
           # scraper.aggregate. Keeping it here too would double-write its slugs and
           # clobber the plain tier's rows — the plain tier is the SOLE owner.
-          PLATFORMS="ezlinks clubcaddie cps golfnow supersaas golfwithaccess"
+          # cps IS DELIBERATELY ABSENT. This loop ran it with CPS_ONLY=plain —
+          # the exact same tenant set that scrape-cps-plain-near.yml covers, and
+          # that loop does days 0-7 on EVERY pass at a 5-minute cadence while this
+          # one reached days 1-3 only every FULL_EVERY passes. Every row produced
+          # here was therefore already in D1, fresher, minutes earlier. Removing it
+          # shrinks lane 2 on every pass — narrow and wide — with no coverage loss.
+          # (One writer per (slug,date) still holds: the challenged tenants are a
+          # disjoint set owned by scrape-cps-browser-near.yml.)
+          PLATFORMS="ezlinks clubcaddie golfnow supersaas golfwithaccess"
           START=$(date +%s)
           PASS=0
           while true; do
@@ -212,7 +220,7 @@ jobs:
             if [ "$BROWSER_LANES" -ge 2 ]; then
               # Lane 1 is golfnow alone, deliberately: it is the slowest
               # platform and the only one measured to degrade under
-              # contention. Lane 2 carries the other five, which together
+              # contention. Lane 2 carries the other four, which together
               # cost less than golfnow does.
               #
               # Output is buffered per lane and printed after the join, so
@@ -220,7 +228,7 @@ jobs:
               ( run_platform golfnow ) > "lane1.log" 2>&1 &
               L1=$!
               sleep 5                     # stagger the browser launches
-              ( for P in ezlinks clubcaddie cps supersaas golfwithaccess; do
+              ( for P in ezlinks clubcaddie supersaas golfwithaccess; do
                   run_platform "$P"
                 done ) > "lane2.log" 2>&1 &
               L2=$!
