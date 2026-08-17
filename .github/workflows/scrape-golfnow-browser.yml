@@ -132,7 +132,12 @@ jobs:
             tail-b) START=19; WINDOW=12 ;;
             *)      START=0;  WINDOW=7  ;;
           esac
-          echo "golfnow horizon: mode=${MODE}, days ${START}-$((START + WINDOW - 1)), shard ${SHARD}"
+          # `schedule` is the cron expression GitHub says fired. Without it in the
+          # log there is no way, after the fact, to tell a DROPPED tail slot from a
+          # tail slot that fired and failed to match the case above — on 08-16 both
+          # tail slots produced mode=near runs and the two explanations could not be
+          # separated. Empty on a manual dispatch, which is itself the tell.
+          echo "golfnow horizon: mode=${MODE}, days ${START}-$((START + WINDOW - 1)), shard ${SHARD}, schedule='${{ github.event.schedule }}'"
           # Offset the shards from each other so they do not hit golfnow in
           # lockstep. Bounded, not proportional to the shard index: a matrix run
           # costs as much as its slowest shard, so a per-index offset would tax
