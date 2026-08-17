@@ -239,12 +239,49 @@ def run(date: dt.date, registry_path: str, out_path: str,
                 log.info("  %-34s ERROR %s", c["slug"], last)
         browser.close()
 
+    # COURSES THAT ANSWERED CLEANLY WITH ZERO ROWS.
+    #
+    # This key does two jobs, and golfnow was missing both.
+    #
+    # 1. DEACTIVATION. d1.sync() closes out a course's leftover rows only if the
+    #    course is in `scraped_courses`, which is {courses with rows} |
+    #    courses_empty. A course that empties COMPLETELY is otherwise invisible
+    #    to the reconcile and its last tee sheet stays active=1 until each slot
+    #    elapses on its own.
+    #
+    # 2. BOOKING-WINDOW PRUNING. derive_windows.py only records a course at an
+    #    offset where it returned rows OR was named here, and sets
+    #    checked_through = max(those offsets). With no courses_empty,
+    #    checked_through collapses to max_offset_with_rows for EVERY course —
+    #    which makes eligible_courses.py's "offset > checked_through -> we never
+    #    looked there" rule fire for every date past the window, so everything
+    #    stays eligible and pruning becomes a no-op. Measured 2026-08-17: all 65
+    #    golfnow windows had checked_through == max_offset_with_rows, and a
+    #    tail-a run logged ONLY_COURSES 69/69 on all 12 dates. Every other
+    #    platform that reports empties has informative windows (teeitup 323/382).
+    #
+    # THE LIVENESS GUARD IS WHY THIS IS SAFE. A blocked or rate-limited fetch can
+    # return a clean empty that is indistinguishable from a genuinely sold-out
+    # sheet, and acting on it would delete real inventory. So an empty only
+    # counts as evidence when at least one OTHER course in this run served rows.
+    # If everything came back empty, that is an outage, not a sell-out, and
+    # courses_empty stays empty so nothing is deactivated.
+    # (aggregate.py applies the identical rule for the plain tiers.)
+    tt_dicts = [t.to_dict() for t in tee_times]
+    errored_slugs = {e["course"] for e in errors}
+    with_rows = {d["course_slug"] for d in tt_dicts}
+    courses_empty = (sorted(c["slug"] for c in courses
+                            if c["slug"] not in errored_slugs
+                            and c["slug"] not in with_rows)
+                     if with_rows else [])
+
     doc = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "date": date.isoformat(),
         "courses_queried": len(courses),
         "courses_ok": len(courses) - len(errors),
-        "tee_times": [t.to_dict() for t in tee_times],
+        "tee_times": tt_dicts,
+        "courses_empty": courses_empty,
         "errors": errors,
     }
     out = pathlib.Path(out_path)
