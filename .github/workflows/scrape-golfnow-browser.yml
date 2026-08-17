@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       window:
-        description: "near (0-6) | tail-a (7-18) | tail-b (19-30) | full (0-30)"
+        description: "near (4-6) | tail-a (7-18) | tail-b (19-30) | full (0-30)"
         default: ""
       deep:
         description: "yes = full 0-30 (kept for callers that predate `window`)"
@@ -126,11 +126,19 @@ jobs:
           # shallow window.
           [ -n "${{ github.event.inputs.window }}" ] && MODE="${{ github.event.inputs.window }}"
           [ "${{ github.event.inputs.deep }}" = "yes" ] && MODE=full
+          # NEAR STARTS AT DAY 4, NOT DAY 0. golfnow is ALSO in
+          # scrape-browser-near.yml's rotation, which covers days 0-3 — day 0 on
+          # every pass and days 1-3 every FULL_EVERY passes. This workflow used
+          # to re-scrape 0-6, so days 0-3 were fetched twice by two different
+          # workflows, and the duplicate landed on the single most saturated lane
+          # in the fleet (every browser-near pass logs "over interval; no sleep").
+          # Starting at 4 removes the overlap and cuts this pass from 7 dates to
+          # 3. Days 4-6 have no other owner, so the window cannot start later.
           case "$MODE" in
             full)   START=0;  WINDOW=31 ;;
             tail-a) START=7;  WINDOW=12 ;;
             tail-b) START=19; WINDOW=12 ;;
-            *)      START=0;  WINDOW=7  ;;
+            *)      START=4;  WINDOW=3  ;;
           esac
           # `schedule` is the cron expression GitHub says fired. Without it in the
           # log there is no way, after the fact, to tell a DROPPED tail slot from a
