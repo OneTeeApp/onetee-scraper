@@ -51,6 +51,15 @@ env:
   # The per-pass health line below is the signal to watch: a collapse in tee
   # times or courses means we are being challenged, not that inventory moved.
   INTERVAL_SECONDS: ${{ vars.CPS_NEAR_INTERVAL || 300 }}
+  # DAYS 4-7 USED TO HAVE NO OWNER ON THIS LOOP. It covered days 0-3 only, so the
+  # challenged tenants' days 4-7 came solely from scrape-cps-browser.yml's deep
+  # sweep — nominally twice a day, but measured 2026-08-17 its run-to-run gaps
+  # were 55, 1392, 101 and 456 minutes. The 1392-minute gap (23h) is past the read
+  # API's 18h mid-tier freshness cut, so those ~27 courses' days 4-7 inventory was
+  # hidden outright for hours with nothing reporting it. Same staleness pattern
+  # scrape-near.yml and scrape-teeitup-browser-near.yml already use: the near
+  # dates every pass, the further ones only once they age past this.
+  FAR_STALE_SECONDS: 600        # days 4-7 refresh interval (<= 10 min + a pass)
   LOOP_MINUTES: 315             # stop looping after this; job timeout is 335
 
 jobs:
@@ -70,7 +79,7 @@ jobs:
           # channel="chrome"; this bundled patched chromium is the fallback + brings
           # the system libs.
           patchright install --with-deps chromium
-      - name: Loop challenged cps tenants over days 0-3
+      - name: Loop challenged cps tenants over days 0-7
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -87,6 +96,10 @@ jobs:
         run: |
           START=$(date +%s)
           PASS=0
+          # 0 so the FIRST pass of every run covers the full window — a fresh
+          # runner (or one restarted after a crash or cancel) never inherits a
+          # stale day 5.
+          LAST_FAR=0
           while true; do
             NOW=$(date +%s)
             ELAPSED_MIN=$(( (NOW - START) / 60 ))
@@ -97,10 +110,20 @@ jobs:
             T0=$(date +%s)
             mkdir -p output
             rm -f output/cps_*.json          # avoid re-pushing a prior pass's files
-            # days 0-3 (union of local todays), ONE session per tenant.
-            DATES=$(python -m scraper.dates --registry registry.json --days 4)
+            # Days 0-3 every pass; days 4-7 folded in only once they are
+            # FAR_STALE_SECONDS old. Widening every pass would roughly double the
+            # work (one session per tenant covers ALL the dates given), pushing a
+            # ~254s pass past the 300s interval every time; this way the cost is
+            # paid every other pass instead. ONE session per tenant either way.
+            FAR_AGE=$(( T0 - LAST_FAR ))
+            if [ "$FAR_AGE" -ge "$FAR_STALE_SECONDS" ]; then
+              DAYS=8; LAST_FAR=$T0; SCOPE="days 0-7"
+            else
+              DAYS=4; SCOPE="days 0-3"
+            fi
+            DATES=$(python -m scraper.dates --registry registry.json --days "$DAYS")
             CSV=$(echo "$DATES" | paste -sd, -)
-            echo "::group::cps browser near pass ${PASS} (${CSV})"
+            echo "::group::cps browser near pass ${PASS} ${SCOPE} (${CSV})"
             xvfb-run -a python -m scraper.browser_cps --dates "${CSV}" --out-dir output --registry registry.json || true
             for DATE in $DATES; do
               [ -e "output/cps_${DATE}.json" ] && python -m scraper.d1 push --data "output/cps_${DATE}.json" || true
