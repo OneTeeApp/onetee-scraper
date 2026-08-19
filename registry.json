@@ -686,7 +686,7 @@
    "ids": {
     "tenant": "emeraldgreens"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "low",
    "notes": "cps.golf tenant NOT CONFIRMED. emeraldgreens.cps.golf serves the Club Prophet shell but answers 404 on the anonymous token endpoint, and windsorgardens / windsorgardensdenver / emeraldgreensco / emeraldgreensgolf all fail DNS, against a control (indianpeaks) that mints a token fine (probe-results/open_leads.txt section B). No website_id or course_ids are known either, so browser_cps has never attempted it. Registry status is needs_ids, not ready."
   },
@@ -1327,7 +1327,7 @@
    "ids": {
     "tenant": "lakearbor"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Modern CPS/ClubProphet tenant lakearbor.cps.golf is PUBLIC and serving - verified live 2026-08-10 ($37 18-hole times rendered, no login). This supersedes the old secure.west.prophetservices.com login-gate that had this at unsupported (2026-07-30 audit). Browser CPS tier discovers wid+cids at runtime (needs_ids status is cosmetic). | Club Prophet cps.golf tenant lakearbor"
   },
@@ -2414,7 +2414,7 @@
    "ids": {
     "tenant": "universityofdenver"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "low",
    "notes": "cps.golf tenant NOT CONFIRMED. universityofdenver / highlandsranchgolf / dugolf / duhighlandsranch / highlandsranch all fail DNS in a real browser, against a control (indianpeaks) that mints a token fine (probe-results/open_leads.txt section B). highlandsranchgolf.du.edu also blocks datacenter IPs. No website_id or course_ids, so browser_cps has never attempted it. Registry status is needs_ids, not ready."
   },
@@ -9021,7 +9021,7 @@
    "ids": {
     "tenant": "stjamesbay"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Exact 'Book Tee Time' target on course site; cps.golf blocks crawlers via robots.txt | Region: Northwest FL (Panhandle) | Phone: (850) 697-9606"
   },
@@ -9432,7 +9432,7 @@
    "ids": {
     "tenant": "wakullasandsfl"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Course's real site is golfwakulla.com (not the RV resort site); booking link taken from its 'Book a Tee Time' button. cps.golf robots-blocked | Region: Northwest FL (Panhandle) | Phone: (850) 926-4653"
   },
@@ -10593,7 +10593,7 @@
    "ids": {
     "tenant": "southerndunes"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Exact link target on southerndunes.com; cps.golf blocks bot fetches via robots.txt. | Region: Central FL (Orlando) | Phone: (863) 421-4653"
   },
@@ -12266,7 +12266,7 @@
    "ids": {
     "tenant": "tanglewoodfl"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Exact link target on tanglewood-golf.com/tee-times; cps.golf robots-blocked | Region: Northwest FL (Panhandle) | Phone: (850) 623-6176"
   },
@@ -13210,7 +13210,7 @@
    "ids": {
     "tenant": "stonebrookfl"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "CPS Online Reservation V4 loaded | Region: Northwest FL (Panhandle) | Phone: (850) 994-7171"
   },
@@ -13863,7 +13863,7 @@
      1
     ]
    },
-   "status": "ready",
+   "status": "unsupported",
    "confidence": "high",
    "notes": "Exact 'Book Tee Time' target on cranelakesgolf.com; stale ASP.NET session segment (S(...)) stripped. cps.golf blocks bots via robots.txt. | Region: Space Coast & Treasure Coast | Phone: (386) 767-4653"
   },
@@ -16696,7 +16696,7 @@
    "ids": {
     "tenant": "musketridgemd"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Booking URL corrected: it pointed at sc.cps.golf/MusketRidgeWebstore/, which is the PRO SHOP STORE - gift cards, memberships, golf shop, junior golf, event registration - with no tee-time page anywhere in it. The club's own /golf/tee-times page links both, and an earlier pass took the wrong one. Its real tee sheet is musketridgemd.cps.golf, a standard <tenant>.cps.golf onlineresweb SPA, so this is plain clubprophet rather than a shared-host special case. Held at needs_ids for the websiteId and courseIds: this tenant's /identityapi/myconnect/token/short answers 404 to an anonymous POST even though the SPA itself calls that exact path, so its build differs from the Ruark and Ocean City tenants and needs one more look | Central & Northern MD region | From Brian's MD registry rev 2026-07-30 (VERIFIED) | Pro shop (301) 293-9930"
   },
@@ -18466,7 +18466,7 @@
    "ids": {
     "tenant": "glenmoor"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Salt Lake Metro region | Pro shop (801) 280-1742 | From Brian's UT registry 2026-08-07 (VERIFIED)"
   },
@@ -18966,7 +18966,7 @@
    "ids": {
     "tenant": "anchoragegc"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Pro shop (907) 522-3363 | 18 holes par 72, Bill Newcomb 1987; season ~May 15-Oct 1 | Southcentral/Anchorage region | Source sheet only found the JS-gated course site; the MODERN public CPS tenant anchoragegc.cps.golf was found and verified live 2026-08-11 (no login wall, $84 slots for 8/13) - same Lake Arbor pattern. Legacy secure.west.prophetservices.com/AnchorageGC is the old login portal, do not use"
   },
@@ -18983,7 +18983,7 @@
    "ids": {
     "tenant": "settlersbay"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "Pro shop (907) 376-5466 | 18 holes par 71-72 at Mile 8 Knik Rd | Mat-Su Valley region | Source sheet said vendor unconfirmed: the embedded widget on settlersbay.com/book-a-tee-time is an iframe to the PUBLIC CPS tenant settlersbay.cps.golf (read live 2026-08-11; $53-65 slots served for 8/13, multi-course selector)"
   },
@@ -19417,7 +19417,7 @@
    "ids": {
     "tenant": "foxrunvt"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
    "notes": "9 holes off Fox Lane; formerly run by Okemo and closed, reopened under Foursquare Hospitality. | Southern Vermont region | CORRECTED 2026-08-13 during the Wyoming pass: this row previously carried the TeeItUp alias fox-run-golf-course-v2, which is the WYOMING Fox Run in Laramie, not this course. Proof: kenna's dayInfo for that alias gives sunrise 12:14Z and sunset 01:59Z, i.e. 06:14 and 19:59 Mountain, which matches Laramie and cannot be Vermont, and the SPA titles itself FOX RUN GOLF COURSE (the Wyoming name). The Vermont club's own site links one booking engine only: foxrunvt.cps.golf, footer-confirmed 'Fox Run Golf Club, 89 Fox Lane, Ludlow, VT 05149'. Verified 30/31 slots at +3/+8, public and anonymous. | Source sheet verification: UNVERIFIED"
   },
