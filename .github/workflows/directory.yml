@@ -158,9 +158,20 @@ jobs:
       # deploy-worker.yml went with it — dispatching a workflow that no longer
       # exists would fail this job on every run that pushes.
       #
-      # worker/directory.gen.js is still generated and committed. Nothing serves
-      # it today: /api/directory now comes from the gate's own embedded copy,
-      # and the gate can only be updated by pasting into the Cloudflare
-      # dashboard. The file is the artefact that paste would come from, so it is
-      # kept current rather than left to rot. Publishing a directory change to
-      # the site is, for now, a manual step.
+      # PUBLISHING (corrected 2026-08-19). What this used to say — that
+      # /api/directory comes from the gate's embedded copy and can only be
+      # updated by hand-pasting ~1 MB into the Cloudflare dashboard — was true
+      # before the cutover and is not true now. It cost a session a wrong
+      # handover, so: **run `Deploy to VPS (onetee-db)`.** That workflow does
+      # `cp directory.json vps/api/directory.json`, scps vps/ up, and deploy.sh
+      # puts it at /opt/onetee-api/directory.json — exactly the DIRECTORY_PATH
+      # the Node API reads, fronted by Caddy as api.oneteeapp.com. New York
+      # went live that way on 2026-08-19 in 1m 23s (run 32270650606).
+      #
+      # It is still not automatic from here, because a directory rebuild alone
+      # should not restart the API service; dispatch it when you want the
+      # change on the site.
+      #
+      # worker/directory.gen.js is still generated and committed, and nothing
+      # serves it — it is the artefact a gate paste would come from, kept
+      # current rather than left to rot.
