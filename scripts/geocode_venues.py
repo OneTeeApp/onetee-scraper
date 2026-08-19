@@ -28,6 +28,7 @@ and the Cloudflare D1 API, and D1 writes need the CLOUDFLARE_* secrets.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import sys
@@ -35,6 +36,7 @@ import time
 
 import requests
 
+from build_registry import slugify
 from scraper.d1 import D1Rest, HttpBackend, SqliteLocal
 
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
@@ -42,6 +44,7 @@ NOMINATIM = "https://nominatim.openstreetmap.org/search"
 UA = "onetee-geocoder/1.0 (https://www.oneteeapp.com golf tee-time directory)"
 DELAY = 1.1          # seconds between Nominatim calls (policy: max ~1/sec)
 DIRECTORY = "directory.json"
+GEO_SEED = "data/venue_geo_seed.csv"
 
 
 def ensure_table(db) -> None:
@@ -58,6 +61,51 @@ def ensure_table(db) -> None:
 
 def already_geocoded(db) -> set[str]:
     return {r["venue_id"] for r in db.execute("SELECT venue_id FROM venue_geo")}
+
+
+def upsert(db, venue_id: str, lat: float, lng: float, src: str) -> None:
+    """Write one venue_geo row.
+
+    Written as a native upsert rather than SQLite's "INSERT OR REPLACE",
+    because the VPS /exec endpoint rewrites that form using a hard-coded
+    primary-key map (vps/api/server.mjs) that lists only tee_times and
+    sheet_freshness. venue_geo is absent from it, so the rewrite produced
+    "ON CONFLICT ()" and Postgres rejected every row. ON CONFLICT DO UPDATE
+    passes straight through, and SQLite has supported the same syntax since
+    3.24, so the --local path is unaffected. (server.mjs's map should still
+    gain venue_geo; that needs a VPS deploy, and this does not.)
+    """
+    db.execute(
+        "INSERT INTO venue_geo (venue_id, lat, lng, source) "
+        "VALUES (?, ?, ?, ?) "
+        "ON CONFLICT (venue_id) DO UPDATE SET "
+        "lat=EXCLUDED.lat, lng=EXCLUDED.lng, source=EXCLUDED.source",
+        [venue_id, lat, lng, src])
+
+
+def load_seed(path: str) -> dict[tuple[str, str], tuple[float, float]]:
+    """Hand-audited coordinates, keyed by (state, slugify(course name)).
+
+    A human who checked a course against a map beats anything Nominatim can
+    infer from its name, so these are written first and the venue is then
+    dropped from the Nominatim work list entirely. The key is the same
+    (state, slug) pair build_directory.py groups CSV rows by, which is what
+    its venue_id is derived from, so a seed row lands on the right venue
+    without this script having to re-derive the collision rule. Keys matching
+    no directory venue are simply unused, and a missing file is not an error.
+    """
+    if not path or not os.path.exists(path):
+        return {}
+    seed: dict[tuple[str, str], tuple[float, float]] = {}
+    with open(path, newline="") as fh:
+        for row in csv.DictReader(fh):
+            try:
+                seed[((row["state"] or "").strip().upper(),
+                      (row["slug"] or "").strip())] = (float(row["lat"]),
+                                                       float(row["lng"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+    return seed
 
 
 def _query(session: requests.Session, q: str) -> tuple[float, float] | None:
@@ -124,6 +172,10 @@ def main(argv=None) -> int:
     p.add_argument("--states", default="",
                    help="comma-separated states to restrict to (e.g. FL,UT,MD)")
     p.add_argument("--directory", default=DIRECTORY)
+    p.add_argument("--seed", default=GEO_SEED,
+                   help="hand-audited lat/lng CSV (state,slug,lat,lng). These "
+                        "overwrite whatever Nominatim previously guessed and "
+                        "skip the lookup. Pass '' to disable.")
     a = p.parse_args(argv)
 
     if a.local:
@@ -142,8 +194,25 @@ def main(argv=None) -> int:
         courses = json.load(fh)["courses"]
     want_states = {s.strip().upper() for s in a.states.split(",") if s.strip()}
 
+    seeded: set[str] = set()
+    seed = load_seed(a.seed)
+    if seed:
+        for c in courses:
+            if not c.get("venue_id"):
+                continue
+            if want_states and c.get("state") not in want_states:
+                continue
+            hit = seed.get(((c.get("state") or ""),
+                            slugify(c.get("name") or "")))
+            if hit:
+                upsert(db, c["venue_id"], hit[0], hit[1], "audit")
+                seeded.add(c["venue_id"])
+        print(f"seed: wrote {len(seeded)} audited venues from {a.seed} "
+              f"({len(seed)} rows available)", flush=True)
+
     missing = [c for c in courses
                if c.get("venue_id") and c["venue_id"] not in have
+               and c["venue_id"] not in seeded
                and (not want_states or c.get("state") in want_states)]
     print(f"directory={len(courses)}  already_geocoded={len(have)}  "
           f"missing={len(missing)}"
@@ -161,21 +230,7 @@ def main(argv=None) -> int:
                       c.get("state", ""))
         if res:
             lat, lng, src = res
-            # Written as a native upsert rather than SQLite's "INSERT OR
-            # REPLACE", because the VPS /exec endpoint rewrites that form using
-            # a hard-coded primary-key map (vps/api/server.mjs) that lists only
-            # tee_times and sheet_freshness. venue_geo is absent from it, so the
-            # rewrite produced "ON CONFLICT ()" and Postgres rejected every row.
-            # ON CONFLICT DO UPDATE passes straight through, and SQLite has
-            # supported the same syntax since 3.24, so the --local path is
-            # unaffected. (server.mjs's map should still gain venue_geo; that
-            # needs a VPS deploy, and this does not.)
-            db.execute(
-                "INSERT INTO venue_geo (venue_id, lat, lng, source) "
-                "VALUES (?, ?, ?, ?) "
-                "ON CONFLICT (venue_id) DO UPDATE SET "
-                "lat=EXCLUDED.lat, lng=EXCLUDED.lng, source=EXCLUDED.source",
-                [c["venue_id"], lat, lng, src])
+            upsert(db, c["venue_id"], lat, lng, src)
             if src == "nominatim-name":
                 name_hits += 1
             else:
