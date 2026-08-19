@@ -876,6 +876,19 @@ SOURCES = [
 ]
 
 
+def _cps_shared_host(url: str) -> bool:
+    """True when a cps.golf URL addresses its tenant by PATH, not subdomain.
+
+    `<tenant>.cps.golf/onlineresweb/...` is the normal shape and the subdomain
+    is the tenant. `sc.cps.golf/<Club>V3` is a shared host carrying many clubs,
+    where the subdomain identifies the SERVER and the path identifies the club —
+    so the tenant regex returns the same value for every course on it.
+    A path segment that is not the booking app itself is the tell.
+    """
+    m = re.match(r"https?://[a-z0-9]+\.cps\.golf/([^/?#]+)", (url or "").lower())
+    return bool(m and m.group(1) not in ("onlineresweb",))
+
+
 def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
                      source_role: str) -> dict:
     platform = row["Booking Platform"]
@@ -947,19 +960,15 @@ def _course_from_row(row: dict, state: str, slug: str, venue_id: str,
         # so there is no anonymous tee sheet to read. It was sitting at "ready"
         # with empty ids, i.e. failing on every single scrape.
         status = "unsupported"
-    elif platform == "clubprophet" and not (ids.get("website_id")
-                                            and ids.get("course_ids")):
-        # A tenant alone is not enough to scrape: browser_cps.run() only
-        # fetches rows that have tenant AND website_id AND course_ids, so a
-        # tenant-only row is silently skipped on every scrape while the
-        # registry calls it "ready". Emerald Greens and DU Highlands Ranch sat
-        # there for months and had literally never been attempted. A browser
-        # probe then found neither tenant is even live — emeraldgreens.cps.golf
-        # answers 404 on the token endpoint and every DU candidate fails DNS,
-        # against a control (indianpeaks) that mints a token fine
-        # (probe-results/open_leads.txt section B). "needs_ids" is the honest
-        # status: the platform is right, the identifiers are not known.
-        status = "needs_ids"
+    elif platform == "clubprophet" and _cps_shared_host(row["Booking URL"]):
+        # PATH-ADDRESSED TENANT ON A SHARED CPS HOST. `sc.cps.golf/StonehedgeV3`
+        # and `sc.cps.golf/EnjoieV3` are two different clubs behind one host, so
+        # the <tenant>.cps.golf regex extracts "sc" for BOTH — one id for two tee
+        # sheets. The adapter mints its token from `<tenant>.cps.golf` and would
+        # fetch neither. Same family as the `secure.<region>.prophetservices.com`
+        # courses (kendrick WY, hilaman/jake-gaither FL) held above: the product
+        # is Club Prophet, the addressing scheme is one we cannot express yet.
+        status = "unsupported"
     elif platform == "golfback" and not ids.get("course_uuid"):
         # The uuid is the whole address and it is always in the booking URL, so
         # this only fires on a row whose URL is not a golfback.com course link.
