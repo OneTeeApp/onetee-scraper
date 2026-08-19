@@ -244,9 +244,13 @@ def main(argv=None) -> int:
             print(f"  {done}/{len(missing)}  precise={name_hits} "
                   f"city-fallback={city_hits} unresolved={fail}", flush=True)
 
+    # Seeded rows count too. Leaving them out understated the total by the
+    # whole seed — the first NY run reported "covers 1761" having just written
+    # 651 audited rows, which reads like the seed did nothing.
     print(f"DONE: geocoded {done} venues this run — precise={name_hits} "
-          f"city-fallback={city_hits} unresolved={fail}. "
-          f"venue_geo now covers {len(have) + name_hits + city_hits} venues.",
+          f"city-fallback={city_hits} unresolved={fail}, plus {len(seeded)} "
+          f"seeded from audit. venue_geo now covers "
+          f"{len(have | seeded) + name_hits + city_hits} venues.",
           flush=True)
     return 0
 
