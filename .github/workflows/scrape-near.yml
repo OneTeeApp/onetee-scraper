@@ -29,6 +29,10 @@ on:
   schedule:
     - cron: "3 * * * *"        # backstop/successor — see note above
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "registry.json"
 
 permissions:
   contents: read

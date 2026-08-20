@@ -42,6 +42,10 @@ on:
   schedule:
     - cron: "33 * * * *"        # crash backstop ONLY; self-chain is primary
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "registry.json"
 
 permissions:
   contents: read
