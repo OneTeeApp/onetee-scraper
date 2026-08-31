@@ -42,6 +42,11 @@ CREATE INDEX IF NOT EXISTS idx_tt_venue_date ON tee_times (venue_id, substr(teet
 CREATE INDEX IF NOT EXISTS idx_tt_date       ON tee_times (substr(teetime,1,10));
 CREATE INDEX IF NOT EXISTS idx_tt_course     ON tee_times (course_slug);
 CREATE INDEX IF NOT EXISTS idx_tt_last_seen  ON tee_times (last_seen_at);
+-- Partial index for the hot "active rows by time" paths: the hourly prune
+-- (active = 1 AND state IN (...) AND teetime < local-now) and any scan that
+-- filters active = 1 first. Only ~active rows are indexed, so it stays small
+-- even though deactivated rows accumulate in the heap.
+CREATE INDEX IF NOT EXISTS idx_tt_active_teetime ON tee_times (teetime) WHERE active = 1;
 
 CREATE TABLE IF NOT EXISTS venue_geo (
   venue_id TEXT PRIMARY KEY,
