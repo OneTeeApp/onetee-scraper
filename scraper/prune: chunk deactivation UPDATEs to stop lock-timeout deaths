@@ -399,8 +399,7 @@ def deactivate_unknown_slugs(db, registry_path: str,
         for i in range(0, len(slugs), SLUG_CHUNK):
             batch = slugs[i:i + SLUG_CHUNK]
             ph = ",".join("?" * len(batch))
-            db.execute(f"UPDATE tee_times SET active = 0 "
-                       f"WHERE active = 1 AND course_slug IN ({ph})", batch)
+            _prune_chunked(db, f"active = 1 AND course_slug IN ({ph})", batch)
     return {"deactivated": sum(orphans.values()), "slugs": orphans,
             "known_courses": len(known), "dry_run": dry_run}
 
@@ -440,10 +439,28 @@ def deactivate_courses(db, slugs, dry_run: bool = False) -> dict:
                 f"GROUP BY course_slug", batch):
             counts[r["course_slug"]] = r["n"]
         if not dry_run:
-            db.execute(f"UPDATE tee_times SET active = 0 "
-                       f"WHERE active = 1 AND course_slug IN ({ph})", batch)
+            _prune_chunked(db, f"active = 1 AND course_slug IN ({ph})", batch)
     return {"deactivated": sum(counts.values()), "slugs": counts,
             "dry_run": dry_run}
+
+
+def _prune_chunked(db, where: str, params: list, chunk: int = 5000) -> int:
+    """Deactivate matching rows in small batches. The single broad UPDATE
+    fought the ingest fleet for row locks and died on lock_timeout (SQLSTATE
+    55P03 through the /exec 4s cap) once the table grew; each chunk locks
+    only a sliver, finishes fast, and interleaves with ingest instead.
+    [revert: db.execute("UPDATE tee_times SET active = 0 WHERE " + where,
+    params) at each call site]"""
+    total = 0
+    for _ in range(2000):          # hard stop: 10M rows per call site
+        rows = db.execute(
+            f"UPDATE tee_times SET active = 0 WHERE ctid IN ("
+            f"SELECT ctid FROM tee_times WHERE {where} LIMIT {chunk}) "
+            f"RETURNING 1", params)
+        total += len(rows)
+        if len(rows) < chunk:
+            break
+    return total
 
 
 def _local_now(tz_name: str) -> str:
@@ -478,8 +495,7 @@ def prune_past(db, dry_run: bool = False) -> dict:
                        params)[0]["n"]
         if n:
             if not dry_run:
-                db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
-                           params)
+                _prune_chunked(db, where, params)
             per_tz[tz] = n
             total += n
 
@@ -490,8 +506,7 @@ def prune_past(db, dry_run: bool = False) -> dict:
                    [*fl_central, now])[0]["n"]
     if n:
         if not dry_run:
-            db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}",
-                       [*fl_central, now])
+            _prune_chunked(db, where, [*fl_central, now])
         per_tz["America/Chicago (FL panhandle)"] = n
         total += n
 
@@ -501,7 +516,7 @@ def prune_past(db, dry_run: bool = False) -> dict:
                    [now])[0]["n"]
     if n:
         if not dry_run:
-            db.execute(f"UPDATE tee_times SET active = 0 WHERE {where}", [now])
+            _prune_chunked(db, where, [now])
         per_tz["(no state)"] = n
         total += n
 
