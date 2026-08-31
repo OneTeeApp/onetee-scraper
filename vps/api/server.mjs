@@ -102,6 +102,27 @@ const pastFilter = () => ({
   binds: [localNowISO("America/Chicago"),
           ...TZ_ORDER.map(([tz]) => localNowISO(tz)), localNowISO(FALLBACK_TZ)],
 });
+// Hours to ADD to a naive course-local tee time to get (approximate) UTC.
+// Recomputed per request so DST flips are picked up automatically.
+const tzOffsetHours = (tz) => {
+  const now = new Date();
+  const local = new Date(now.toLocaleString("sv-SE", { timeZone: tz }).replace(" ", "T") + "Z");
+  return Math.round((now.getTime() - local.getTime()) / 3600000);
+};
+// ORDER BY key for multi-state tee-time lists. `teetime` is stored as naive
+// course-local text, so a national `ORDER BY teetime LIMIT n` fills the cap
+// with whichever timezone's remaining times sort earliest (measured: by
+// mid-morning UTC a 2000-row national "today" answer was 100% AK/AZ/CO/UT/WY
+// — every Eastern course invisible). Ordering by the approximate UTC instant
+// instead interleaves timezones fairly. State-scoped queries are unaffected
+// (single offset -> identical order). [revert: ORDER BY teetime]
+const utcOrderExpr = () =>
+  `(CASE WHEN ranked.teetime ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}' ` +
+  `THEN (substr(ranked.teetime,1,19))::timestamp ELSE NULL END) + (INTERVAL '1 hour' * CASE ` +
+  `WHEN ranked.state = 'FL' AND COALESCE(ranked.city,'') IN (${FL_CENTRAL_SQL}) THEN ${tzOffsetHours("America/Chicago")} ` +
+  TZ_ORDER.map(([tz, states]) =>
+    `WHEN ranked.state IN (${states.map((s) => `'${s}'`).join(",")}) THEN ${tzOffsetHours(tz)}`).join(" ") +
+  ` ELSE ${tzOffsetHours(FALLBACK_TZ)} END)`;
 const wantsPast = (p) => {
   const v = (p.get("include_past") || "").toLowerCase();
   return v !== "" && v !== "0" && v !== "false" && v !== "no";
@@ -201,7 +222,40 @@ async function directory(p) {
            headers: { "Cache-Control": "public, max-age=3600, s-maxage=86400" } };
 }
 
+// /api/courses is a full-table GROUP BY over tee_times (the past-time CASE is
+// per-row, so no index serves it) — measured 9s quiet, 80s+ under load, which
+// times the frontend out and makes whole states "disappear". The result only
+// changes as fast as the scrape fleet writes, so: serve from an in-process
+// cache (fresh 2 min, stale-while-revalidate to 15 min) and single-flight the
+// underlying query so a stampede of retries can't stack scans on Postgres.
+// [revert: call coursesQuery directly from the router]
+const COURSE_FRESH_MS = 2 * 60 * 1000;
+const COURSE_STALE_MS = 15 * 60 * 1000;
+const COURSE_CACHE = new Map();   // key -> { at, body }
+const COURSE_PENDING = new Map(); // key -> Promise<body>
+const COURSE_HDRS = { "Cache-Control": "public, max-age=60" };
 async function courses(p) {
+  const key = [(p.get("state") || "").toUpperCase(), (p.get("city") || "").toLowerCase(),
+               wantsPast(p) ? 1 : 0].join("|");
+  const hit = COURSE_CACHE.get(key);
+  const age = hit ? Date.now() - hit.at : Infinity;
+  if (age < COURSE_FRESH_MS)
+    return { status: 200, body: hit.body, headers: COURSE_HDRS };
+  let job = COURSE_PENDING.get(key);
+  if (!job) {
+    job = coursesQuery(p).then(
+      (body) => { COURSE_CACHE.set(key, { at: Date.now(), body }); COURSE_PENDING.delete(key); return body; },
+      (e) => { COURSE_PENDING.delete(key); throw e; });
+    COURSE_PENDING.set(key, job);
+  }
+  if (age < COURSE_STALE_MS) { // serve stale now, refresh in the background
+    job.catch(() => {});
+    return { status: 200, body: hit.body, headers: COURSE_HDRS };
+  }
+  return { status: 200, body: await job, headers: COURSE_HDRS };
+}
+
+async function coursesQuery(p) {
   const clauses = ["active = 1"];
   const binds = [];
   if (!wantsPast(p)) { const f = pastFilter(); clauses.push(f.clause); binds.push(...f.binds); }
@@ -224,7 +278,7 @@ async function courses(p) {
       WHERE ${clauses.join(" AND ")}
       GROUP BY COALESCE(venue_id, course_slug)
       ORDER BY course_name`).bind(...binds).all();
-  return { status: 200, body: { courses: results } };
+  return { courses: results };
 }
 
 async function teeTimes(p) {
@@ -269,7 +323,7 @@ async function teeTimes(p) {
          FROM filtered
      )
      SELECT ranked.*, g.lat AS lat, g.lng AS lng FROM ranked LEFT JOIN venue_geo g ON g.venue_id = ranked.vid WHERE rn = 1
-      ORDER BY teetime LIMIT ?`).bind(...binds, limit).all();
+      ORDER BY ${utcOrderExpr()} NULLS LAST, ranked.teetime LIMIT ?`).bind(...binds, limit).all();
 
   for (const r of results) {
     r.course_slug = r.vid || r.course_slug;
