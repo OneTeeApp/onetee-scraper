@@ -408,16 +408,25 @@ def _scrape_one_course(course: dict, dates: list) -> dict:
 # To pull a tenant back to the browser path, just remove it from this set.
 # ===========================================================================
 _DC_DIRECT_TENANTS = frozenset({
-    "emeraldgreens", "greenvalleyranch", "haymakerco", "indianpeaks",
-    "cityofwestminster", "redhawkridge", "dellago",
+    # 2026-08-31: greenvalleyranch, haymakerco, indianpeaks, cityofwestminster,
+    # redhawkridge and oceancitygc are REMOVED from the plain set — Cloudflare
+    # started challenging the datacenter IP for exactly those six tenants
+    # between 08-25 and 08-27 (each went dark within a day of its tenant's CPS
+    # build bump; site + API verified fine from a real cleared browser, same
+    # endpoints and response shape). Per the note below, the fix for a tenant
+    # that starts getting challenged is to remove it from this set so it rides
+    # the Patchright browser path, which still clears these from the free
+    # runner (cattailcreek/flatirons/marianabutte prove it daily).
+    "emeraldgreens", "dellago",
     "stjamesbay", "wakullasandsfl", "southerndunes", "tanglewoodfl",
-    "musketridgemd", "oceancitygc",
+    "musketridgemd",
     # highlandsridgefl: North (course_ids [1]) and South ([2]) share this ONE
     # tenant. It was HELD BACK from the plain path while both were UNPINNED — the
     # flow returned the combined sheet and would publish it under BOTH slugs
     # (duplication). Both are now pinned in the registry (2026-08-10), so the
     # plain adapter fetches each course_id separately and filters correctly —
-    # exactly like the other shared tenants here (oceancitygc, cityofwestminster).
+    # exactly like the shared tenants oceancitygc and cityofwestminster did
+    # while they were still on this path.
     # This recovers highlands-ridge-golf-club-south-course, the last dark FL CPS
     # "ready" course.
     "highlandsridgefl",
