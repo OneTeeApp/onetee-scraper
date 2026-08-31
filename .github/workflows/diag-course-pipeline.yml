@@ -73,6 +73,12 @@ jobs:
         # commit below with whatever it managed to answer.
         timeout-minutes: 15
         env:
+          # VPS cutover (2026-08-11): production reads/writes Postgres behind
+          # api.oneteeapp.com, not D1. Without these the trace dies at
+          # d1_state() before fetching anything (observed run 33448000628).
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
@@ -89,6 +95,7 @@ jobs:
             --courses "${INPUT_COURSES:-trinidad-golf-course,vail-golf-club,golf-granby-ranch}" \
             --days "${INPUT_DAYS:-3}" \
             $PUSH 2>&1 | tee diag.log
+          exit ${PIPESTATUS[0]}
 
       - name: Summary
         if: always()
