@@ -56,7 +56,9 @@ PATTERNS = {
     # character class must allow capitals. It was [a-z0-9-] until Maryland
     # arrived, which silently dropped Rocky Gap to needs_ids: the pattern did
     # not match, so no tenant/property was extracted and nothing said why.
-    "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
+    # courses-v2 is the newer skin of the same OneCart page (Streamsong); the
+    # tenant/property it carries drive the identical API.
+    "rguest": re.compile(r"book\.rguest\.com/onecart/golf/courses(?:-v2)?/(\d+)/([A-Za-z0-9-]+)"),
     # Agilysys OneCart: same product/API as rguest, different host
     # (book.onagilysys.com, e.g. Black Desert). Captures tenant + property.
     "agilysys": re.compile(r"book\.onagilysys\.com/onecart/golf/courses/(\d+)/([A-Za-z0-9-]+)"),
@@ -116,6 +118,26 @@ TENFORE_IDS = {
 }
 
 EXTRA_IDS = {
+    # ---- 2026-09-01 bucket-A onboarding (ids read off each engine in a browser;
+    # see claude/bucket-a-onboarding-2026-09-01.md) ----
+    # Streamsong: one rguest property (974/StreamsongResort) fronts four courses,
+    # so each row claims its own sheet, Wildfire-style. Bone Valley (518) has no
+    # directory row yet.
+    "streamsong red":   {"course_id": 341},
+    "streamsong blue":  {"course_id": 339},
+    "streamsong black": {"course_id": 340},
+    # Kings Point: chronogolf club 18655 carries both courses.
+    "kings point executive golf course": {"course_ids": [22336]},
+    "kings point par 3 golf course":     {"course_ids": [22337]},
+    # The Plantation at Leesburg: chronogolf club 4504, two courses.
+    "the plantation at leesburg golf club - cranes roost course": {"course_ids": [5286]},
+    "the plantation at leesburg golf club - otter creek course":  {"course_ids": [5287]},
+    # Union County (NJ) EZLinks portal fronts Galloping Hill (18 + Learning
+    # Center 9) AND Ash Brook (4545), so name matching is not safe here.
+    "galloping hill golf course": {"course_ids": [4549, 4551]},
+    # Seaview (NJ): one Golf With Access tenant, two courses.
+    "seaview bay course":   {"course_id": "3e2804aa-1d90-4c79-b436-a099f0ac9394", "tenant": "seaview-hotel-and-golf-club"},
+    "seaview pines course": {"course_id": "8a0d76c2-82a9-413a-a7d1-f7baa535bee9", "tenant": "seaview-hotel-and-golf-club"},
     # Trutee (City of St. George org) — each venue's EXACT trutee.app img-alt
     # course name, matched verbatim by browser_trutee.py (Trutee drops our
     # "Dixie" prefix and calls Southgate a "Course", so these are pinned, not
