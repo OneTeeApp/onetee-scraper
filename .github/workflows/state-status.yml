@@ -67,8 +67,14 @@ jobs:
               || echo '{"states":[]}' > probe-results/state-status.baseline.json
           fi
 
-      - name: Build the funnel against live D1 counts
+      - name: Build the funnel against live VPS counts
         env:
+          # VPS cutover (2026-08-11): live rows are in Postgres behind
+          # api.oneteeapp.com. VPS_ONLY=1 makes state_status.py's --d1 join
+          # use HttpBackend; the retired D1 creds below are harmless leftovers.
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DB_ID: ${{ secrets.CLOUDFLARE_D1_DB_ID }}
