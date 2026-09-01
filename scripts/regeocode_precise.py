@@ -81,6 +81,36 @@ def norm(s: str) -> str:
     return " ".join(s.split())
 
 
+def _n(s: str) -> str:
+    """Normalise WITHOUT dropping the parenthetical."""
+    s = re.sub(r"[^a-z0-9 ]", " ", (s or "").lower())
+    return " ".join(NOISE.sub(" ", s).split())
+
+
+def name_variants(name: str) -> list[str]:
+    """Every form of a venue name worth matching against OSM.
+
+    Our directory disambiguates sibling courses in a parenthetical or after a
+    dash - "Sun City West (Deer Valley)", "Lely Resort Golf & Country Club -
+    Flamingo Island Course" - but OSM usually indexes the course under the
+    DISTINGUISHING part ("Deer Valley Golf Course", "Flamingo Island Course"),
+    not the facility. Dropping the parenthetical, which is all norm() did, threw
+    away the half OSM knows: in the 2026-09-01 all-states dry run that left 60%
+    of Florida and 31% of Arizona unresolved while Colorado - whose names carry
+    no parentheticals - resolved 112 of 112. So try the whole name, the
+    parenthetical on its own, and the facility base, and keep the best.
+    """
+    out, seen = [], set()
+    inner = re.findall(r"\(([^()]*)\)", name or "")
+    tail = re.split(r"\s+[-\u2013\u2014]\s+", name or "")
+    for cand in [_n(name), norm(name)] + [_n(x) for x in inner] + \
+                ([_n(tail[-1])] if len(tail) > 1 else []):
+        if cand and cand not in seen:
+            seen.add(cand)
+            out.append(cand)
+    return out
+
+
 def plain(s: str) -> str:
     """Lowercase, alphanumerics only - no noise-word stripping. Matches nz() in
     the site's map component, which is what decides what counts as one
@@ -165,21 +195,53 @@ def nominatim(session: requests.Session, q: str) -> tuple[float, float] | None:
     return None
 
 
+def nominatim_near(session: requests.Session, q: str,
+                   lat: float, lng: float,
+                   box: float = 0.45) -> tuple[float, float] | None:
+    """Nominatim restricted to a box around the venue's own city.
+
+    The first-pass geocoder already tried "<name>, <city>, <state>" unbounded
+    and fell through to the city centroid, so repeating that is pointless. A
+    BOUNDED search is a different question - it asks Nominatim for anything
+    matching the name inside this box - and it picks up courses indexed as POIs
+    rather than as places, which is where most of the still-missing ones live.
+    """
+    try:
+        r = session.get(NOMINATIM,
+                        params={"q": q, "format": "json", "limit": 1,
+                                "countrycodes": "us", "bounded": 1,
+                                "viewbox": f"{lng - box},{lat + box},"
+                                           f"{lng + box},{lat - box}"},
+                        headers={"User-Agent": UA}, timeout=25)
+        if r.status_code == 429:
+            time.sleep(6)
+            return None
+        r.raise_for_status()
+        hits = r.json()
+        if hits:
+            return float(hits[0]["lat"]), float(hits[0]["lon"])
+    except (requests.RequestException, ValueError, KeyError):
+        pass
+    return None
+
+
 def best_osm_match(venue: dict, pool: list[dict],
                    anchor: tuple[float, float]) -> tuple[float, float, float] | None:
     """Closest good name match within MAX_KM of the venue's current anchor."""
-    want = norm(venue.get("name", ""))
-    if not want:
+    wants = name_variants(venue.get("name", ""))
+    if not wants:
         return None
     best = None
     for cand in pool:
         km = haversine_km(anchor[0], anchor[1], cand["lat"], cand["lng"])
         if km > MAX_KM:
             continue
-        got = norm(cand["name"])
+        got = _n(cand["name"])
         if not got:
             continue
-        ratio = difflib.SequenceMatcher(None, want, got).ratio()
+        want, ratio = max(
+            ((w, difflib.SequenceMatcher(None, w, got).ratio()) for w in wants),
+            key=lambda x: x[1])
         # OSM often carries a longer form of the same name ("Fox Hollow at
         # Lakewood Golf Course" for our "Fox Hollow Golf Course"), which scores
         # far below MIN_RATIO on raw similarity. Accept it only when EVERY word
@@ -276,7 +338,7 @@ def main(argv=None) -> int:
 
     session = requests.Session()
     zip_cache: dict[str, tuple[float, float] | None] = {}
-    fixed = osm = zipc = skipped = 0
+    fixed = osm = zipc = nearby = skipped = 0
     done = 0
     # GitHub's log viewer virtualises to a few dozen rendered lines, so a run
     # that moves a thousand coordinates cannot actually be reviewed from the
@@ -339,6 +401,13 @@ def main(argv=None) -> int:
             new = src = None
             if c["venue_id"] in proposals:
                 new, src = proposals[c["venue_id"]][0], "overpass-osm"
+            if new is None and anchor[0] is not None:
+                q = f"{facility_base(c.get('name', ''))}, {c.get('state', '')}"
+                hit = nominatim_near(session, q, anchor[0], anchor[1])
+                time.sleep(1.2)          # Nominatim policy: <= 1 req/sec
+                if hit and haversine_km(anchor[0], anchor[1],
+                                        hit[0], hit[1]) <= MAX_KM:
+                    new, src = hit, "nominatim-bounded"
             if new is None and c.get("zip"):
                 z = str(c["zip"]).strip()[:5]
                 if z not in zip_cache:
@@ -366,6 +435,8 @@ def main(argv=None) -> int:
                            f" ({moved:.1f} km)"))
             if src == "overpass-osm":
                 osm += 1
+            elif src == "nominatim-bounded":
+                nearby += 1
             else:
                 zipc += 1
             fixed += 1
@@ -379,8 +450,8 @@ def main(argv=None) -> int:
 
     verb = "would fix" if a.dry_run else "fixed"
     summary = (f"{verb} {fixed} of {len(targets)} — osm={osm} "
-               f"zip-centroid={zipc} unresolved={skipped} "
-               f"contested-dropped={len(contested)}")
+               f"nominatim-bounded={nearby} zip-centroid={zipc} "
+               f"unresolved={skipped} contested-dropped={len(contested)}")
     print(f"DONE: {summary}", flush=True)
     write_job_summary(a.dry_run, summary, report, contested)
     return 0
