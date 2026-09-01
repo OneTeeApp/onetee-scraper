@@ -8529,7 +8529,7 @@
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000"
+   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000 | Re-verified 2026-09-01 in browser: rguest tenant 974 / StreamsongResort, course 340 (Black); getAvailableTeeSlots answers for the property"
   },
   {
    "slug": "streamsong-blue",
@@ -8548,7 +8548,7 @@
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000"
+   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000 | Re-verified 2026-09-01 in browser: rguest tenant 974 / StreamsongResort, course 339 (Blue)"
   },
   {
    "slug": "streamsong-red",
@@ -8567,25 +8567,7 @@
    },
    "status": "ready",
    "confidence": "high",
-   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000"
-  },
-  {
-   "slug": "the-chain-at-streamsong",
-   "name": "The Chain at Streamsong",
-   "display_name": "",
-   "city": "Bowling Green",
-   "state": "FL",
-   "venue_id": "the-chain-at-streamsong",
-   "source_role": "primary",
-   "platform": "rguest",
-   "booking_url": "https://book.rguest.com/onecart/golf/courses-v2/974/StreamsongResort",
-   "ids": {
-    "tenant": "974",
-    "property": "StreamsongResort"
-   },
-   "status": "ready",
-   "confidence": "high",
-   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000"
+   "notes": "One resort portal covers all Streamsong courses | Region: Central FL (Orlando) | Phone: (863) 428-1000 | Re-verified 2026-09-01 in browser: rguest tenant 974 / StreamsongResort, course 341 (Red); 7 slots seen for 2026-09-04"
   },
   {
    "slug": "the-links-at-boynton-beach-championship-course",
@@ -9340,12 +9322,16 @@
    "state": "FL",
    "venue_id": "the-biltmore-golf-course",
    "source_role": "primary",
-   "platform": "rguest",
+   "platform": "agilysys",
    "booking_url": "https://book.onagilysys.com/onecart/golf/courses/553/biltmorehotel",
-   "ids": {},
-   "status": "needs_ids",
+   "ids": {
+    "tenant": "553",
+    "property": "biltmorehotel",
+    "host": "book.onagilysys.com"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "Link target on biltmorehotel.com golf tee times page | Region: Southeast FL | Phone: (305) 460-5364"
+   "notes": "Link target on biltmorehotel.com golf tee times page | Region: Southeast FL | Phone: (305) 460-5364 | Re-verified 2026-09-01 in browser: host is book.onagilysys.com (same OneCart API as rguest, adapter pins host); tenant 553 / biltmorehotel, sole course 560, 39 slots seen for 2026-09-04"
   },
   {
    "slug": "the-country-club-of-coral-springs",
@@ -9786,15 +9772,17 @@
    "venue_id": "kings-point-executive-golf-course",
    "source_role": "primary",
    "platform": "chronogolf",
-   "booking_url": "",
+   "booking_url": "https://www.chronogolf.com/club/18655",
    "ids": {
+    "club_id": "18655",
+    "club_uuid": null,
     "course_ids": [
      22336
     ]
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Lightspeed site; booking link JS-injected | Region: Southeast FL | Phone: (561) 499-0140"
+   "notes": "Lightspeed site; booking link JS-injected | Region: Southeast FL | Phone: (561) 499-0140 | Re-verified 2026-09-01 in browser: chronogolf club 18655 (king-s-point-golf-country-club); course 22336 Executive, online booking enabled"
   },
   {
    "slug": "kings-point-par-3-golf-course",
@@ -9805,15 +9793,17 @@
    "venue_id": "kings-point-par-3-golf-course",
    "source_role": "primary",
    "platform": "chronogolf",
-   "booking_url": "",
+   "booking_url": "https://www.chronogolf.com/club/18655",
    "ids": {
+    "club_id": "18655",
+    "club_uuid": null,
     "course_ids": [
      22337
     ]
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Lightspeed site; booking link JS-injected | Region: Southeast FL | Phone: (561) 499-0140"
+   "notes": "Lightspeed site; booking link JS-injected | Region: Southeast FL | Phone: (561) 499-0140 | Re-verified 2026-09-01 in browser: chronogolf club 18655; course 22337 Par 3, online booking enabled"
   },
   {
    "slug": "lakeview-golf-club",
@@ -9823,12 +9813,15 @@
    "state": "FL",
    "venue_id": "lakeview-golf-club",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "",
-   "ids": {},
-   "status": "needs_ids",
+   "platform": "teeitup",
+   "booking_url": "https://lakeview-golf-club.book.teeitup.com/?course=664",
+   "ids": {
+    "alias": "lakeview-golf-club",
+    "facility_id": "664"
+   },
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Golf Channel Solutions site; facility ID not exposed | Region: Southeast FL | Phone: (561) 498-3229"
+   "notes": "Golf Channel Solutions site; facility ID not exposed | Region: Southeast FL | Phone: (561) 498-3229 | Re-verified 2026-09-01 in browser: the /tee-times page embeds lakeview-golf-club.book.teeitup.com; kenna /alias/lakeview-golf-club/facilities 200, facility 664"
   },
   {
    "slug": "the-deltona-club",
@@ -11728,15 +11721,17 @@
    "venue_id": "the-plantation-at-leesburg-golf-club-cranes-roost-course",
    "source_role": "primary",
    "platform": "chronogolf",
-   "booking_url": "",
+   "booking_url": "https://www.chronogolf.com/club/4504",
    "ids": {
+    "club_id": "4504",
+    "club_uuid": null,
     "course_ids": [
      5286
     ]
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Platform confirmed as Chronogolf from the official site's 'Plantation Golf' app (com.chronogolf.booking.theplantation); web booking URL not exposed on site. One portal covers both courses. | Region: Central FL (Orlando) | Phone: (352) 365-0526"
+   "notes": "Platform confirmed as Chronogolf from the official site's 'Plantation Golf' app (com.chronogolf.booking.theplantation); web booking URL not exposed on site. One portal covers both courses. | Region: Central FL (Orlando) | Phone: (352) 365-0526 | Re-verified 2026-09-01 in browser: chronogolf club 4504 (the-plantation-at-leesburg); course 5286 Cranes Roost"
   },
   {
    "slug": "the-plantation-at-leesburg-golf-club-otter-creek-course",
@@ -11747,15 +11742,17 @@
    "venue_id": "the-plantation-at-leesburg-golf-club-otter-creek-course",
    "source_role": "primary",
    "platform": "chronogolf",
-   "booking_url": "",
+   "booking_url": "https://www.chronogolf.com/club/4504",
    "ids": {
+    "club_id": "4504",
+    "club_uuid": null,
     "course_ids": [
      5287
     ]
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Same Chronogolf portal as Cranes Roost (id 210); web booking URL not exposed on site. | Region: Central FL (Orlando) | Phone: (352) 365-0526"
+   "notes": "Same Chronogolf portal as Cranes Roost (id 210); web booking URL not exposed on site. | Region: Central FL (Orlando) | Phone: (352) 365-0526 | Re-verified 2026-09-01 in browser: chronogolf club 4504; course 5287 Otter Creek"
   },
   {
    "slug": "ibis-landing-golf-country-club",
@@ -12126,11 +12123,14 @@
    "venue_id": "miami-shores-country-club",
    "source_role": "primary",
    "platform": "chronogolf",
-   "booking_url": "",
-   "ids": {},
-   "status": "needs_ids",
+   "booking_url": "https://www.chronogolf.com/club/19871",
+   "ids": {
+    "club_id": "19871",
+    "club_uuid": null
+   },
+   "status": "ready",
    "confidence": "medium",
-   "notes": "Lightspeed Golf site; booking link is placeholder anchor | Region: Southeast FL | Phone: (305) 795-2360"
+   "notes": "Lightspeed Golf site; booking link is placeholder anchor | Region: Southeast FL | Phone: (305) 795-2360 | Re-verified 2026-09-01 in browser: chronogolf club 19871 (miami-shores-cc), sole course 28341, online booking enabled"
   },
   {
    "slug": "miami-springs-golf-country-club",
@@ -13148,15 +13148,15 @@
    "state": "FL",
    "venue_id": "crane-watch-club",
    "source_role": "primary",
-   "platform": "ezlinks",
-   "booking_url": "https://www.teeoff.com/tee-times/facility/4840-crane-watch-club/search",
+   "platform": "teeitup",
+   "booking_url": "https://crane-watch-club.book.teeitup.com/?course=4840",
    "ids": {
-    "teeoff_facility_id": "4840",
-    "teeoff_slug": "crane-watch-club"
+    "alias": "crane-watch-club",
+    "facility_id": "4840"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Facility booking-search page loaded and confirms Crane Watch Club, 4225 SW Bimini Cir S, Palm City FL. No inventory shown for the default date at time of check. cranewatchclub.com resolves but connections time out through the proxy. | Region: Space Coast & Treasure Coast"
+   "notes": "Facility booking-search page loaded and confirms Crane Watch Club, 4225 SW Bimini Cir S, Palm City FL. No inventory shown for the default date at time of check. cranewatchclub.com resolves but connections time out through the proxy. | Region: Space Coast & Treasure Coast | Re-verified 2026-09-01 in browser: teeoff facility id doubles as the kenna facility id; /alias/crane-watch-club/facilities 200"
   },
   {
    "slug": "hammock-creek-golf-club",
@@ -13181,15 +13181,15 @@
    "state": "FL",
    "venue_id": "martin-downs-golf-club-osprey-creek-course",
    "source_role": "primary",
-   "platform": "ezlinks",
-   "booking_url": "https://www.teeoff.com/tee-times/facility/11457-martin-downs-golf-club/search",
+   "platform": "teeitup",
+   "booking_url": "https://martin-downs-golf-club.book.teeitup.com/?course=11457",
    "ids": {
-    "teeoff_facility_id": "11457",
-    "teeoff_slug": "martin-downs-golf-club"
+    "alias": "martin-downs-golf-club",
+    "facility_id": "11457"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Facility booking-search page loaded: Martin Downs Golf Club, 3801 SW Greenwood Way, Palm City FL, 18 holes/par 72/6,828 yds - matches the public Osprey Creek course. No inventory for default date at check time. Website listed is martindownsgolfclub.com ('Martin Downs Country Club'); its 'Book your tee time' button is JS-only, and the page does not state the city, so the domain match is probable but not city-confirmed. | Region: Space Coast & Treasure Coast"
+   "notes": "Facility booking-search page loaded: Martin Downs Golf Club, 3801 SW Greenwood Way, Palm City FL, 18 holes/par 72/6,828 yds - matches the public Osprey Creek course. No inventory for default date at check time. Website listed is martindownsgolfclub.com ('Martin Downs Country Club'); its 'Book your tee time' button is JS-only, and the page does not state the city, so the domain match is probable but not city-confirmed. | Region: Space Coast & Treasure Coast | Re-verified 2026-09-01 in browser: own site links martin-downs-golf-club.play.teeitup.golf; kenna alias martin-downs-golf-club, sole facility 11457 'Martin Downs Country Club'"
   },
   {
    "slug": "cypress-knoll-golf-country-club",
@@ -13736,15 +13736,15 @@
    "state": "FL",
    "venue_id": "spruce-creek-country-club",
    "source_role": "primary",
-   "platform": "ezlinks",
-   "booking_url": "https://www.teeoff.com/tee-times/facility/5061-spruce-creek-country-club/search",
+   "platform": "teeitup",
+   "booking_url": "https://spruce-creek-country-club.book.teeitup.com/?course=5061",
    "ids": {
-    "teeoff_facility_id": "5061",
-    "teeoff_slug": "spruce-creek-country-club"
+    "alias": "spruce-creek-country-club",
+    "facility_id": "5061"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Facility booking-search page loaded and confirms 1900 Country Club Dr, Port Orange FL. No inventory for default date at check time. Club site (sprucecreekgolf.com, Spruce Creek Fly-In community) confirmed but exposes no booking link; subpages fail DNS intermittently through the proxy. | Region: Space Coast & Treasure Coast | Phone: (386) 756-6114"
+   "notes": "Facility booking-search page loaded and confirms 1900 Country Club Dr, Port Orange FL. No inventory for default date at check time. Club site (sprucecreekgolf.com, Spruce Creek Fly-In community) confirmed but exposes no booking link; subpages fail DNS intermittently through the proxy. | Region: Space Coast & Treasure Coast | Phone: (386) 756-6114 | Re-verified 2026-09-01 in browser: kenna /alias/spruce-creek-country-club/facilities 200, facility 5061"
   },
   {
    "slug": "st-joseph-bay-golf-club",
@@ -13772,15 +13772,15 @@
    "state": "FL",
    "venue_id": "savanna-club-golf-course",
    "source_role": "primary",
-   "platform": "ezlinks",
-   "booking_url": "https://www.teeoff.com/tee-times/facility/18244-savanna-club-golf-course/search",
+   "platform": "teeitup",
+   "booking_url": "https://savanna-club-golf-course.book.teeitup.com/?course=18244",
    "ids": {
-    "teeoff_facility_id": "18244",
-    "teeoff_slug": "savanna-club-golf-course"
+    "alias": "savanna-club-golf-course",
+    "facility_id": "18244"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Facility booking-search page loaded and confirms Savanna Club Golf Course, 3490 Crabapple Dr, Port St. Lucie FL. No inventory for default date at check time. Community site (savannaclub.com) redirects to suncommunities.com and has no golf booking; the only phone there is the Sun Communities sales line (888) 278-5434, not the pro shop, so left null. | Region: Space Coast & Treasure Coast"
+   "notes": "Facility booking-search page loaded and confirms Savanna Club Golf Course, 3490 Crabapple Dr, Port St. Lucie FL. No inventory for default date at check time. Community site (savannaclub.com) redirects to suncommunities.com and has no golf booking; the only phone there is the Sun Communities sales line (888) 278-5434, not the pro shop, so left null. | Region: Space Coast & Treasure Coast | Re-verified 2026-09-01 in browser: kenna /alias/savanna-club-golf-course/facilities 200, facility 18244"
   },
   {
    "slug": "the-saints-at-port-st-lucie-golf-course",
@@ -20633,21 +20633,6 @@
    "notes": "18 holes; daily-fee; Teesnap booking page (islandsendgolf.teesnap.net); approx coords | Long Island region | Suffolk County | Source sheet verification: VERIFIED"
   },
   {
-   "slug": "long-island-national-golf-club",
-   "name": "Long Island National Golf Club",
-   "display_name": "",
-   "city": "Riverhead",
-   "state": "NY",
-   "venue_id": "long-island-national-golf-club",
-   "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://www.teeitup.com/golf/teetime.m?c=11901",
-   "ids": {},
-   "status": "needs_ids",
-   "confidence": "high",
-   "notes": "18 holes; Troon-managed public (Rees Jones); legacy TeeItUp link + Chronogolf listing; own site (Jonas) book link not surfaced \u2014 Troon-managed public; classic TeeItUp link confirmed as course booking page via TeeItUp directory; sandbox render robots-blocked | Long Island region | Suffolk County | Source sheet verification: VERIFIED"
-  },
-  {
    "slug": "middle-island-country-club",
    "name": "Middle Island Country Club",
    "display_name": "",
@@ -21693,12 +21678,15 @@
    "state": "NY",
    "venue_id": "the-links-at-union-vale",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://golf.teeitup.com/12540",
-   "ids": {},
-   "status": "needs_ids",
+   "platform": "foreup",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/21956/9448#/teetimes",
+   "ids": {
+    "course_id": "21956",
+    "schedule_id": "9448"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "Pro shop (845) 223-1000 | 18 holes; public daily-fee; own site Book link resolves to TeeItUp (course 12540) | Mid-Hudson Valley region | Dutchess County | Source sheet verification: VERIFIED"
+   "notes": "Pro shop (845) 223-1000 | 18 holes; public daily-fee; own site Book link resolves to TeeItUp (course 12540) | Mid-Hudson Valley region | Dutchess County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: luvgolf.com Tee Times button targets foreUP course 21956 schedule 9448 (golf.teeitup.com/12540 was the retired classic engine)"
   },
   {
    "slug": "hickory-hill-golf-course",
@@ -21761,12 +21749,14 @@
    "state": "NY",
    "venue_id": "the-golf-club-at-mansion-ridge",
    "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.mansionridgegc.com/book-a-tee-time/",
-   "ids": {},
+   "platform": "golfwithaccess",
+   "booking_url": "https://troon.com/course/the-golf-club-at-mansion-ridge/reserve-tee-time",
+   "ids": {
+    "tenant": "the-golf-club-at-mansion-ridge"
+   },
    "status": "needs_ids",
    "confidence": "high",
-   "notes": "Pro shop (845) 782-7888 | 18 holes; Jack Nicklaus Signature; Troon-managed public; own-site Book link routes to GolfNow (Golf Channel Solutions) | Mid-Hudson Valley region | Orange County | Source sheet verification: VERIFIED"
+   "notes": "Pro shop (845) 782-7888 | 18 holes; Jack Nicklaus Signature; Troon-managed public; own-site Book link routes to GolfNow (Golf Channel Solutions) | Mid-Hudson Valley region | Orange County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: own site's Book link goes to Troon Golf With Access (not GolfNow); sole course on tenant"
   },
   {
    "slug": "the-lynx-at-river-bend-golf-club",
@@ -23389,11 +23379,14 @@
    "venue_id": "rogues-roost-golf-club",
    "source_role": "primary",
    "platform": "teeitup",
-   "booking_url": "https://vip.teeitup.com/6339406/teetimes/",
-   "ids": {},
-   "status": "needs_ids",
+   "booking_url": "https://rogues-roost-multi-course.book.teeitup.com/?course=8436",
+   "ids": {
+    "alias": "rogues-roost-multi-course",
+    "facility_id": "8436"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "18 holes; part of 36-hole East/West facility on NY-31; official site blocked automated access (403); coords approx \u2014 Course's own Online Tee Times page on TeeItUp/EZLinks (vip.teeitup.com id 6339406) covers the 36-hole facility; select East; also mirrored on GolfNow facility 8436 | Central New York region | Onondaga County | Source sheet verification: VERIFIED"
+   "notes": "18 holes; part of 36-hole East/West facility on NY-31; official site blocked automated access (403); coords approx \u2014 Course's own Online Tee Times page on TeeItUp/EZLinks (vip.teeitup.com id 6339406) covers the 36-hole facility; select East; also mirrored on GolfNow facility 8436 | Central New York region | Onondaga County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: own /tee-times/ page embeds rogues-roost-multi-course.book.teeitup.com; kenna facilities: 8436 East, 8437 West"
   },
   {
    "slug": "rogues-roost-golf-club-teeitup",
@@ -23404,11 +23397,14 @@
    "venue_id": "rogues-roost-golf-club",
    "source_role": "supplement",
    "platform": "teeitup",
-   "booking_url": "https://vip.teeitup.com/6339406/teetimes/",
-   "ids": {},
-   "status": "needs_ids",
+   "booking_url": "https://rogues-roost-multi-course.book.teeitup.com/?course=8437",
+   "ids": {
+    "alias": "rogues-roost-multi-course",
+    "facility_id": "8437"
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "18 holes (shorter); part of 36-hole East/West facility; site blocked automated access (403); coords approx \u2014 Course's own Online Tee Times page on TeeItUp/EZLinks (vip.teeitup.com id 6339406) covers the 36-hole facility; select West; also mirrored on GolfNow facility 8437 | Central New York region | Onondaga County | Source sheet verification: VERIFIED"
+   "notes": "18 holes (shorter); part of 36-hole East/West facility; site blocked automated access (403); coords approx \u2014 Course's own Online Tee Times page on TeeItUp/EZLinks (vip.teeitup.com id 6339406) covers the 36-hole facility; select West; also mirrored on GolfNow facility 8437 | Central New York region | Onondaga County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: kenna alias rogues-roost-multi-course, facility 8437 West"
   },
   {
    "slug": "sunnycrest-golf-course",
@@ -24992,11 +24988,14 @@
    "venue_id": "le-roy-country-club",
    "source_role": "primary",
    "platform": "foreup",
-   "booking_url": "",
-   "ids": {},
-   "status": "needs_ids",
+   "booking_url": "https://foreupsoftware.com/index.php/booking/23185#/teetimes",
+   "ids": {
+    "course_id": "23185",
+    "schedule_id": null
+   },
+   "status": "ready",
    "confidence": "high",
-   "notes": "Pro shop (585) 768-7015 | 18-hole public; 7759 E Main Rd; own booking page names ForeUP Software as the tee-sheet engine (exact foreupsoftware URL not extractable from JS button) | Western New York region | Genesee County | Source sheet verification: VERIFIED"
+   "notes": "Pro shop (585) 768-7015 | 18-hole public; 7759 E Main Rd; own booking page names ForeUP Software as the tee-sheet engine (exact foreupsoftware URL not extractable from JS button) | Western New York region | Genesee County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: foreUP WordPress plugin on leroycc.com links course 23185"
   },
   {
    "slug": "terry-hills-golf-course",
@@ -25494,17 +25493,18 @@
    "state": "NJ",
    "venue_id": "galloping-hill-golf-course",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://vip.teeitup.com/202303202/",
+   "platform": "ezlinks",
+   "booking_url": "https://unioncountygolf.ezlinksgolf.com/",
    "ids": {
+    "portal": "unioncountygolf",
     "course_ids": [
      4549,
      4551
     ]
    },
-   "status": "needs_ids",
+   "status": "experimental",
    "confidence": "high",
-   "notes": "27 holes (18 championship + 9-hole Short Nine); Union County course; KemperSports-managed; phone reservation line 866-802-0868 | North Jersey region | Union County | Source sheet verification: VERIFIED"
+   "notes": "27 holes (18 championship + 9-hole Short Nine); Union County course; KemperSports-managed; phone reservation line 866-802-0868 | North Jersey region | Union County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: vip.teeitup.com/topaz is a GolfNow website TEMPLATE, not a booking engine; the real Book page links the Union County EZLinks portal (course ids 4549 GC + 4551 Learning Center 9; Ash Brook is 4545 on the same portal)"
   },
   {
    "slug": "ash-brook-golf-course",
@@ -26563,21 +26563,6 @@
    "notes": "Pro shop 609-597-9393 | 18-hole public daily-fee; own site Book a Starting Time links to live Chronogolf; also GolfNow facility 14359 | Jersey Shore region | Ocean County | Source sheet verification: VERIFIED"
   },
   {
-   "slug": "pine-barrens-golf-club",
-   "name": "Pine Barrens Golf Club",
-   "display_name": "",
-   "city": "Jackson",
-   "state": "NJ",
-   "venue_id": "pine-barrens-golf-club",
-   "source_role": "primary",
-   "platform": "golfnow",
-   "booking_url": "https://www.golfnow.com/courses/1477219-pine-barrens-golf-club-details",
-   "ids": {},
-   "status": "needs_ids",
-   "confidence": "high",
-   "notes": "Pro shop 877-746-3227 | 18 holes par 72 (7123 yds; built 1999); upscale daily-fee that markets a private feel; publicly bookable on GolfNow facility 1477219; also Chronogolf | Jersey Shore region | Ocean County | Source sheet verification: VERIFIED"
-  },
-  {
    "slug": "sea-oaks-golf-club",
    "name": "Sea Oaks Golf Club",
    "display_name": "",
@@ -26775,15 +26760,15 @@
    "state": "NJ",
    "venue_id": "seaview-bay-course",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://vip.teeitup.com/00068493/",
+   "platform": "golfwithaccess",
+   "booking_url": "https://troon.com/course/seaview-hotel-and-golf-club/reserve-tee-time",
    "ids": {
-    "course_id": "3e2804aa-1d90-4c79-b436-a099f0ac9394",
-    "tenant": "seaview-hotel-and-golf-club"
+    "tenant": "seaview-hotel-and-golf-club",
+    "course_id": "3e2804aa-1d90-4c79-b436-a099f0ac9394"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Pro shop (609) 748-7680 | 18 holes; Donald Ross/Hugh Wilson 1914; Seaview a Dolce resort; shared TeeItUp account 00068493 covers Bay and Pines | South Shore region | Atlantic County | Source sheet verification: VERIFIED"
+   "notes": "Pro shop (609) 748-7680 | 18 holes; Donald Ross/Hugh Wilson 1914; Seaview a Dolce resort; shared TeeItUp account 00068493 covers Bay and Pines | South Shore region | Atlantic County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: own site's Book Tee Times goes to Troon Golf With Access, tenant seaview-hotel-and-golf-club; Bay course uuid 3e2804aa-1d90-4c79-b436-a099f0ac9394"
   },
   {
    "slug": "seaview-pines-course",
@@ -26793,15 +26778,15 @@
    "state": "NJ",
    "venue_id": "seaview-pines-course",
    "source_role": "primary",
-   "platform": "teeitup",
-   "booking_url": "https://vip.teeitup.com/00068493/",
+   "platform": "golfwithaccess",
+   "booking_url": "https://troon.com/course/seaview-hotel-and-golf-club/reserve-tee-time",
    "ids": {
-    "course_id": "8a0d76c2-82a9-413a-a7d1-f7baa535bee9",
-    "tenant": "seaview-hotel-and-golf-club"
+    "tenant": "seaview-hotel-and-golf-club",
+    "course_id": "8a0d76c2-82a9-413a-a7d1-f7baa535bee9"
    },
-   "status": "needs_ids",
+   "status": "ready",
    "confidence": "high",
-   "notes": "Pro shop (609) 748-7680 | 18 holes; Flynn/Toomey 1929; Seaview a Dolce resort; hosts ShopRite LPGA Classic; shared TeeItUp booking | South Shore region | Atlantic County | Source sheet verification: VERIFIED"
+   "notes": "Pro shop (609) 748-7680 | 18 holes; Flynn/Toomey 1929; Seaview a Dolce resort; hosts ShopRite LPGA Classic; shared TeeItUp booking | South Shore region | Atlantic County | Source sheet verification: VERIFIED | Re-verified 2026-09-01 in browser: same Golf With Access tenant; Pines course uuid 8a0d76c2-82a9-413a-a7d1-f7baa535bee9"
   },
   {
    "slug": "twisted-dune-golf-club",
