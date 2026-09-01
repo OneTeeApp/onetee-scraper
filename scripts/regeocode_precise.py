@@ -267,6 +267,12 @@ def main(argv=None) -> int:
     zip_cache: dict[str, tuple[float, float] | None] = {}
     fixed = osm = zipc = skipped = 0
     done = 0
+    # GitHub's log viewer virtualises to a few dozen rendered lines, so a run
+    # that moves a thousand coordinates cannot actually be reviewed from the
+    # log. Collect every decision and write it to the job summary instead,
+    # which renders in full on the run page.
+    report: list[tuple[str, str, str, str]] = []
+    contested: list[str] = []
 
     for state, group in sorted(by_state.items()):
         pool = overpass_state(session, state) if state else []
@@ -298,8 +304,11 @@ def main(argv=None) -> int:
             keep_base = norm(facility_base(by_id[vids[0]].get("name", "")))
             for v in vids[1:]:
                 if norm(facility_base(by_id[v].get("name", ""))) != keep_base:
-                    print(f"  contested: {by_id[v].get('name')} loses "
-                          f"{pt} to {by_id[vids[0]].get('name')}", flush=True)
+                    msg = (f"{by_id[v].get('name')} ({state}) loses "
+                           f"{pt[0]:.5f},{pt[1]:.5f} to "
+                           f"{by_id[vids[0]].get('name')}")
+                    print(f"  contested: {msg}", flush=True)
+                    contested.append(msg)
                     proposals.pop(v, None)
 
         for c in group:
@@ -322,14 +331,20 @@ def main(argv=None) -> int:
                 skipped += 1
                 print(f"  no fix: {c.get('name')} / {c.get('city')}, {state}",
                       flush=True)
+                report.append((state, c.get("name", ""), "unresolved", ""))
                 continue
             if anchor[0] is not None and haversine_km(
                     anchor[0], anchor[1], new[0], new[1]) < 0.05:
                 skipped += 1          # already there; nothing gained
                 continue
+            moved = (haversine_km(anchor[0], anchor[1], new[0], new[1])
+                     if anchor[0] is not None else 0.0)
             print(f"  {src:14s} {c.get('name')[:44]:44s} "
                   f"{anchor[0]},{anchor[1]} -> {new[0]:.5f},{new[1]:.5f}",
                   flush=True)
+            report.append((state, c.get("name", ""), src,
+                           f"{anchor[0]},{anchor[1]} → {new[0]:.5f},{new[1]:.5f}"
+                           f" ({moved:.1f} km)"))
             if src == "overpass-osm":
                 osm += 1
             else:
@@ -344,9 +359,39 @@ def main(argv=None) -> int:
                     [c["venue_id"], new[0], new[1], src])
 
     verb = "would fix" if a.dry_run else "fixed"
-    print(f"DONE: {verb} {fixed} of {len(targets)} — "
-          f"osm={osm} zip-centroid={zipc} unresolved={skipped}", flush=True)
+    summary = (f"{verb} {fixed} of {len(targets)} — osm={osm} "
+               f"zip-centroid={zipc} unresolved={skipped} "
+               f"contested-dropped={len(contested)}")
+    print(f"DONE: {summary}", flush=True)
+    write_job_summary(a.dry_run, summary, report, contested)
     return 0
+
+
+def write_job_summary(dry_run: bool, summary: str,
+                      report: list[tuple[str, str, str, str]],
+                      contested: list[str]) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    head = "Dry run — nothing written" if dry_run else "Applied to venue_geo"
+    lines = [f"## Re-geocode: {head}", "", summary, ""]
+    if contested:
+        lines += ["### Contested OSM matches (dropped, fell back to ZIP)", ""]
+        lines += [f"- {c}" for c in contested] + [""]
+    lines += ["### Every proposed move", "",
+              "| State | Course | Source | Move |", "|---|---|---|---|"]
+    # A 1 MB cap applies to the summary; 1,200 rows is comfortably inside it.
+    for st, name, src, move in report[:1200]:
+        safe = name.replace("|", "\\|")
+        lines.append(f"| {st} | {safe} | {src} | {move} |")
+    if len(report) > 1200:
+        lines.append(f"| … | {len(report) - 1200} more rows | | |")
+    try:
+        with open(path, "a") as fh:
+            fh.write("\n".join(lines) + "\n")
+    except OSError as e:  # noqa: BLE001
+        print(f"  (could not write job summary: {e})", flush=True)
+    return
 
 
 if __name__ == "__main__":
