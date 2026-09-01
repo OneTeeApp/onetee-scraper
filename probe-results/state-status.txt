@@ -11,12 +11,12 @@ MD          119    75    63%            1            0            0            8
 UT           91    78    86%            0            0            1            2            2            8           22
 DC            5     5   100%            0            0            0            0            0            0            1
 AK           25     7    28%            0            0            0            6            0           12            2
-VT           59    34    58%            2            0            0            4            0           19           13
+VT           59    35    59%            1            0            0            4            0           19           13
 WY           50    20    40%            0            0            0            8            0           22           11
 NY          495   184    37%           37            5           15           50            5          199          180
 NJ          156    88    56%            4            4            5           11            3           41          109
 -----------------------------------------------------------------------------------------------------------------------
-ALL        2257  1219    54%           76           28           31          169           39          695          526
+ALL        2257  1220    54%           75           28           31          169           39          695          526
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -26,7 +26,7 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
   silent       teeitup                     30   AZ:2 FL:9 MD:1 NJ:3 NY:14 VT:1
-  silent       foreup                      11   AZ:2 CO:1 FL:4 NY:3 VT:1
+  silent       foreup                      10   AZ:2 CO:1 FL:4 NY:3
   silent       teesnap                      9   FL:3 NY:6
   silent       chronogolf                   9   FL:1 NY:8
   silent       clubcaddie                   5   NY:5
@@ -784,11 +784,10 @@ AK  —  25 bookable courses (27 in alaska_golf_courses_booking.csv, 2 private),
      Valley of the Eagles Golf Links              —              Haines
 
 ==========================================================================
-VT  —  59 bookable courses (72 in vermont_golf_courses_booking.csv, 13 private), 34 live (58%)
+VT  —  59 bookable courses (72 in vermont_golf_courses_booking.csv, 13 private), 35 live (59%)
 ==========================================================================
 
-  SILENT  (2) — believed scrapable, returning nothing
-     Champlain Country Club                       foreup         Swanton
+  SILENT  (1) — believed scrapable, returning nothing
      Windham Golf Club                            teeitup        Chester
 
   UNSUPPORTED  (4) — no adapter possible today
@@ -1273,18 +1272,18 @@ REGISTRY DRIFT (15) — in registry.json, no matching course in the state CSV
   FL  Continental Country Club                     chronogolf     283 rows
   FL  Providence Golf Club                         teeitup        1781 rows
   FL  Willowbrook Golf Course                      teeitup        582 rows
-  MD  Fox Hollow Golf Course                       foreup         222 rows
-  MD  Rocky Point Golf Course                      foreup         234 rows
-  NJ  Black Bear Golf Club                         ezlinks        499 rows
+  MD  Fox Hollow Golf Course                       foreup         219 rows
+  MD  Rocky Point Golf Course                      foreup         235 rows
+  NJ  Black Bear Golf Club                         ezlinks        498 rows
   NJ  Cedar Creek Golf Course                      golfnow        281 rows
   NJ  Mountain View Golf Course                    foreup         201 rows
   NY  Arrowhead Golf Club                          teesnap        567 rows
   NY  Forest Park Golf Course                      teeitup        696 rows
   NY  Fox Run Golf Course                          teeitup        280 rows
   NY  Old Hickory Golf Club                        teeitup        270 rows
-  NY  Willowbrook Golf Course                      foreup         366 rows
-  UT  Fox Hollow Golf Club                         membersports   112 rows
-  UT  Mountain View Golf Course                    chronogolf     270 rows
+  NY  Willowbrook Golf Course                      foreup         365 rows
+  UT  Fox Hollow Golf Club                         membersports   175 rows
+  UT  Mountain View Golf Course                    chronogolf     267 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (15) — serving tee times, not traceable to a CSV course
