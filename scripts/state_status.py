@@ -122,8 +122,20 @@ def load_counts(args) -> dict[str, int]:
         return {r["course_slug"]: int(r["n"]) for r in doc}
     if not args.d1:
         return {}
-    from scraper.d1 import D1Rest
-    rows = D1Rest().execute(
+    # VPS cutover (2026-08-11): the live store is Postgres behind
+    # api.oneteeapp.com, not D1. VPS_ONLY=1 (set by the workflow, same switch
+    # as scraper.d1's CLI) routes the join there; the retired D1Rest path had
+    # this report failing daily and probe-results/state-status.json frozen at
+    # its last pre-cutover success — which is how a permanently closed course
+    # (Del Lago) stayed "live" long enough to fail the directory gate.
+    import os
+    if os.environ.get("VPS_ONLY") == "1":
+        from scraper.d1 import HttpBackend
+        db = HttpBackend()
+    else:
+        from scraper.d1 import D1Rest
+        db = D1Rest()
+    rows = db.execute(
         "SELECT course_slug, COUNT(*) n FROM tee_times "
         "WHERE active = 1 GROUP BY course_slug")
     return {r["course_slug"]: int(r["n"]) for r in rows}
