@@ -56,9 +56,13 @@ DIRECTORY = "directory.json"
 
 # How far a candidate may sit from the venue's own city before we disbelieve it.
 # Metro golf is genuinely spread out - Denver's listed "Denver" courses run out
-# to Lakewood and Westminster - but 60 km is well beyond any of that and still
-# rejects a same-named course in another part of the state.
-MAX_KM = 60.0
+# to Lakewood and Westminster - but the all-states dry run put the 90th
+# percentile of accepted moves at 15 km, and the single worst match in it was
+# FL's "Oceans Golf Club" (Daytona Beach Shores) grabbing a same-named course
+# 51 km inland. 35 km keeps essentially every genuine metro move and rejects
+# that; anything rejected here falls back to the ZIP centroid, which is the
+# safer answer anyway.
+MAX_KM = 35.0
 # Name similarity floor. 0.82 accepts "Bear Creek Golf Club" vs "Bear Creek
 # Golf Course" and rejects "Bear Creek" vs "Beaver Creek".
 MIN_RATIO = 0.82
@@ -75,6 +79,13 @@ def norm(s: str) -> str:
     s = re.sub(r"[^a-z0-9 ]", " ", s)
     s = NOISE.sub(" ", s)
     return " ".join(s.split())
+
+
+def plain(s: str) -> str:
+    """Lowercase, alphanumerics only - no noise-word stripping. Matches nz() in
+    the site's map component, which is what decides what counts as one
+    facility."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
 def facility_base(n: str) -> str:
@@ -301,9 +312,17 @@ def main(argv=None) -> int:
             if len(vids) < 2:
                 continue
             vids.sort(key=lambda v: -proposals[v][1])
-            keep_base = norm(facility_base(by_id[vids[0]].get("name", "")))
+            # Compare with plain normalisation, NOT norm(): norm() strips
+            # "golf", "club", "country", "the", "at" as noise, which collapses
+            # "Castle Pines Golf Club" and "Country Club at Castle Pines" to the
+            # same string - two genuinely different Castle Rock clubs, which the
+            # first all-states dry run duly stacked on one point. Same for
+            # "St. Johns Golf Club" vs "St. Johns Golf & Country Club". Those
+            # words are noise for MATCHING a name against OSM and load-bearing
+            # for telling two clubs apart.
+            keep_base = plain(facility_base(by_id[vids[0]].get("name", "")))
             for v in vids[1:]:
-                if norm(facility_base(by_id[v].get("name", ""))) != keep_base:
+                if plain(facility_base(by_id[v].get("name", ""))) != keep_base:
                     msg = (f"{by_id[v].get('name')} ({state}) loses "
                            f"{pt[0]:.5f},{pt[1]:.5f} to "
                            f"{by_id[vids[0]].get('name')}")
