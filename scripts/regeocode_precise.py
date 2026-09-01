@@ -49,7 +49,14 @@ import requests
 
 from scraper.d1 import D1Rest, HttpBackend, SqliteLocal
 
-OVERPASS = "https://overpass-api.de/api/interpreter"
+# Several independent Overpass instances. The public .de one throttles hard
+# partway through a multi-state pass, which is exactly how VT and WY ended
+# up with empty pools on 2026-09-01.
+OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.osm.jp/api/interpreter",
+]
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 UA = "onetee-geocoder/2.0 (https://www.oneteeapp.com golf tee-time directory)"
 DIRECTORY = "directory.json"
@@ -143,19 +150,31 @@ STATE_NAME = {
 
 
 def overpass_state(session: requests.Session, state: str) -> list[dict]:
-    """Every leisure=golf_course in one state, as {name, lat, lng}."""
+    """Every leisure=golf_course in one state, as {name, lat, lng}.
+
+    An EMPTY result is treated as a failure, not as an answer. In the
+    2026-09-01 applied run, Vermont and Wyoming resolved 0 of 13 and 0 of 7
+    after managing 12 of 26 and 8 of 17 on identical data an hour earlier —
+    late in a twelve-state pass the public Overpass instance starts refusing,
+    the old code returned [], and the pass silently concluded those states have
+    no golf courses. No US state has zero golf courses, so a zero-length pool is
+    always an outage; fall through to the next mirror and, if they all fail, say
+    so loudly rather than quietly geocoding nothing.
+    """
     area = STATE_NAME.get(state, state)
     q = (
-        '[out:json][timeout:180];'
+        '[out:json][timeout:300];'
         f'area["ISO3166-2"="US-{state}"][admin_level=4]->.s;'
         '(nwr["leisure"="golf_course"](area.s););'
         'out center tags;'
     )
-    for attempt in range(4):
+    for attempt, endpoint in enumerate(OVERPASS_MIRRORS * 2):
         try:
-            r = session.post(OVERPASS, data={"data": q},
-                             headers={"User-Agent": UA}, timeout=200)
-            if r.status_code in (429, 504):
+            r = session.post(endpoint, data={"data": q},
+                             headers={"User-Agent": UA}, timeout=320)
+            if r.status_code in (429, 502, 503, 504):
+                print(f"  overpass {state} {r.status_code} from "
+                      f"{endpoint.split('/')[2]}, backing off", flush=True)
                 time.sleep(20 * (attempt + 1))
                 continue
             r.raise_for_status()
@@ -166,14 +185,25 @@ def overpass_state(session: requests.Session, state: str) -> list[dict]:
                 lat = e.get("lat", (e.get("center") or {}).get("lat"))
                 lng = e.get("lon", (e.get("center") or {}).get("lon"))
                 if nm and lat is not None and lng is not None:
-                    out.append({"name": nm, "lat": float(lat), "lng": float(lng)})
-            print(f"  overpass {state} ({area}): {len(out)} named golf courses",
-                  flush=True)
+                    out.append({"name": nm, "lat": float(lat),
+                                "lng": float(lng)})
+            if not out:
+                print(f"  overpass {state} returned an EMPTY pool from "
+                      f"{endpoint.split('/')[2]} — treating as an outage",
+                      flush=True)
+                time.sleep(15 * (attempt + 1))
+                continue
+            print(f"  overpass {state} ({area}): {len(out)} named golf courses "
+                  f"via {endpoint.split('/')[2]}", flush=True)
             return out
         except (requests.RequestException, ValueError) as e:  # noqa: BLE001
-            print(f"  overpass {state} attempt {attempt + 1} failed: "
-                  f"{type(e).__name__}", flush=True)
+            print(f"  overpass {state} attempt {attempt + 1} "
+                  f"({endpoint.split('/')[2]}) failed: {type(e).__name__}",
+                  flush=True)
             time.sleep(15 * (attempt + 1))
+    print(f"  !! overpass POOL EMPTY for {state} after "
+          f"{len(OVERPASS_MIRRORS) * 2} attempts — every venue in this state "
+          f"will fall through to the bounded/ZIP fallbacks", flush=True)
     return []
 
 
@@ -346,9 +376,12 @@ def main(argv=None) -> int:
     # which renders in full on the run page.
     report: list[tuple[str, str, str, str]] = []
     contested: list[str] = []
+    outages: list[str] = []          # states whose Overpass pool came back empty
 
     for state, group in sorted(by_state.items()):
         pool = overpass_state(session, state) if state else []
+        if state and not pool:
+            outages.append(state)
         time.sleep(2)
 
         # Resolve OSM claims for the whole state BEFORE writing anything.
@@ -451,20 +484,28 @@ def main(argv=None) -> int:
     verb = "would fix" if a.dry_run else "fixed"
     summary = (f"{verb} {fixed} of {len(targets)} — osm={osm} "
                f"nominatim-bounded={nearby} zip-centroid={zipc} "
-               f"unresolved={skipped} contested-dropped={len(contested)}")
+               f"unresolved={skipped} contested-dropped={len(contested)}"
+               + (f" — OVERPASS OUTAGE for {', '.join(outages)}, rerun those"
+                  if outages else ""))
     print(f"DONE: {summary}", flush=True)
-    write_job_summary(a.dry_run, summary, report, contested)
+    write_job_summary(a.dry_run, summary, report, contested, outages)
     return 0
 
 
 def write_job_summary(dry_run: bool, summary: str,
                       report: list[tuple[str, str, str, str]],
-                      contested: list[str]) -> None:
+                      contested: list[str],
+                      outages: list[str] | None = None) -> None:
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
         return
     head = "Dry run — nothing written" if dry_run else "Applied to venue_geo"
+    outages = outages or []
     lines = [f"## Re-geocode: {head}", "", summary, ""]
+    if outages:
+        lines += [f"> **Overpass returned nothing for {', '.join(outages)}.** "
+                  "No US state has zero golf courses, so those are outages, not "
+                  "data gaps — re-run just those states.", ""]
     if contested:
         lines += ["### Contested OSM matches (dropped, fell back to ZIP)", ""]
         lines += [f"- {c}" for c in contested] + [""]
