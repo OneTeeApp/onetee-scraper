@@ -1,0 +1,58 @@
+name: Re-geocode city-centroid venues (precise)
+
+# scripts/geocode_venues.py falls back to the CITY CENTROID when Nominatim
+# cannot resolve a course by name. Measured 2026-09-01 against directory.json,
+# 518 of 1,759 venues sit in a stacked group on such a centroid — 7 of them on
+# downtown Denver alone. Stacked points cannot be separated by zooming, so the
+# map claims "7 courses" and opens exactly one.
+#
+# This pass re-resolves only those rows, matching each venue against OSM's real
+# leisure=golf_course geometry (one Overpass query per state, not per venue),
+# with the venue's ZIP centroid as a fallback. Rows already resolved by name are
+# left alone. Diagnostic/enrichment only — never touches tee_times.
+#
+# Run with dry_run=true first and read the proposed moves in the log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "restrict to these states, comma-separated (blank = all)"
+        default: ""
+      dry_run:
+        description: "report only, write nothing (true/false)"
+        default: "true"
+      limit:
+        description: "max venues this run (blank/0 = all)"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geocode-venues          # shares venue_geo with the backfill workflow
+  cancel-in-progress: false
+
+jobs:
+  regeocode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Re-resolve stacked venues
+        env:
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
+        run: |
+          set -o pipefail
+          ARGS=""
+          [ -n "${{ inputs.states }}" ] && ARGS="$ARGS --states ${{ inputs.states }}"
+          [ -n "${{ inputs.limit }}" ]  && ARGS="$ARGS --limit ${{ inputs.limit }}"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          python -m scripts.regeocode_precise $ARGS
