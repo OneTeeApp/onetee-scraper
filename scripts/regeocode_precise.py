@@ -77,6 +77,14 @@ def norm(s: str) -> str:
     return " ".join(s.split())
 
 
+def facility_base(n: str) -> str:
+    """"Wigwam Golf Club (Gold Course)" / "East Potomac - Blue Course" -> the
+    facility. Mirrors facilityBase() in the site's map component so the two
+    agree about what counts as one facility."""
+    s = re.sub(r"\s*\([^()]*\)\s*$", "", n or "")
+    return re.split(r"\s+[-\u2013\u2014]\s+", s)[0].strip()
+
+
 def haversine_km(a_lat, a_lng, b_lat, b_lng) -> float:
     r = 6371.0
     p1, p2 = math.radians(a_lat), math.radians(b_lat)
@@ -161,10 +169,18 @@ def best_osm_match(venue: dict, pool: list[dict],
         if not got:
             continue
         ratio = difflib.SequenceMatcher(None, want, got).ratio()
-        # A containment match ("bear creek" inside "bear creek east west") is
-        # as trustworthy as a high ratio and much commoner with course names.
-        if want == got or want in got.split("  ") or (
-                want and (want in got or got in want)):
+        # OSM often carries a longer form of the same name ("Fox Hollow at
+        # Lakewood Golf Course" for our "Fox Hollow Golf Course"), which scores
+        # far below MIN_RATIO on raw similarity. Accept it only when EVERY word
+        # of the shorter name appears in the longer one AND the shorter name has
+        # at least two words. The two-word floor is what stops the failure this
+        # rule caused on its first outing: a bare substring test matched "Aspen
+        # Glen Club" to "Aspen Golf Club", because both reduce to something
+        # containing "aspen", and it silently stacked two unrelated clubs on one
+        # point - the exact defect this script exists to remove.
+        a, b = want.split(), got.split()
+        short, long_ = (a, b) if len(a) <= len(b) else (b, a)
+        if want == got or (len(short) >= 2 and set(short) <= set(long_)):
             ratio = max(ratio, 0.95)
         if ratio < MIN_RATIO:
             continue
@@ -255,6 +271,37 @@ def main(argv=None) -> int:
     for state, group in sorted(by_state.items()):
         pool = overpass_state(session, state) if state else []
         time.sleep(2)
+
+        # Resolve OSM claims for the whole state BEFORE writing anything.
+        # Without this a single OSM course can be claimed by several unrelated
+        # venues, which just rebuilds the stack this script exists to remove.
+        # Two venues may legitimately share one OSM course when they are two
+        # courses of the SAME facility (East Potomac Blue/Red/White is one
+        # polygon in OSM), so the tie-break keeps every venue whose facility
+        # base name matches the best claimant's and drops the rest to ZIP.
+        proposals: dict[str, tuple[tuple[float, float], float]] = {}
+        for c in group:
+            anchor = (c.get("lat"), c.get("lng"))
+            if anchor[0] is None or not pool:
+                continue
+            hit = best_osm_match(c, pool, anchor)
+            if hit:
+                proposals[c["venue_id"]] = ((hit[0], hit[1]), hit[2])
+        claims: dict[tuple, list[str]] = collections.defaultdict(list)
+        for vid, (pt, _r) in proposals.items():
+            claims[(round(pt[0], 5), round(pt[1], 5))].append(vid)
+        by_id = {c["venue_id"]: c for c in group}
+        for pt, vids in claims.items():
+            if len(vids) < 2:
+                continue
+            vids.sort(key=lambda v: -proposals[v][1])
+            keep_base = norm(facility_base(by_id[vids[0]].get("name", "")))
+            for v in vids[1:]:
+                if norm(facility_base(by_id[v].get("name", ""))) != keep_base:
+                    print(f"  contested: {by_id[v].get('name')} loses "
+                          f"{pt} to {by_id[vids[0]].get('name')}", flush=True)
+                    proposals.pop(v, None)
+
         for c in group:
             if a.limit and done >= a.limit:
                 print(f"hit --limit {a.limit}, stopping", flush=True)
@@ -262,10 +309,8 @@ def main(argv=None) -> int:
             done += 1
             anchor = (c.get("lat"), c.get("lng"))
             new = src = None
-            if anchor[0] is not None and pool:
-                hit = best_osm_match(c, pool, anchor)
-                if hit:
-                    new, src = (hit[0], hit[1]), "overpass-osm"
+            if c["venue_id"] in proposals:
+                new, src = proposals[c["venue_id"]][0], "overpass-osm"
             if new is None and c.get("zip"):
                 z = str(c["zip"]).strip()[:5]
                 if z not in zip_cache:
