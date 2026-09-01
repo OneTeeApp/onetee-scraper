@@ -1,12 +1,12 @@
 Traceback (most recent call last):
-  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 366, in <module>
+  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 378, in <module>
     main()
-  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 357, in main
+  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 369, in main
     report = build(load_counts(a))
                    ^^^^^^^^^^^^^^
-  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 126, in load_counts
-    rows = D1Rest().execute(
-           ^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/onetee-scraper/onetee-scraper/scripts/state_status.py", line 138, in load_counts
+    rows = db.execute(
+           ^^^^^^^^^^^
   File "/home/runner/work/onetee-scraper/onetee-scraper/scraper/d1.py", line 80, in execute
     raise RuntimeError(f"D1 error: {body.get('errors')}")
 RuntimeError: D1 error: [{'code': 7404, 'message': 'The database 816b0f14-b3d5-4f2b-97fb-4dc6f4e5632d could not be found'}]
