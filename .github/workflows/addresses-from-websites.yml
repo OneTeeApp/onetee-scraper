@@ -1,0 +1,60 @@
+name: Addresses from course websites
+
+# The last resort for venues still sitting on a city centroid after
+# regeocode-precise.yml has run. Reads each course's own website, extracts a
+# postal address (schema.org JSON-LD, then microdata, then a street-address
+# regex anchored on the venue's state), geocodes that address and writes the
+# result to venue_geo with source "website-address".
+#
+# This also recovers the ZIP, which is what actually fills the empty `Zip`
+# column in the state sheets — blank for every state except Colorado (248/248
+# there, 0/658 in Florida). The ZIPs are listed in the job summary for pasting
+# back into the sheets; the workflow does not commit them.
+#
+# Targets are read from venue_geo, not from directory.json, so it is safe to run
+# straight after a re-geocode without waiting for the directory rebuild.
+# Diagnostic/enrichment only — never touches tee_times.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "restrict to these states, comma-separated (blank = all)"
+        default: "FL"
+      dry_run:
+        description: "report only, write nothing (true/false)"
+        default: "true"
+      limit:
+        description: "max venues this run (blank/0 = all)"
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geocode-venues          # shares venue_geo with the other geocoders
+  cancel-in-progress: false
+
+jobs:
+  addresses:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+
+      - name: Resolve from website addresses
+        env:
+          VPS_ONLY: "1"
+          ONETEE_API_URL: https://api.oneteeapp.com
+          ONETEE_INGEST_TOKEN: ${{ secrets.VPS_INGEST_TOKEN }}
+        run: |
+          set -o pipefail
+          ARGS=""
+          [ -n "${{ inputs.states }}" ] && ARGS="$ARGS --states ${{ inputs.states }}"
+          [ -n "${{ inputs.limit }}" ]  && ARGS="$ARGS --limit ${{ inputs.limit }}"
+          [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          python -m scripts.addresses_from_websites $ARGS
