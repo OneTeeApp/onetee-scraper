@@ -155,15 +155,7 @@ def from_text(hpage: str, state: str) -> dict | None:
     return None
 
 
-def address_from_site(session: requests.Session, url: str,
-                      state: str) -> dict | None:
-    try:
-        r = session.get(url, timeout=PAGE_TIMEOUT,
-                        headers={"User-Agent": UA}, allow_redirects=True)
-        r.raise_for_status()
-        page = r.text
-    except requests.RequestException:
-        return None
+def _extract(page: str, state: str) -> dict | None:
     for fn in (from_jsonld, from_microdata, from_text):
         hit = fn(page, state)
         if hit:
@@ -171,8 +163,82 @@ def address_from_site(session: requests.Session, url: str,
     return None
 
 
+def _contact_link(page: str, base: str) -> str | None:
+    """The one on-site link most likely to carry the address."""
+    from urllib.parse import urljoin, urlparse
+    host = urlparse(base).netloc
+    for m in re.finditer(r'(?is)<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', page):
+        href, label = m.group(1), re.sub(r"<[^>]+>", " ", m.group(2))
+        if re.search(r"contact|directions|location|find us|visit|about",
+                     href + " " + label, re.I):
+            full = urljoin(base, href)
+            if urlparse(full).netloc == host and not full.startswith("mailto"):
+                return full
+    return None
+
+
+def address_from_site(session: requests.Session, url: str,
+                      state: str) -> dict | None:
+    """Homepage first; if it carries no address, one hop to the contact page.
+    In the first Florida dry run 21 of 40 homepages had no extractable address —
+    most sites keep it on /contact or /directions."""
+    try:
+        r = session.get(url, timeout=PAGE_TIMEOUT,
+                        headers={"User-Agent": UA}, allow_redirects=True)
+        r.raise_for_status()
+        page = r.text
+    except requests.RequestException:
+        return None
+    hit = _extract(page, state)
+    if hit:
+        return hit
+    nxt = _contact_link(page, r.url)
+    if not nxt:
+        return None
+    time.sleep(PAGE_DELAY)
+    try:
+        r2 = session.get(nxt, timeout=PAGE_TIMEOUT,
+                         headers={"User-Agent": UA}, allow_redirects=True)
+        r2.raise_for_status()
+        hit = _extract(r2.text, state)
+        if hit:
+            hit["how"] += "@contact"
+        return hit
+    except requests.RequestException:
+        return None
+
+
+CENSUS = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+
+
+def geocode_census(session: requests.Session, addr: dict,
+                   state: str) -> tuple[float, float] | None:
+    """US Census Bureau geocoder — free, keyless, and built for US street
+    addresses, which is exactly where Nominatim falls down. The first Florida
+    dry run extracted 19 good addresses from 40 sites and Nominatim could place
+    only 7 of them; "8207 National Drive, 32940" and "1300 Eaglebrooke Blvd,
+    33813" are real, precise addresses it simply does not know."""
+    q = ", ".join(x for x in (addr["street"], addr.get("city"), state,
+                              addr["zip"]) if x)
+    try:
+        r = session.get(CENSUS, params={"address": q, "format": "json",
+                                        "benchmark": "Public_AR_Current"},
+                        headers={"User-Agent": UA}, timeout=30)
+        r.raise_for_status()
+        m = (r.json().get("result") or {}).get("addressMatches") or []
+        if m:
+            c = m[0]["coordinates"]
+            return float(c["y"]), float(c["x"])
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
 def geocode_address(session: requests.Session, addr: dict,
                     state: str) -> tuple[float, float] | None:
+    hit = geocode_census(session, addr, state)
+    if hit:
+        return hit
     q = ", ".join(x for x in (addr["street"], addr.get("city"), state,
                               addr["zip"], "USA") if x)
     try:
