@@ -334,6 +334,57 @@ async function teeTimes(p) {
   return { status: 200, body: { count: results.length, truncated: results.length === limit, tee_times: results } };
 }
 
+// GET /api/course-stats?state=XX — what a course's tee sheet usually looks like,
+// from the rows we scraped over the last 28 days (booked and unbooked alike:
+// a slot that later sold still tells you the price and the hour). Feeds the
+// static pages (tee-times.oneteeapp.com) with evergreen "what to expect"
+// copy — typical price, weekday vs weekend, the hours the sheet covers —
+// so a course page has something true to say even on a day with no open
+// times. One query per state, cached an hour; only the page builder calls it.
+const STATS_DAYS = 28;
+const STATS_CACHE = new Map(); // state -> { at, body }
+async function courseStats(p) {
+  const st = (p.get("state") || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(st)) return { status: 400, body: { error: "state required" } };
+  const hit = STATS_CACHE.get(st);
+  if (hit && Date.now() - hit.at < 60 * 60 * 1000)
+    return { status: 200, body: hit.body, headers: { "Cache-Control": "public, max-age=600" } };
+  const tz = STATE_TZ[st] || FALLBACK_TZ;
+  const today = localNowISO(tz).slice(0, 10);
+  const since = new Date(today + "T00:00:00Z"); since.setUTCDate(since.getUTCDate() - STATS_DAYS);
+  const from = since.toISOString().slice(0, 10);
+  const { results } = await DB.prepare(
+    `WITH r AS (
+       SELECT COALESCE(venue_id, course_slug) AS vid, substr(teetime,1,10) AS d,
+              (substr(teetime,12,2)::int * 60 + substr(teetime,15,2)::int) AS mins,
+              price_min, open_spots,
+              EXTRACT(ISODOW FROM (substr(teetime,1,10))::date) AS dow
+         FROM tee_times
+        WHERE state = ? AND substr(teetime,1,10) >= ? AND substr(teetime,1,10) < ?
+          AND teetime ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}'
+          AND COALESCE(simulated, 0) = 0
+     )
+     SELECT vid, COUNT(*) AS slots, COUNT(DISTINCT d) AS days,
+            MIN(price_min)  FILTER (WHERE price_min > 0) AS price_lo,
+            MAX(price_min)  FILTER (WHERE price_min > 0) AS price_hi,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_min) FILTER (WHERE price_min > 0) AS price_med,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_min) FILTER (WHERE price_min > 0 AND dow < 6)  AS price_weekday,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_min) FILTER (WHERE price_min > 0 AND dow >= 6) AS price_weekend,
+            PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY mins) AS mins_early,
+            PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY mins) AS mins_late,
+            MODE() WITHIN GROUP (ORDER BY (mins / 60)) AS busy_hour,
+            COUNT(*) FILTER (WHERE dow >= 6) AS weekend_slots,
+            AVG(open_spots) FILTER (WHERE open_spots > 0) AS avg_spots
+       FROM r GROUP BY vid`).bind(st, from, today).all();
+  const body = { state: st, from, to: today, days: STATS_DAYS, count: results.length,
+    courses: results.map((r) => ({ venue_id: r.vid, slots: r.slots, days: r.days,
+      price_lo: r.price_lo, price_hi: r.price_hi, price_med: r.price_med, price_weekday: r.price_weekday, price_weekend: r.price_weekend,
+      mins_early: r.mins_early == null ? null : Math.round(r.mins_early), mins_late: r.mins_late == null ? null : Math.round(r.mins_late),
+      busy_hour: r.busy_hour, weekend_slots: r.weekend_slots, avg_spots: r.avg_spots == null ? null : Math.round(r.avg_spots * 10) / 10 })) };
+  STATS_CACHE.set(st, { at: Date.now(), body });
+  return { status: 200, body, headers: { "Cache-Control": "public, max-age=600" } };
+}
+
 // POST /ingest — bearer-token write path for scrapers. Upserts tee_times rows,
 // optional freshness stamps, and an optional run summary. (v1 contract; the
 // scraper HttpIngest backend will target this.)
@@ -500,6 +551,7 @@ const server = http.createServer(async (req, res) => {
     else if (url.pathname === "/api/directory") out = await directory(p);
     else if (url.pathname === "/api/courses") out = await courses(p);
     else if (url.pathname === "/api/tee-times") out = await teeTimes(p);
+    else if (url.pathname === "/api/course-stats") out = await courseStats(p);
     else return send(res, 404, { error: "not found" });
     return send(res, out.status, out.body, out.headers || {});
   } catch (e) {
