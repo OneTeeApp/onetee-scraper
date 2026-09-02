@@ -128,6 +128,10 @@ ${PAGES_HOST} {
 	root * ${PAGES_ROOT}
 	encode gzip
 	header Cache-Control "public, max-age=600"
+	# The pages' own API calls (view beacon, traffic summary) stay same-origin.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
 	handle_errors {
 		@404 {
 			expression {http.error.status_code} == 404
@@ -169,6 +173,8 @@ Environment=API_BASE=http://127.0.0.1:8080
 Environment=PAGES_OUT=${PAGES_ROOT}
 Environment=PAGES_HOST=${PAGES_HOST}
 Environment=DIRECTORY_PATH=/opt/onetee-api/directory.json
+Environment=INDEXNOW_KEY_FILE=/opt/onetee-pages/indexnow.key
+Environment=INDEXNOW_STAMP=/opt/onetee-pages/indexnow.last
 ExecStart=/usr/bin/node /opt/onetee-pages/build.mjs
 UNIT
 cat > /etc/systemd/system/onetee-pages.timer <<'UNIT'
