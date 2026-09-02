@@ -385,6 +385,49 @@ async function courseStats(p) {
   return { status: 200, body, headers: { "Cache-Control": "public, max-age=600" } };
 }
 
+// POST /api/hit — page-view beacon from the static pages. Body (text/plain or
+// JSON): {p: path, r: referrer, s: per-tab id, w: viewport width}. No IP, no
+// cookie, nothing personal; bots are flagged by user agent and kept for the
+// crawl view. Caddy routes tee-times.oneteeapp.com/api/* here, so the beacon
+// is same-origin and needs no CORS dance.
+const BOT_UA = /bot|crawl|spider|slurp|bingpreview|headless|lighthouse|pagespeed|facebookexternalhit|preview|fetch|curl|wget|python|monitor/i;
+async function hit(req, res) {
+  let b;
+  try { b = JSON.parse((await readBody(req)).slice(0, 2000)); } catch (e) { return send(res, 400, { error: "bad json" }); }
+  const path = String(b.p || "").slice(0, 200);
+  if (!path.startsWith("/")) return send(res, 400, { error: "bad path" });
+  let ref = null;
+  try { if (b.r) ref = new URL(String(b.r)).hostname.slice(0, 120); } catch (e) { /* ignore */ }
+  const sid = b.s ? String(b.s).slice(0, 24) : null;
+  const w = Number(b.w);
+  const mobile = Number.isFinite(w) ? w < 700 : null;
+  const bot = BOT_UA.test(String(req.headers["user-agent"] || ""));
+  try {
+    await DB.prepare("INSERT INTO page_hits (path, ref, sid, mobile, bot) VALUES (?,?,?,?,?)").bind(path, ref, sid, mobile, bot).run();
+  } catch (e) { console.error("hit:", e.message); }
+  res.writeHead(204, CORS); res.end();
+}
+
+// GET /api/traffic?days=7 — what the private /_traffic/ page renders.
+async function traffic(p) {
+  const days = Math.min(Math.max(Math.trunc(Number(p.get("days") || 7)), 1), 90);
+  const q = (sql, ...binds) => DB.prepare(sql).bind(...binds).all().then((r) => r.results);
+  const [byDay, paths, refs, split, bots] = await Promise.all([
+    q(`SELECT to_char(ts AT TIME ZONE 'America/Denver','YYYY-MM-DD') AS day, COUNT(*) AS views, COUNT(DISTINCT sid) AS visits
+         FROM page_hits WHERE NOT bot AND ts > now() - make_interval(days => ?) GROUP BY 1 ORDER BY 1`, days),
+    q(`SELECT path, COUNT(*) AS views, COUNT(DISTINCT sid) AS visits FROM page_hits
+        WHERE NOT bot AND ts > now() - make_interval(days => ?) GROUP BY path ORDER BY views DESC LIMIT 40`, days),
+    q(`SELECT COALESCE(ref,'(direct)') AS ref, COUNT(*) AS views, COUNT(DISTINCT sid) AS visits FROM page_hits
+        WHERE NOT bot AND ts > now() - make_interval(days => ?) GROUP BY 1 ORDER BY views DESC LIMIT 25`, days),
+    q(`SELECT COUNT(*) FILTER (WHERE mobile) AS mobile, COUNT(*) FILTER (WHERE mobile = false) AS desktop, COUNT(*) AS views, COUNT(DISTINCT sid) AS visits
+         FROM page_hits WHERE NOT bot AND ts > now() - make_interval(days => ?)`, days),
+    q(`SELECT to_char(ts AT TIME ZONE 'America/Denver','YYYY-MM-DD') AS day, COUNT(*) AS views FROM page_hits
+        WHERE bot AND ts > now() - make_interval(days => ?) GROUP BY 1 ORDER BY 1`, days),
+  ]);
+  return { status: 200, body: { days, by_day: byDay, top_paths: paths, referrers: refs, totals: split[0] || {}, bot_by_day: bots },
+           headers: { "Cache-Control": "no-store" } };
+}
+
 // POST /ingest — bearer-token write path for scrapers. Upserts tee_times rows,
 // optional freshness stamps, and an optional run summary. (v1 contract; the
 // scraper HttpIngest backend will target this.)
@@ -546,12 +589,14 @@ const server = http.createServer(async (req, res) => {
     const p = url.searchParams;
     if (req.method === "POST" && url.pathname === "/ingest") return ingest(req, res);
     if (req.method === "POST" && url.pathname === "/exec") return exec(req, res);
+    if (req.method === "POST" && url.pathname === "/api/hit") return hit(req, res);
     let out;
     if (url.pathname === "/api/health") out = await health();
     else if (url.pathname === "/api/directory") out = await directory(p);
     else if (url.pathname === "/api/courses") out = await courses(p);
     else if (url.pathname === "/api/tee-times") out = await teeTimes(p);
     else if (url.pathname === "/api/course-stats") out = await courseStats(p);
+    else if (url.pathname === "/api/traffic") out = await traffic(p);
     else return send(res, 404, { error: "not found" });
     return send(res, out.status, out.body, out.headers || {});
   } catch (e) {
