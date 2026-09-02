@@ -17,6 +17,10 @@ name: Scrape Golf With Access via browser (0-13 every 2h, 14-30 every 8h)
 # in one load), so there are only ~17 page loads per date — light enough to
 # sweep the whole horizon in one un-sharded run.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # SHALLOW, days 0-13. Every 2h except the three deep slots below, so the
@@ -49,7 +53,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +63,7 @@ jobs:
       - name: Install deps + Chromium
         run: |
           pip install requests playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium   # deps preinstalled by vps/scraper-host/bootstrap.sh
 
       - name: Scrape + push each date to D1 (tiered horizon)
         env:
