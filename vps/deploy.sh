@@ -153,6 +153,49 @@ systemctl restart caddy
 sleep 2
 echo "caddy active: $(systemctl is-active caddy) for ${API_HOST} (TLS provisions on first hit)"
 
+# ---------- Phase 6: indexable tee-time pages ----------
+# pages/build.mjs reads today's tee times from the local API + the directory
+# bundle and writes ${PAGES_ROOT} (atomic swap). A systemd timer rebuilds every
+# two hours; one build runs now so the host is never empty after a deploy.
+mkdir -p /opt/onetee-pages
+cp -f pages/build.mjs /opt/onetee-pages/
+cat > /etc/systemd/system/onetee-pages.service <<UNIT
+[Unit]
+Description=OneTee static tee-time pages build (${PAGES_HOST})
+After=network.target onetee-api.service
+[Service]
+Type=oneshot
+Environment=API_BASE=http://127.0.0.1:8080
+Environment=PAGES_OUT=${PAGES_ROOT}
+Environment=PAGES_HOST=${PAGES_HOST}
+Environment=DIRECTORY_PATH=/opt/onetee-api/directory.json
+ExecStart=/usr/bin/node /opt/onetee-pages/build.mjs
+UNIT
+cat > /etc/systemd/system/onetee-pages.timer <<'UNIT'
+[Unit]
+Description=Rebuild OneTee tee-time pages every 2 hours
+[Timer]
+OnBootSec=3min
+OnCalendar=*-*-* 00/2:07:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable onetee-pages.timer >/dev/null 2>&1 || true
+systemctl restart onetee-pages.timer
+echo "---- first pages build ----"
+wait_for_api || true
+if systemctl start onetee-pages.service; then
+  journalctl -u onetee-pages.service -n 3 --no-pager -o cat || true
+  echo "pages: $(find "${PAGES_ROOT}" -name index.html 2>/dev/null | wc -l) html files; $(cat "${PAGES_ROOT}/_build.json" 2>/dev/null | tr -d '\n' | head -c 300)"
+else
+  echo "WARN: pages build failed (see: journalctl -u onetee-pages.service)"; journalctl -u onetee-pages.service -n 20 --no-pager -o cat || true
+fi
+echo "pages timer: $(systemctl is-active onetee-pages.timer); next: $(systemctl show onetee-pages.timer -p NextElapseUSecRealtime --value)"
+echo "---- pages host (localhost, Host header) ----"
+curl -s -o /dev/null -w 'HTTP %{http_code} for http://127.0.0.1/ with Host ${PAGES_HOST}\n' -H "Host: ${PAGES_HOST}" http://127.0.0.1/ || true
+
 # ---------- Phase 5: nightly pg_dump backup (local + offsite R2) ----------
 # On-box dump protects against Postgres corruption / bad writes; the R2 copy is
 # the offsite disaster copy. R2 upload is enabled only when R2 creds are supplied
@@ -233,17 +276,20 @@ UNIT
 systemctl daemon-reload
 systemctl enable onetee-backup.timer >/dev/null 2>&1 || true
 systemctl start onetee-backup.timer
-# take one snapshot immediately so a backup exists right now
-if /root/onetee-backup.sh; then
-  echo "backup snapshot: $(ls -1t /root/backups/onetee-*.sql.gz | head -1) ($(du -h "$(ls -1t /root/backups/onetee-*.sql.gz | head -1)" | cut -f1))"
-else
-  echo "(immediate backup failed, continuing)"
-fi
+# take one snapshot now, but under systemd, not this SSH session: pg_dump of
+# 2M+ rows runs for minutes with no output, and deploy #28 died when the SSH
+# connection dropped mid-dump ("client_loop: send disconnect"). --no-block
+# returns immediately; the result lands in journalctl -u onetee-backup.
+systemctl start --no-block onetee-backup.service && echo "backup snapshot started in the background (journalctl -u onetee-backup)"
+echo "latest local dump: $(ls -1t /root/backups/onetee-*.sql.gz 2>/dev/null | head -1 || echo none)"
 
 # ---------- Phase 5b: one-time restore verification (pull FROM R2, load it) ----------
 # Proves the offsite copy is a real, restorable backup — not just bytes in a
 # bucket. Downloads the newest R2 object, restores into a scratch DB, counts
 # rows, drops it. Self-disables via a marker so it runs once.
+cat > /root/onetee-restore-verify.sh <<'RV'
+#!/usr/bin/env bash
+set -uo pipefail
 if [ ! -f /root/.onetee-restore-verified ] && [ -f /root/onetee-r2.env ] && command -v aws >/dev/null 2>&1; then
   ( set -a; . /root/onetee-r2.env; set +a
     export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
@@ -270,49 +316,16 @@ if [ ! -f /root/.onetee-restore-verified ] && [ -f /root/onetee-r2.env ] && comm
     fi
   )
 fi
-
-# ---------- Phase 6: indexable tee-time pages ----------
-# pages/build.mjs reads today's tee times from the local API + the directory
-# bundle and writes ${PAGES_ROOT} (atomic swap). A systemd timer rebuilds every
-# two hours; one build runs now so the host is never empty after a deploy.
-mkdir -p /opt/onetee-pages
-cp -f pages/build.mjs /opt/onetee-pages/
-cat > /etc/systemd/system/onetee-pages.service <<UNIT
-[Unit]
-Description=OneTee static tee-time pages build (${PAGES_HOST})
-After=network.target onetee-api.service
-[Service]
-Type=oneshot
-Environment=API_BASE=http://127.0.0.1:8080
-Environment=PAGES_OUT=${PAGES_ROOT}
-Environment=PAGES_HOST=${PAGES_HOST}
-Environment=DIRECTORY_PATH=/opt/onetee-api/directory.json
-ExecStart=/usr/bin/node /opt/onetee-pages/build.mjs
-UNIT
-cat > /etc/systemd/system/onetee-pages.timer <<'UNIT'
-[Unit]
-Description=Rebuild OneTee tee-time pages every 2 hours
-[Timer]
-OnBootSec=3min
-OnCalendar=*-*-* 00/2:07:00
-Persistent=true
-[Install]
-WantedBy=timers.target
-UNIT
-systemctl daemon-reload
-systemctl enable onetee-pages.timer >/dev/null 2>&1 || true
-systemctl restart onetee-pages.timer
-echo "---- first pages build ----"
-wait_for_api || true
-if systemctl start onetee-pages.service; then
-  journalctl -u onetee-pages.service -n 3 --no-pager -o cat || true
-  echo "pages: $(find "${PAGES_ROOT}" -name index.html 2>/dev/null | wc -l) html files; $(cat "${PAGES_ROOT}/_build.json" 2>/dev/null | tr -d '\n' | head -c 300)"
+RV
+chmod 700 /root/onetee-restore-verify.sh
+# Detached from the SSH session (it restores a multi-GB dump into a scratch DB);
+# result in /root/onetee-restore-verify.log. Self-disables via the marker file.
+if [ ! -f /root/.onetee-restore-verified ]; then
+  setsid nohup /root/onetee-restore-verify.sh > /root/onetee-restore-verify.log 2>&1 < /dev/null &
+  echo "restore-verify running in the background (log: /root/onetee-restore-verify.log)"
 else
-  echo "WARN: pages build failed (see: journalctl -u onetee-pages.service)"; journalctl -u onetee-pages.service -n 20 --no-pager -o cat || true
+  echo "restore-verify: already verified (marker present)"
 fi
-echo "pages timer: $(systemctl is-active onetee-pages.timer); next: $(systemctl show onetee-pages.timer -p NextElapseUSecRealtime --value)"
-echo "---- pages host (localhost, Host header) ----"
-curl -s -o /dev/null -w 'HTTP %{http_code} for http://127.0.0.1/ with Host ${PAGES_HOST}\n' -H "Host: ${PAGES_HOST}" http://127.0.0.1/ || true
 
 echo "---- API /api/health (localhost) ----"; curl -s http://127.0.0.1:8080/api/health; echo
 echo "== deploy done OK =="
