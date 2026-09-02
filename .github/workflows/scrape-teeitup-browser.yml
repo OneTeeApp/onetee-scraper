@@ -18,6 +18,10 @@ name: Scrape TeeItUp far (days 3-30, plain HTTP via rotating datacenter proxy)
 # teeitup, so no plain tier ever writes the same course_slug+date and clobbers
 # it in D1.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     - cron: "17 */2 * * *"
@@ -53,7 +57,7 @@ jobs:
     # windows shrink to fit the previous day's pruning, and a course that widens
     # its booking window could never be rediscovered. The full sweep is the only
     # thing that can grow a window back.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 5
     outputs:
       full: ${{ steps.mode.outputs.full }}
@@ -84,7 +88,7 @@ jobs:
 
   scrape:
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -177,7 +181,7 @@ jobs:
     # own "have I run a full sweep today" flag.
     needs: [plan, scrape]
     if: needs.plan.outputs.full == 'yes' && needs.scrape.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
