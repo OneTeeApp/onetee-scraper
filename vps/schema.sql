@@ -74,3 +74,17 @@ CREATE TABLE IF NOT EXISTS sheet_freshness (
   last_ok_at  TEXT NOT NULL,
   PRIMARY KEY (course_slug, date)
 );
+
+-- Page-view beacon from the static tee-time pages (tee-times.oneteeapp.com):
+-- one row per view, no IP, no cookie; `sid` is a per-tab random id. Read by
+-- /api/traffic for the private /_traffic/ page. Bots are flagged, not dropped.
+CREATE TABLE IF NOT EXISTS page_hits (
+  id     BIGSERIAL PRIMARY KEY,
+  ts     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  path   TEXT NOT NULL,
+  ref    TEXT,
+  sid    TEXT,
+  mobile BOOLEAN,
+  bot    BOOLEAN NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_page_hits_ts ON page_hits (ts);
