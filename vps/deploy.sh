@@ -79,11 +79,23 @@ sleep 3
 echo "service active: $(systemctl is-active onetee-api)"
 
 # ---------- Phase 2b: /exec self-test — gate query shapes (numbered ?N + accounts) ----------
+# systemd reports the unit "active" the moment node starts, before it listens;
+# the last two deploys died here with curl rc=7 (connection refused) under
+# set -e. Wait for /api/health first, and never let the self-test abort a deploy.
+wait_for_api() {
+  for i in $(seq 1 20); do
+    if curl -s -o /dev/null http://127.0.0.1:8080/api/health; then echo "API listening (try $i)"; return 0; fi
+    sleep 2
+  done
+  echo "WARN: API not listening on 8080 after 40s"; return 1
+}
+wait_for_api || true
 ING_TOK="$(grep '^INGEST_TOKEN=' /root/onetee-api.env | cut -d= -f2)"
 echo "---- /exec self-test (gate account query) ----"
 curl -s -X POST http://127.0.0.1:8080/exec \
   -H "Authorization: Bearer ${ING_TOK}" -H 'Content-Type: application/json' \
-  --data '{"sql":"SELECT count(*) AS n FROM users WHERE tier = ?1","params":["free"]}'; echo
+  --data '{"sql":"SELECT count(*) AS n FROM users WHERE tier = ?1","params":["free"]}' \
+  || echo "WARN: /exec self-test could not connect (rc=$?)"; echo
 
 # ---------- Phase 3: seed (only if empty) ----------
 CNT=$(psql -h 127.0.0.1 -U onetee -d onetee -tAc "SELECT count(*) FROM tee_times" | tr -d '[:space:]')
@@ -291,6 +303,7 @@ systemctl daemon-reload
 systemctl enable onetee-pages.timer >/dev/null 2>&1 || true
 systemctl restart onetee-pages.timer
 echo "---- first pages build ----"
+wait_for_api || true
 if systemctl start onetee-pages.service; then
   journalctl -u onetee-pages.service -n 3 --no-pager -o cat || true
   echo "pages: $(find "${PAGES_ROOT}" -name index.html 2>/dev/null | wc -l) html files; $(cat "${PAGES_ROOT}/_build.json" 2>/dev/null | tr -d '\n' | head -c 300)"
