@@ -80,7 +80,8 @@ const fmtDate = (iso) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 };
-const money = (n) => (n == null || !Number.isFinite(Number(n))) ? "" : (Number(n) % 1 === 0 ? `$${Number(n)}` : `$${Number(n).toFixed(2)}`);
+// A price of 0 is "not reported" on several booking platforms, never a free round.
+const money = (n) => (n == null || !Number.isFinite(Number(n)) || Number(n) <= 0) ? "" : (Number(n) % 1 === 0 ? `$${Number(n)}` : `$${Number(n).toFixed(2)}`);
 const priceRange = (a, b) => {
   const lo = money(a), hi = money(b);
   if (!lo) return "";
@@ -227,7 +228,7 @@ function buildModel(dir, timesByState) {
   for (const v of byVenue.values()) {
     v.rows.sort((a, b) => (a.teetime < b.teetime ? -1 : a.teetime > b.teetime ? 1 : 0));
     v.count = v.rows.length;
-    const prices = v.rows.map((r) => r.price_min).filter((p) => p != null && Number.isFinite(Number(p)));
+    const prices = v.rows.map((r) => r.price_min).filter((p) => p != null && Number.isFinite(Number(p)) && Number(p) > 0);
     v.fromPrice = prices.length ? Math.min(...prices.map(Number)) : null;
     v.firstBook = (v.rows.find((r) => r.booking_url) || {}).booking_url || "";
   }
@@ -310,7 +311,7 @@ ${cities.length ? `<h2>By city</h2><ul class="list">${cityList}</ul>` : ""}
 ${rest.length ? `<h2>More ${esc(name)} courses</h2><ul class="list">${rest.map((c) => `<li><a href="${courseHref(c)}">${esc(c.name)}</a> <small>${esc(c.city || "")}${c.label ? ` · ${esc(c.label)}` : ""}</small></li>`).join("")}</ul>` : ""}
 <p class="note"><strong>Want tomorrow or the weekend?</strong> A free account adds filters and saved searches; Premium members see the next 30 days. <a href="${widgetHref(st)}">Open OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `${name} golf tee times today (${live.length} courses, ${n} times) — OneTee`,
+  return layout({ title: `${name} golf tee times today (${plural(live.length, "course")}, ${plural(n, "time")}) — OneTee`,
     desc: `Today's open tee times at ${live.length} public golf courses in ${name}, plus ${cs.length} courses with booking links and phone numbers. Book direct, no fees.`,
     canonical: SITE + stateHref(st), crumbs: [{ label: "Tee times", href: "/" }, { label: name }], body,
     jsonld: { "@context": "https://schema.org", "@type": "ItemList", name: `Golf courses in ${name}`, numberOfItems: cs.length,
