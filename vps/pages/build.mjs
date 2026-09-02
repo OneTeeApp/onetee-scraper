@@ -36,6 +36,9 @@ const OUT = process.env.PAGES_OUT || "/var/www/onetee-pages";
 const HOST = process.env.PAGES_HOST || "tee-times.oneteeapp.com";
 const SITE = "https://" + HOST;
 const MAIN = "https://www.oneteeapp.com";
+// Site logo (Squarespace Social Sharing image, 528x402). Default og:image + Organization logo.
+const LOGO = "https://static1.squarespace.com/static/6a614108f62a98651c8be736/t/6a9857b3b2eb0270855334a9/1788368819212/IMG_6529.jpeg?format=1500w";
+const ORG_LD = { "@type": "Organization", "@id": MAIN + "/#organization", name: "OneTee", url: MAIN + "/", logo: { "@type": "ImageObject", url: LOGO, width: 528, height: 402 } };
 const FIXTURE = process.env.FIXTURE === "1";
 const DIRECTORY_PATH = process.env.DIRECTORY_PATH || "/opt/onetee-api/directory.json";
 
@@ -278,7 +281,7 @@ function layout({ title, desc, canonical, crumbs, body, jsonld, noindex, image, 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(canonical)}">
-${noindex ? `<meta name="robots" content="noindex,follow">\n` : ""}<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:site_name" content="OneTee">${image ? `<meta property="og:image" content="${esc(image)}">` : ""}
+${noindex ? `<meta name="robots" content="noindex,follow">\n` : ""}<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:site_name" content="OneTee"><meta property="og:image" content="${esc(image || LOGO)}">
 <style>${CSS}</style>
 ${lds}${extraHead}
 </head>
@@ -413,7 +416,7 @@ function renderIndex(model, stamp) {
 <p class="sub">Times as of ${esc(stamp)}.</p>`;
   return layout({ title: `Golf tee times today across ${model.states.length} states — OneTee`, desc: `Browse today's public golf tee times by state: ${pubAll.length.toLocaleString("en-US")} public courses, every open slot, book direct with the course. No fees, no markup.`,
     canonical: SITE + "/", crumbs: [], body,
-    jsonld: { "@context": "https://schema.org", "@type": "WebSite", name: "OneTee tee times", url: SITE + "/" } });
+    jsonld: { "@context": "https://schema.org", "@type": "WebSite", name: "OneTee tee times", url: SITE + "/", publisher: ORG_LD } });
 }
 
 function renderState(model, st, stamp) {
