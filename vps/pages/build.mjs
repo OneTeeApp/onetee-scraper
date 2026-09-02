@@ -105,6 +105,36 @@ const courseIndexable = (c) => isPublic(c) && !!(c.phone || c.website || c.actio
 const cityIndexable = (x) => x.courses.filter(courseIndexable).length >= 2;
 const listNames = (arr) => arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1];
 
+// Search results truncate around 60 characters of title and 155 of description,
+// and a cut-off title reads as a broken one. Build both from a required head
+// plus optional tails, keeping only the tails that still fit; clip the head
+// itself only when a course name is longer than the whole budget.
+const TITLE_MAX = 60, DESC_MAX = 155;
+function clipWords(str, max) {
+  if (str.length <= max) return str;
+  const cut = str.slice(0, max - 1);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,\u2013\u2014-]+$/, "") + "\u2026";
+}
+function fitTitle(head, ...tails) {
+  let t = clipWords(head, TITLE_MAX);
+  for (const tail of tails) {
+    if (!tail) continue;
+    const next = `${t} \u2014 ${tail}`;
+    if (next.length <= TITLE_MAX) t = next;
+  }
+  return t;
+}
+function fitDesc(head, ...tails) {
+  let d = clipWords(head, DESC_MAX);
+  for (const tail of tails) {
+    if (!tail) continue;
+    const next = `${d} ${tail}`;
+    if (next.length <= DESC_MAX) d = next;
+  }
+  return d;
+}
+
 // ---------- tiny helpers ----------
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const slug = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
@@ -414,7 +444,8 @@ function renderIndex(model, stamp) {
 <p>Pages refresh every two hours. After 6 pm local time a state's page rolls over to tomorrow's tee times, since the day's sheet is mostly played out by then${rolled.length ? ` (${listNames(rolled.map((st) => STATE_NAMES[st]))} ${rolled.length === 1 ? "is" : "are"} showing tomorrow right now)` : ""}.</p>
 <p class="note"><strong>Planning ahead?</strong> Today's times are free to browse. A free OneTee account adds filters and saved searches; Premium opens the next 30 days for $3 a month. <a href="${MAIN}/tee-times">Start on OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}.</p>`;
-  return layout({ title: `Golf tee times today across ${model.states.length} states — OneTee`, desc: `Browse today's public golf tee times by state: ${pubAll.length.toLocaleString("en-US")} public courses, every open slot, book direct with the course. No fees, no markup.`,
+  return layout({ title: fitTitle(`Golf tee times today across ${model.states.length} states`, "OneTee"),
+    desc: fitDesc(`Today's open tee times at ${pubAll.length.toLocaleString("en-US")} public golf courses, by state.`, "Every open slot, booked direct with the course. No fees, no markup."),
     canonical: SITE + "/", crumbs: [], body,
     jsonld: { "@context": "https://schema.org", "@type": "WebSite", name: "OneTee tee times", url: SITE + "/", publisher: ORG_LD } });
 }
@@ -453,8 +484,8 @@ ${cities.length ? `<h2>By city</h2><ul class="list">${cityList}</ul>` : ""}
 ${rest.length ? `<h2>More ${esc(name)} courses</h2><ul class="list">${rest.map((c) => `<li><a href="${courseHref(c)}">${esc(c.name)}</a> <small>${esc(c.city || "")}${c.label ? ` · ${esc(c.label)}` : ""}</small></li>`).join("")}</ul>` : ""}
 <p class="note"><strong>Want the weekend, or next week?</strong> A free account adds filters and saved searches; Premium members see the next 30 days. <a href="${widgetHref(st)}">Open OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `${name} golf tee times today — ${pub.length} public courses — OneTee`,
-    desc: `Today's open tee times at public golf courses across ${name}: ${pub.length} courses in ${cities.length} cities and towns, with prices, booking links and phone numbers. Book direct, no fees.`,
+  return layout({ title: fitTitle(`${name} golf tee times today`, `${pub.length} public courses`, "OneTee"),
+    desc: fitDesc(`Today's open tee times at ${pub.length} public golf courses across ${name}, in ${cities.length} ${cities.length === 1 ? "city or town" : "cities and towns"}.`, "Prices and booking links. Book direct, no fees."),
     canonical: SITE + stateHref(st), crumbs: [{ label: "Tee times", href: "/" }, { label: name }], body,
     jsonld: { "@context": "https://schema.org", "@type": "ItemList", name: `Golf courses in ${name}`, numberOfItems: cs.length,
       itemListElement: cs.slice(0, 200).map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, url: SITE + courseHref(c) })) } });
@@ -467,6 +498,8 @@ function renderCity(model, x, stamp) {
   const rest = x.courses.filter((c) => !model.byVenue.has(c.venue_id));
   const n = live.reduce((s, c) => s + model.byVenue.get(c.venue_id).count, 0);
   const pub = x.courses.filter(isPublic), priv = x.courses.filter((c) => !isPublic(c));
+  // "Washington, DC" is both a city and the whole state page; give it its own angle.
+  const cityLabel = `${x.city}, ${st}`, cityIn = cityLabel === name ? name : `${x.city}, ${name}`;
   const online = pub.filter((c) => c.booking_method === "online").length;
   const intro = pub.length ? `<p>${esc(x.city)} has ${pub.length === 1 ? "one public golf course" : `${pub.length} golf courses open to the public`} on OneTee: ${listNames(pub.map((c) => `<a href="${courseHref(c)}">${esc(c.name)}</a>${c.type ? ` (${esc(c.type.toLowerCase())})` : ""}`))}.${online ? ` ${online === pub.length ? (pub.length === 1 ? "It takes" : "All of them take") : `${online} of them take`} bookings online, and the open slots show here with the course's own price.` : ""}${priv.length ? ` ${listNames(priv.map((c) => esc(c.name)))} ${priv.length === 1 ? "is a private club" : "are private clubs"} — no public tee times.` : ""}</p>` : "";
   // The guide: for towns with two or more public courses, the page a golfer new to
@@ -503,9 +536,10 @@ ${live.map((c) => courseCard(c, model.byVenue.get(c.venue_id))).join("")}
 ${rest.length ? `<h2>${live.length ? "Other courses" : "Courses"} in ${esc(x.city)}</h2>${rest.map((c) => courseCard(c, null)).join("")}` : ""}
 ${guide}
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: pub.length >= 2 ? `${x.city}, ${st} golf tee times today — ${pub.length} public courses — OneTee` : `${x.city}, ${st} golf tee times today — OneTee`,
-    desc: pub.length >= 2 ? `Open tee times today at ${pub.length} public golf courses in ${x.city}, ${name}, plus a guide: typical prices, when each sheet runs, how to book, and towns nearby. Book direct, no fees.`
-      : `Open tee times today at the public golf course in ${x.city}, ${name}, with prices and booking links. Book direct with the course, no fees.`,
+  return layout({ title: cityLabel === name ? fitTitle(`Golf courses in ${cityLabel}`, `${pub.length} public courses and today's tee times`, "OneTee")
+      : fitTitle(`${cityLabel} golf tee times today`, pub.length >= 2 ? `${pub.length} public courses` : "", "OneTee"),
+    desc: pub.length >= 2 ? fitDesc(`Today's open tee times at ${pub.length} public golf courses in ${cityIn}.`, "Typical prices, when each sheet runs, how to book, and towns nearby.")
+      : fitDesc(`Today's open tee times at the public golf course in ${cityIn}.`, "Prices and booking links. Book direct with the course, no fees."),
     canonical: SITE + cityHref(st, x.slug), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: x.city }], body,
     noindex: !cityIndexable(x) });
 }
@@ -571,9 +605,9 @@ ${pub ? `<p class="note"><strong>Tomorrow and beyond:</strong> Premium members s
     address: { "@type": "PostalAddress", ...(c.city ? { addressLocality: c.city } : {}), addressRegion: st, ...(c.zip ? { postalCode: c.zip } : {}), addressCountry: "US" },
     ...(c.lat != null && c.lng != null ? { geo: { "@type": "GeoCoordinates", latitude: c.lat, longitude: c.lng } } : {}) };
   const where = `${c.city ? c.city + ", " : ""}${st}`;
-  return layout({ title: pub ? `${c.name} tee times — ${where} — OneTee` : `${c.name} — ${where} — OneTee`,
-    desc: pub ? `${c.name} in ${c.city || name}: today's open tee times${statsUsable(s) && s.price_med ? ` (usually about ${money(Math.round(s.price_med))})` : ""}, what the sheet normally looks like, booking link${c.phone ? ", phone" : ""}, website and nearby courses. Book direct; no fees.`
-      : `${c.name} in ${c.city || name} is a ${c.booking_method === "military" ? "military" : "private"} club. Find public courses nearby on OneTee.`,
+  return layout({ title: pub ? fitTitle(`${c.name} tee times`, where, "OneTee") : fitTitle(c.name, where, "OneTee"),
+    desc: pub ? fitDesc(`${c.name} in ${c.city || name}: today's open tee times${statsUsable(s) && s.price_med ? ` (usually about ${money(Math.round(s.price_med))})` : ""}.`, "What the sheet normally looks like, how to book, and nearby courses.")
+      : fitDesc(`${c.name} in ${c.city || name} is a ${c.booking_method === "military" ? "military" : "private"} club.`, "Find public courses nearby on OneTee."),
     canonical: SITE + courseHref(c), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, ...(c.city ? [{ label: c.city, href: cityHref(st, slug(c.city)) }] : []), { label: c.name }],
     body, jsonld: ld, noindex: !courseIndexable(c), image: photo ? c.photo : undefined });
 }
@@ -616,8 +650,8 @@ ${withStats.length ? `<div class="wrap"><table class="guide"><thead><tr><th>#</t
 <h2>How to pay less for golf in ${esc(name)}</h2>
 <p>Twilight rates are the reliable one: most courses drop the price for the last few hours of light, and the <a href="${twilightHref(st)}">twilight page</a> lists ${D.word}'s late slots. Weekday mornings after the early rush are next. Nine-hole and executive courses cost a fraction of a championship layout and are listed above with the rest. And booking direct — which every link on OneTee does — means you pay the course's own rate with nothing added on top. A free OneTee account adds a price filter and saved searches; Premium shows the next 30 days so you can pick the cheap day, not just the cheap hour.</p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `Cheapest public golf in ${name} — courses ranked by price — OneTee`,
-    desc: `${name}'s public golf courses ranked by typical tee-time price from the last 28 days of tee sheets, plus today's lowest open rates. Book direct, no fees.`,
+  return layout({ title: fitTitle(`Cheapest public golf in ${name}`, "courses ranked by price", "OneTee"),
+    desc: fitDesc(`${name}'s public golf courses ranked by what a round actually costs, from the last 28 days of tee sheets.`, "Plus today's lowest open rates."),
     canonical: SITE + dealsHref(st), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: "Cheapest golf" }], body,
     jsonld: withStats.length ? { "@context": "https://schema.org", "@type": "ItemList", name: `Cheapest public golf courses in ${name}`, itemListOrder: "https://schema.org/ItemListOrderAscending",
       itemListElement: withStats.slice(0, 20).map((o, i) => ({ "@type": "ListItem", position: i + 1, name: o.c.name, url: SITE + courseHref(o.c) })) } : null });
@@ -645,8 +679,8 @@ ${top.length ? `<h2>Lowest open rates ${D.word}, ${fmtDate(D.date)}</h2><div cla
 ${nearStats.length ? `<h2>Cheap rounds within 25 miles of ${esc(x.city)}</h2><div class="wrap"><table class="guide"><thead><tr><th>#</th><th>Course</th><th>Type</th><th>Typical price</th><th>Weekday / weekend</th><th>Tee times run</th></tr></thead><tbody>${nearStats.map(row).join("")}</tbody></table></div>` : ""}
 <p class="note"><strong>Want the cheap day, not just the cheap hour?</strong> A free OneTee account adds a price filter; Premium shows the next 30 days at every course. <a href="${widgetHref(st)}">Open OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `Cheap golf in ${x.city}, ${st} — public courses ranked by price — OneTee`,
-    desc: `${x.city}'s public golf courses ranked by typical tee-time price, with today's lowest open rates and cheap rounds nearby. Book direct with the course, no fees.`,
+  return layout({ title: fitTitle(`Cheap golf in ${x.city}, ${st}`, "public courses ranked by price", "OneTee"),
+    desc: fitDesc(`${x.city}'s public golf courses ranked by typical tee-time price, with today's lowest open rates.`, "Cheap rounds nearby too. Book direct, no fees."),
     canonical: SITE + cityDealsHref(st, x.slug), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: x.city, href: cityHref(st, x.slug) }, { label: "Cheap golf" }], body,
     jsonld: { "@context": "https://schema.org", "@type": "ItemList", name: `Cheapest public golf courses in ${x.city}, ${st}`, itemListOrder: "https://schema.org/ItemListOrderAscending",
       itemListElement: withStats.slice(0, 20).map((o, i) => ({ "@type": "ListItem", position: i + 1, name: o.c.name, url: SITE + courseHref(o.c) })) } });
@@ -668,8 +702,8 @@ ${groups.length ? groups.map((g) => `<article class="course"><h3><a href="${cour
 ${late.length ? `<ul class="list">${late.map((o) => `<li><a href="${courseHref(o.c)}">${esc(o.c.name)}</a> <small>${esc(o.c.city || "")} · last tee times around ${minsToClock(o.s.mins_late)}${o.s.price_med ? ` · usually about ${money(Math.round(o.s.price_med))}` : ""}</small></li>`).join("")}</ul>` : `<p class="sub">Not enough recent sheet data to rank late tee times yet.</p>`}
 <p class="note"><strong>Planning the weekend?</strong> A free OneTee account filters by time of day; Premium shows twilight slots for the next 30 days. <a href="${widgetHref(st)}">Open OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `Twilight tee times in ${name} today — late afternoon golf, cheapest first — OneTee`,
-    desc: `Open twilight and late-afternoon tee times across ${name}'s public courses today, cheapest course first, plus the courses whose sheets run latest. Book direct, no fees.`,
+  return layout({ title: fitTitle(`Twilight tee times in ${name} today`, "cheapest first", "OneTee"),
+    desc: fitDesc(`Open twilight and late-afternoon tee times across ${name}'s public courses today, cheapest course first.`, "Book direct, no fees."),
     canonical: SITE + twilightHref(st), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: "Twilight" }], body });
 }
 
@@ -705,7 +739,7 @@ ${sample ? `<pre class="snip">${esc(badgeSnippet(sample))}</pre><p><a href="${co
 <h2>Private clubs</h2>
 <p>Private and members-only clubs are listed by name so golfers know they're private; we show no tee times for them. If we have you wrong, tell us.</p>
 <p class="note"><strong>Questions?</strong> <a href="${MAIN}/about">About OneTee</a> · <a href="${MAIN}/contact">Contact</a></p>`;
-  return layout({ title: "OneTee for golf courses — free listing, direct bookings, no fees", desc: "How OneTee lists your public golf course: your open tee times in front of golfers, booked on your own site, with no commission and nothing to install. Plus a badge to link to your page.",
+  return layout({ title: fitTitle("OneTee for golf courses", "free listing, no fees"), desc: fitDesc("How OneTee lists your public golf course: your open tee times in front of golfers, booked on your own site, no commission.", "Nothing to install."),
     canonical: SITE + "/for-courses/", crumbs: [{ label: "Tee times", href: "/" }, { label: "For golf courses" }], body });
 }
 
