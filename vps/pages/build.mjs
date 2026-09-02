@@ -15,9 +15,15 @@
 // never sees a half-built site. No secrets, no auth: the API on 127.0.0.1 is
 // the same data the public site serves to signed-out visitors.
 //
+// From 6 pm local time a state's pages show tomorrow's sheet instead of the
+// dregs of today's (ROLL_HOUR). Private clubs, courses with no way to reach them
+// and one-course city pages are written but carry noindex,follow and stay out
+// of the sitemap, so what Google indexes is the useful part.
+//
 // Env: API_BASE (default http://127.0.0.1:8080), PAGES_OUT (default
 // /var/www/onetee-pages), PAGES_HOST (default tee-times.oneteeapp.com),
-// FIXTURE=1 renders from the bundled directory with synthetic times (local dev).
+// ROLL_HOUR (default 18), FIXTURE=1 renders from the bundled directory with
+// synthetic times (local dev).
 
 import http from "node:http";
 import https from "node:https";
@@ -64,6 +70,36 @@ const tzOf = (st) => STATE_TZ[st] || "America/Denver";
 const localDate = (tz, d = new Date()) => d.toLocaleString("sv-SE", { timeZone: tz }).slice(0, 10);
 const localClock = (tz, d = new Date()) =>
   d.toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+const localHour = (tz, d = new Date()) => Number(d.toLocaleString("en-US", { timeZone: tz, hour: "numeric", hourCycle: "h23" }));
+
+// Which day a state's pages show. From ROLL_HOUR (6 pm local) the day's sheet is
+// mostly history, so the pages roll to tomorrow: an evening visitor — or a crawler
+// that happens to come by at night — sees a full sheet instead of "0 times".
+const ROLL_HOUR = Number(process.env.ROLL_HOUR || 18);
+const DAY_CACHE = {};
+function dayFor(st) {
+  if (DAY_CACHE[st]) return DAY_CACHE[st];
+  const tz = tzOf(st), now = new Date(), today = localDate(tz, now);
+  const rolled = localHour(tz, now) >= ROLL_HOUR;
+  const date = rolled ? localDate(tz, new Date(now.getTime() + 86400000)) : today;
+  return (DAY_CACHE[st] = { date, today, rolled, word: rolled ? "tomorrow" : "today", Word: rolled ? "Tomorrow" : "Today" });
+}
+
+// Booking platforms as people know them (directory slugs -> names). "other:*" stays unnamed.
+const PLATFORM_NAMES = {
+  teeitup: "TeeItUp", foreup: "ForeUp", chronogolf: "Chronogolf", golfnow: "GolfNow", ezlinks: "EZLinks",
+  clubprophet: "Club Prophet", teesnap: "Teesnap", clubcaddie: "Club Caddie", membersports: "MemberSports",
+  quick18: "Quick18", golfwithaccess: "Golf With Access", golfback: "GolfBack", tenfore: "TenFore", rguest: "rGuest",
+  courseco: "CourseCo", teequest: "TeeQuest", agilysys: "Agilysys", trutee: "TruTee", supersaas: "SuperSaaS",
+};
+// Private and military courses have no public tee times; their pages exist for the
+// person who searches the name, but they are not what the site is about.
+const isPublic = (c) => c.booking_method !== "private" && c.booking_method !== "military";
+// Pages worth asking Google to index: a public course we can actually help you reach,
+// and a city with at least two of them (a one-course city page just repeats the course page).
+const courseIndexable = (c) => isPublic(c) && !!(c.phone || c.website || c.action_url);
+const cityIndexable = (x) => x.courses.filter(courseIndexable).length >= 2;
+const listNames = (arr) => arr.length <= 1 ? arr.join("") : arr.slice(0, -1).join(", ") + " and " + arr[arr.length - 1];
 
 // ---------- tiny helpers ----------
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -124,7 +160,7 @@ async function loadTimes(states, dir) {
     let i = 0;
     for (const c of dir) {
       if (c.booking_method !== "online" || (i++ % 3)) continue;
-      const day = localDate(tzOf(c.state));
+      const day = dayFor(c.state).date;
       for (let k = 0; k < 5; k++) {
         const hh = String(7 + k * 2).padStart(2, "0");
         byState[c.state].push({ course_slug: c.venue_id, venue_id: c.venue_id, course_name: c.name, course_label: k === 4 ? "Back 9" : "",
@@ -135,7 +171,7 @@ async function loadTimes(states, dir) {
     return byState;
   }
   for (const st of states) {
-    const day = localDate(tzOf(st));
+    const day = dayFor(st).date;
     const j = await getJSON(`${API}/api/tee-times?state=${st}&date=${day}&limit=25000`);
     byState[st] = j.tee_times || [];
   }
@@ -181,7 +217,7 @@ footer{border-top:1px solid var(--line);color:var(--ink2);font-size:13px;padding
 @media(max-width:640px){h1{font-size:26px}.list{columns:1}header.top nav a{margin-left:10px}}
 `;
 
-function layout({ title, desc, canonical, crumbs, body, jsonld }) {
+function layout({ title, desc, canonical, crumbs, body, jsonld, noindex }) {
   const crumbHtml = crumbs && crumbs.length
     ? `<p class="crumbs">${crumbs.map((c, i) => c.href ? `<a href="${esc(c.href)}">${esc(c.label)}</a>` : `<span>${esc(c.label)}</span>`).join(" › ")}</p>` : "";
   const crumbLd = crumbs && crumbs.length ? {
@@ -198,7 +234,7 @@ function layout({ title, desc, canonical, crumbs, body, jsonld }) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(canonical)}">
-<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:site_name" content="OneTee">
+${noindex ? `<meta name="robots" content="noindex,follow">\n` : ""}<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(canonical)}"><meta property="og:site_name" content="OneTee">
 <style>${CSS}</style>
 ${lds}
 </head>
@@ -266,11 +302,12 @@ function timeChip(r) {
 function courseCard(c, v, { max = 8 } = {}) {
   const rows = v ? v.rows : [];
   const shown = rows.slice(0, max);
+  const dw = dayFor(c.state).word;
   const meta = [c.city ? `${esc(c.city)}, ${esc(c.state)}` : esc(c.state), c.type ? esc(c.type) : "",
-    v ? plural(v.count, "tee time") + " today" : esc(c.label || ""), v && v.fromPrice != null ? `from ${money(v.fromPrice)}` : ""].filter(Boolean).join(" · ");
+    v ? plural(v.count, "tee time") + " " + dw : esc(c.label || ""), v && v.fromPrice != null ? `from ${money(v.fromPrice)}` : ""].filter(Boolean).join(" · ");
   return `<article class="course"><h3><a href="${courseHref(c)}">${esc(c.name)}</a></h3><div class="meta">${meta}</div>` +
     (shown.length ? `<ul class="times">${shown.map(timeChip).join("")}</ul>` : "") +
-    (rows.length > shown.length ? `<div class="more"><a href="${courseHref(c)}">+${rows.length - shown.length} more today</a></div>` : "") +
+    (rows.length > shown.length ? `<div class="more"><a href="${courseHref(c)}">+${rows.length - shown.length} more ${dw}</a></div>` : "") +
     (!rows.length && c.phone ? `<div class="more">${c.booking_method === "phone" ? "Call to book: " : "Phone: "}<a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a></div>` : "") +
     `</article>`;
 }
@@ -280,39 +317,61 @@ function renderIndex(model, stamp) {
     const cs = model.courses.filter((c) => c.state === st);
     const live = cs.filter((c) => model.byVenue.has(c.venue_id));
     const n = live.reduce((s, c) => s + model.byVenue.get(c.venue_id).count, 0);
-    return `<li class="tile"><a class="t" href="${stateHref(st)}">${esc(STATE_NAMES[st])}</a><div class="m">${plural(n, "tee time")} today at ${plural(live.length, "course")} · ${cs.length} courses listed</div></li>`;
+    const pub = cs.filter(isPublic).length;
+    return `<li class="tile"><a class="t" href="${stateHref(st)}">${esc(STATE_NAMES[st])}</a><div class="m">${plural(n, "tee time")} ${dayFor(st).word} at ${plural(live.length, "course")} · ${pub} public courses</div></li>`;
   }).join("");
+  const pubAll = model.courses.filter(isPublic);
+  const online = pubAll.filter((c) => c.booking_method === "online").length;
+  const rolled = model.states.filter((st) => dayFor(st).rolled);
   const body = `<h1>Public golf tee times today, by state</h1>
 <p class="sub">Every bookable tee time we can find at public courses, in one place, updated through the day. Pick a state, or <a href="${MAIN}/tee-times">search with filters</a> for time, price, holes and distance.</p>
 <ul class="grid">${items}</ul>
+<h2>How this works</h2>
+<p>OneTee lists ${pubAll.length.toLocaleString("en-US")} public, municipal, resort and semi-private golf courses across ${model.states.length} states. ${online.toLocaleString("en-US")} of them sell tee times online through their own booking systems — ForeUp, TeeItUp, Chronogolf, GolfNow, EZLinks, Club Prophet and others — and OneTee reads those sheets through the day and puts every open slot on one page. Each time links straight to the course's own booking page, so you pay the course's price with no fees or markup added. Courses that only take bookings by phone are listed with their pro-shop number.</p>
+<p>Pages refresh every two hours. After 6 pm local time a state's page rolls over to tomorrow's tee times, since the day's sheet is mostly played out by then${rolled.length ? ` (${listNames(rolled.map((st) => STATE_NAMES[st]))} ${rolled.length === 1 ? "is" : "are"} showing tomorrow right now)` : ""}.</p>
 <p class="note"><strong>Planning ahead?</strong> Today's times are free to browse. A free OneTee account adds filters and saved searches; Premium opens the next 30 days for $3 a month. <a href="${MAIN}/tee-times">Start on OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}.</p>`;
-  return layout({ title: "Golf tee times today across 12 states — OneTee", desc: "Browse today's public golf tee times by state: every course, every open slot, book direct with the course. No fees, no markup.",
+  return layout({ title: `Golf tee times today across ${model.states.length} states — OneTee`, desc: `Browse today's public golf tee times by state: ${pubAll.length.toLocaleString("en-US")} public courses, every open slot, book direct with the course. No fees, no markup.`,
     canonical: SITE + "/", crumbs: [], body,
     jsonld: { "@context": "https://schema.org", "@type": "WebSite", name: "OneTee tee times", url: SITE + "/" } });
 }
 
 function renderState(model, st, stamp) {
   const name = STATE_NAMES[st];
-  const day = localDate(tzOf(st));
+  const D = dayFor(st);
   const cs = model.courses.filter((c) => c.state === st);
+  const pub = cs.filter(isPublic), priv = cs.filter((c) => !isPublic(c));
   const live = cs.filter((c) => model.byVenue.has(c.venue_id));
   const rest = cs.filter((c) => !model.byVenue.has(c.venue_id));
   const n = live.reduce((s, c) => s + model.byVenue.get(c.venue_id).count, 0);
   const cities = [...model.cities.values()].filter((x) => x.state === st).sort((a, b) => a.city.localeCompare(b.city));
   const cityList = cities.map((x) => {
     const k = x.courses.filter((c) => model.byVenue.has(c.venue_id)).reduce((s, c) => s + model.byVenue.get(c.venue_id).count, 0);
-    return `<li><a href="${cityHref(st, x.slug)}">${esc(x.city)}</a> <small>${x.courses.length} ${x.courses.length === 1 ? "course" : "courses"}${k ? ` · ${k} today` : ""}</small></li>`;
+    return `<li><a href="${cityHref(st, x.slug)}">${esc(x.city)}</a> <small>${x.courses.length} ${x.courses.length === 1 ? "course" : "courses"}${k ? ` · ${k} ${D.word}` : ""}</small></li>`;
   }).join("");
-  const body = `<h1>Golf tee times today in ${esc(name)}</h1>
-<p class="sub">${fmtDate(day)} · ${plural(n, "open tee time")} at ${plural(live.length, "public course")} · ${cs.length} courses listed. <a href="${widgetHref(st)}">Filter by time, price, holes or distance on OneTee →</a></p>
-${live.length ? `<h2>Courses with tee times today</h2>${live.map((c) => courseCard(c, model.byVenue.get(c.venue_id))).join("")}` : `<p class="note">No open tee times are listed for today right now. Courses often release or free up slots through the day — <a href="${widgetHref(st)}">check the live search</a>, or call a course below.</p>`}
+  // Evergreen intro: the facts about golf in this state that do not change hour to hour.
+  const online = pub.filter((c) => c.booking_method === "online"), byPhone = pub.filter((c) => c.booking_method === "phone");
+  const topCities = cities.map((x) => ({ x, k: x.courses.filter(isPublic).length })).filter((o) => o.k >= 2).sort((a, b) => b.k - a.k).slice(0, 5);
+  const platCount = {};
+  for (const c of online) for (const p of (c.platforms || [])) if (PLATFORM_NAMES[p]) platCount[PLATFORM_NAMES[p]] = (platCount[PLATFORM_NAMES[p]] || 0) + 1;
+  const plats = Object.entries(platCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
+  const typeCount = {};
+  for (const c of pub) if (c.type) typeCount[c.type] = (typeCount[c.type] || 0) + 1;
+  const types = Object.entries(typeCount).sort((a, b) => b[1] - a[1]).map(([t, k]) => `${k} ${t.toLowerCase()}`);
+  const intro = `<h2>Public golf in ${esc(name)}</h2>
+<p>OneTee lists ${pub.length} golf courses in ${esc(name)} that sell rounds to the public${types.length ? ` — ${esc(listNames(types))}` : ""}${priv.length ? ` — plus ${priv.length} private and military clubs for reference` : ""}. ${topCities.length ? `The biggest golf towns are ${topCities.map((o) => `<a href="${cityHref(st, o.x.slug)}">${esc(o.x.city)}</a> (${o.k})`).join(", ")}; ` : ""}${cities.length} cities and towns in all.</p>
+<p>${online.length} of these courses take bookings online${plats.length ? `, mostly through ${esc(listNames(plats))}` : ""}, and OneTee reads their tee sheets through the day so every open slot shows here with the course's own price. ${byPhone.length ? `${byPhone.length} courses only book by phone; their pro-shop numbers are listed. ` : ""}Booking always happens with the course itself — OneTee adds no fees.</p>`;
+  const body = `<h1>Golf tee times ${D.word} in ${esc(name)}</h1>
+<p class="sub">${D.Word}, ${fmtDate(D.date)} · ${plural(n, "open tee time")} at ${plural(live.length, "public course")} · ${pub.length} public courses listed. <a href="${widgetHref(st)}">Filter by time, price, holes or distance on OneTee →</a></p>
+${D.rolled ? `<p class="note">It's evening in ${esc(name)}, so this page has rolled over to <strong>tomorrow's</strong> tee times. The day's remaining slots are on <a href="${widgetHref(st)}">the live search</a>.</p>` : ""}
+${live.length ? `<h2>Courses with tee times ${D.word}</h2>${live.map((c) => courseCard(c, model.byVenue.get(c.venue_id))).join("")}` : `<p class="note">No open tee times are listed for ${D.word} right now. Courses often release or free up slots through the day — <a href="${widgetHref(st)}">check the live search</a>, or call a course below.</p>`}
+${intro}
 ${cities.length ? `<h2>By city</h2><ul class="list">${cityList}</ul>` : ""}
 ${rest.length ? `<h2>More ${esc(name)} courses</h2><ul class="list">${rest.map((c) => `<li><a href="${courseHref(c)}">${esc(c.name)}</a> <small>${esc(c.city || "")}${c.label ? ` · ${esc(c.label)}` : ""}</small></li>`).join("")}</ul>` : ""}
-<p class="note"><strong>Want tomorrow or the weekend?</strong> A free account adds filters and saved searches; Premium members see the next 30 days. <a href="${widgetHref(st)}">Open OneTee →</a></p>
+<p class="note"><strong>Want the weekend, or next week?</strong> A free account adds filters and saved searches; Premium members see the next 30 days. <a href="${widgetHref(st)}">Open OneTee →</a></p>
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
-  return layout({ title: `${name} golf tee times today (${plural(live.length, "course")}, ${plural(n, "time")}) — OneTee`,
-    desc: `Today's open tee times at ${live.length} public golf courses in ${name}, plus ${cs.length} courses with booking links and phone numbers. Book direct, no fees.`,
+  return layout({ title: `${name} golf tee times today — ${pub.length} public courses — OneTee`,
+    desc: `Today's open tee times at public golf courses across ${name}: ${pub.length} courses in ${cities.length} cities and towns, with prices, booking links and phone numbers. Book direct, no fees.`,
     canonical: SITE + stateHref(st), crumbs: [{ label: "Tee times", href: "/" }, { label: name }], body,
     jsonld: { "@context": "https://schema.org", "@type": "ItemList", name: `Golf courses in ${name}`, numberOfItems: cs.length,
       itemListElement: cs.slice(0, 200).map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, url: SITE + courseHref(c) })) } });
@@ -320,24 +379,31 @@ ${rest.length ? `<h2>More ${esc(name)} courses</h2><ul class="list">${rest.map((
 
 function renderCity(model, x, stamp) {
   const st = x.state, name = STATE_NAMES[st];
+  const D = dayFor(st);
   const live = x.courses.filter((c) => model.byVenue.has(c.venue_id));
   const rest = x.courses.filter((c) => !model.byVenue.has(c.venue_id));
   const n = live.reduce((s, c) => s + model.byVenue.get(c.venue_id).count, 0);
+  const pub = x.courses.filter(isPublic), priv = x.courses.filter((c) => !isPublic(c));
+  const online = pub.filter((c) => c.booking_method === "online").length;
+  const intro = pub.length ? `<p>${esc(x.city)} has ${pub.length === 1 ? "one public golf course" : `${pub.length} golf courses open to the public`} on OneTee: ${listNames(pub.map((c) => `<a href="${courseHref(c)}">${esc(c.name)}</a>${c.type ? ` (${esc(c.type.toLowerCase())})` : ""}`))}.${online ? ` ${online === pub.length ? (pub.length === 1 ? "It takes" : "All of them take") : `${online} of them take`} bookings online, and the open slots show here with the course's own price.` : ""}${priv.length ? ` ${listNames(priv.map((c) => esc(c.name)))} ${priv.length === 1 ? "is a private club" : "are private clubs"} — no public tee times.` : ""}</p>` : "";
   const body = `<h1>Golf tee times in ${esc(x.city)}, ${esc(st)}</h1>
-<p class="sub">${fmtDate(localDate(tzOf(st)))} · ${plural(n, "open tee time")} today at ${plural(live.length, "course")} in ${esc(x.city)} · <a href="${stateHref(st)}">all of ${esc(name)}</a> · <a href="${widgetHref(st)}">search nearby on OneTee →</a></p>
+<p class="sub">${D.Word}, ${fmtDate(D.date)} · ${plural(n, "open tee time")} at ${plural(live.length, "course")} in ${esc(x.city)} · <a href="${stateHref(st)}">all of ${esc(name)}</a> · <a href="${widgetHref(st)}">search nearby on OneTee →</a></p>
+${intro}
 ${live.map((c) => courseCard(c, model.byVenue.get(c.venue_id))).join("")}
 ${rest.length ? `<h2>${live.length ? "Other courses" : "Courses"} in ${esc(x.city)}</h2>${rest.map((c) => courseCard(c, null)).join("")}` : ""}
 <p class="sub">Times as of ${esc(stamp)}. You book directly with the course.</p>`;
   return layout({ title: `${x.city}, ${st} golf tee times today — OneTee`,
-    desc: `Open tee times today at ${x.courses.length === 1 ? "the public golf course" : `${x.courses.length} golf courses`} in ${x.city}, ${name}. Book direct with the course, no fees.`,
-    canonical: SITE + cityHref(st, x.slug), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: x.city }], body });
+    desc: `Open tee times today at ${pub.length === 1 ? "the public golf course" : `${pub.length} public golf courses`} in ${x.city}, ${name}, with prices and booking links. Book direct with the course, no fees.`,
+    canonical: SITE + cityHref(st, x.slug), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, { label: x.city }], body,
+    noindex: !cityIndexable(x) });
 }
 
 function renderCourse(model, c, stamp) {
   const st = c.state, name = STATE_NAMES[st];
   const v = model.byVenue.get(c.venue_id);
   const rows = v ? v.rows : [];
-  const day = localDate(tzOf(st));
+  const D = dayFor(st);
+  const pub = isPublic(c);
   const cityLink = c.city ? `<a href="${cityHref(st, slug(c.city))}">${esc(c.city)}</a>, ` : "";
   const facts = [
     c.phone ? `<li><b>Phone</b><a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a></li>` : "",
@@ -348,23 +414,26 @@ function renderCourse(model, c, stamp) {
   const table = rows.length ? `<table class="tt"><thead><tr><th>Time</th><th>Course</th><th>Holes</th><th>Spots</th><th>Price</th><th></th></tr></thead><tbody>${rows.map((r) =>
     `<tr><td><b>${fmtTime(r.teetime)}</b></td><td>${esc(r.course_label || "")}</td><td>${esc(r.holes || "")}</td><td>${r.open_spots ?? ""}</td><td>${priceRange(r.price_min, r.price_max)}</td><td>${r.booking_url ? `<a href="${esc(r.booking_url)}" rel="nofollow noopener" target="_blank">Book</a>` : ""}</td></tr>`).join("")}</tbody></table>` : "";
   const bookBtn = (rows.length && v.firstBook) ? v.firstBook : (c.action_url || "");
-  const body = `<h1>${esc(c.name)} tee times</h1>
-<p class="sub">${cityLink}<a href="${stateHref(st)}">${esc(name)}</a>${c.blurb ? ` · ${esc(c.blurb)}` : ""}</p>
-<ul class="facts">${facts}</ul>
-<h2>Today, ${fmtDate(day)}</h2>
+  const sheet = pub ? `<h2>${D.Word}, ${fmtDate(D.date)}</h2>
 ${rows.length ? `<p class="sub">${plural(rows.length, "open tee time")}${v.fromPrice != null ? ` from ${money(v.fromPrice)}` : ""}. Times as of ${esc(stamp)}; book directly with the course.</p>${table}` :
-    `<p class="note">No open tee times are listed for today${c.booking_method === "online" ? " right now — the course may release more through the day" : ""}. ${c.booking_method === "phone" && c.phone ? `This course takes bookings by phone: <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>.` : ""} ${c.action_url ? `<a href="${esc(c.action_url)}" rel="nofollow noopener" target="_blank">Check the course's booking page →</a>` : ""}</p>`}
-<p style="margin:18px 0">${bookBtn ? `<a class="btn" href="${esc(bookBtn)}" rel="nofollow noopener" target="_blank">Book at ${esc(c.name)}</a> ` : ""}<a class="btn alt" href="${widgetHref(st)}">See nearby courses on OneTee</a></p>
-<p class="note"><strong>Tomorrow and beyond:</strong> Premium members see the next 30 days at every course; a free account adds filters and saved searches. <a href="${MAIN}/tee-times">Open OneTee →</a></p>`;
+    `<p class="note">No open tee times are listed for ${D.word}${c.booking_method === "online" ? " right now — the course may release more through the day" : ""}. ${c.booking_method === "phone" && c.phone ? `This course takes bookings by phone: <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>.` : ""} ${c.action_url ? `<a href="${esc(c.action_url)}" rel="nofollow noopener" target="_blank">Check the course's booking page →</a>` : ""}</p>`}`
+    : `<p class="note">${esc(c.name)} is a ${c.booking_method === "military" ? "military" : "private"} club: ${esc(c.blurb || "no public tee times.")} For courses near ${esc(c.city || name)} that sell rounds to the public, see <a href="${c.city ? cityHref(st, slug(c.city)) : stateHref(st)}">${esc(c.city || name)}</a>.</p>`;
+  const body = `<h1>${esc(c.name)}${pub ? " tee times" : ""}</h1>
+<p class="sub">${cityLink}<a href="${stateHref(st)}">${esc(name)}</a>${c.blurb && pub ? ` · ${esc(c.blurb)}` : ""}</p>
+<ul class="facts">${facts}</ul>
+${sheet}
+<p style="margin:18px 0">${bookBtn && pub ? `<a class="btn" href="${esc(bookBtn)}" rel="nofollow noopener" target="_blank">Book at ${esc(c.name)}</a> ` : ""}<a class="btn alt" href="${widgetHref(st)}">See nearby courses on OneTee</a></p>
+${pub ? `<p class="note"><strong>Tomorrow and beyond:</strong> Premium members see the next 30 days at every course; a free account adds filters and saved searches. <a href="${MAIN}/tee-times">Open OneTee →</a></p>` : ""}`;
   const ld = { "@context": "https://schema.org", "@type": "GolfCourse", name: c.name, url: SITE + courseHref(c),
     ...(c.phone ? { telephone: c.phone } : {}), ...(c.website ? { sameAs: c.website } : {}),
     address: { "@type": "PostalAddress", ...(c.city ? { addressLocality: c.city } : {}), addressRegion: st, ...(c.zip ? { postalCode: c.zip } : {}), addressCountry: "US" },
     ...(c.lat != null && c.lng != null ? { geo: { "@type": "GeoCoordinates", latitude: c.lat, longitude: c.lng } } : {}) };
-  return layout({ title: `${c.name} tee times — ${c.city ? c.city + ", " : ""}${st} — OneTee`,
-    desc: rows.length ? `${rows.length} open tee times today at ${c.name} in ${c.city || name}${v.fromPrice != null ? `, from ${money(v.fromPrice)}` : ""}. Book direct with the course; no fees.`
-      : `${c.name} in ${c.city || name}: tee times, booking link${c.phone ? ", phone" : ""} and website. Book direct with the course; no fees.`,
+  const where = `${c.city ? c.city + ", " : ""}${st}`;
+  return layout({ title: pub ? `${c.name} tee times — ${where} — OneTee` : `${c.name} — ${where} — OneTee`,
+    desc: pub ? `${c.name} in ${c.city || name}: today's open tee times with prices, booking link${c.phone ? ", phone" : ""} and website. Book direct with the course; no fees.`
+      : `${c.name} in ${c.city || name} is a ${c.booking_method === "military" ? "military" : "private"} club. Find public courses nearby on OneTee.`,
     canonical: SITE + courseHref(c), crumbs: [{ label: "Tee times", href: "/" }, { label: name, href: stateHref(st) }, ...(c.city ? [{ label: c.city, href: cityHref(st, slug(c.city)) }] : []), { label: c.name }],
-    body, jsonld: ld });
+    body, jsonld: ld, noindex: !courseIndexable(c) });
 }
 
 // ---------- write ----------
@@ -385,12 +454,15 @@ async function main() {
   fs.rmSync(tmp, { recursive: true, force: true });
   fs.mkdirSync(tmp, { recursive: true });
 
+  // Every page is written; only the ones worth indexing go in the sitemap (the rest
+  // carry noindex,follow so their links still count).
   const urls = [];
-  const add = (href, priority) => urls.push({ href, priority });
+  let pages = 0;
+  const add = (href, priority, index = true) => { pages++; if (index) urls.push({ href, priority }); };
   writePage(tmp, "/", renderIndex(model, stamp)); add("/", "1.0");
   for (const st of model.states) { writePage(tmp, stateHref(st), renderState(model, st, stamp)); add(stateHref(st), "0.9"); }
-  for (const x of model.cities.values()) { writePage(tmp, cityHref(x.state, x.slug), renderCity(model, x, stamp)); add(cityHref(x.state, x.slug), "0.6"); }
-  for (const c of model.courses) { writePage(tmp, courseHref(c), renderCourse(model, c, stamp)); add(courseHref(c), model.byVenue.has(c.venue_id) ? "0.7" : "0.4"); }
+  for (const x of model.cities.values()) { writePage(tmp, cityHref(x.state, x.slug), renderCity(model, x, stamp)); add(cityHref(x.state, x.slug), "0.6", cityIndexable(x)); }
+  for (const c of model.courses) { writePage(tmp, courseHref(c), renderCourse(model, c, stamp)); add(courseHref(c), model.byVenue.has(c.venue_id) ? "0.7" : "0.4", courseIndexable(c)); }
 
   const today = new Date().toISOString().slice(0, 10);
   fs.writeFileSync(path.join(tmp, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
@@ -400,8 +472,9 @@ async function main() {
     body: `<h1>That page is not here</h1><p class="sub">Try <a href="/">tee times by state</a> or <a href="${MAIN}/tee-times">search on OneTee</a>.</p>` }));
   const live = [...model.byVenue.keys()].length;
   const totalTimes = [...model.byVenue.values()].reduce((s, v) => s + v.count, 0);
-  fs.writeFileSync(path.join(tmp, "_build.json"), JSON.stringify({ built_at: new Date().toISOString(), pages: urls.length, states: model.states,
-    courses: model.courses.length, cities: model.cities.size, courses_with_times: live, tee_times: totalTimes, seconds: Math.round((Date.now() - t0) / 100) / 10 }, null, 2));
+  const rolled = model.states.filter((st) => dayFor(st).rolled);
+  fs.writeFileSync(path.join(tmp, "_build.json"), JSON.stringify({ built_at: new Date().toISOString(), pages, indexable: urls.length, states: model.states,
+    showing_tomorrow: rolled, courses: model.courses.length, cities: model.cities.size, courses_with_times: live, tee_times: totalTimes, seconds: Math.round((Date.now() - t0) / 100) / 10 }, null, 2));
 
   // atomic swap
   const old = OUT + ".old";
@@ -409,7 +482,7 @@ async function main() {
   if (fs.existsSync(OUT)) fs.renameSync(OUT, old);
   fs.renameSync(tmp, OUT);
   fs.rmSync(old, { recursive: true, force: true });
-  console.log(`pages: ${urls.length} written to ${OUT} — ${model.states.length} states, ${model.cities.size} cities, ${model.courses.length} courses (${live} with ${totalTimes} tee times today) in ${Math.round((Date.now() - t0) / 1000)}s`);
+  console.log(`pages: ${pages} written (${urls.length} in the sitemap) to ${OUT} — ${model.states.length} states, ${model.cities.size} cities, ${model.courses.length} courses (${live} with ${totalTimes} tee times${rolled.length ? `; ${rolled.join(",")} showing tomorrow` : ""}) in ${Math.round((Date.now() - t0) / 1000)}s`);
 }
 
 main().catch((e) => { console.error("build failed:", e); process.exit(1); });
