@@ -4,9 +4,13 @@
 #   Phase 2: Node read+ingest API (systemd service onetee-api on 127.0.0.1:8080)
 #   Phase 3: one-time seed from the live worker (only if tee_times is empty)
 #   Phase 4: Caddy HTTPS reverse proxy (vps.oneteeapp.com -> 127.0.0.1:8080)
+#            + static file host for the indexable tee-time pages
+#   Phase 6: indexable tee-time pages (pages/build.mjs) on a 2-hour timer
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 API_HOST="api.oneteeapp.com"
+PAGES_HOST="tee-times.oneteeapp.com"
+PAGES_ROOT="/var/www/onetee-pages"
 echo "== OneTee VPS deploy =="
 cd "$(dirname "$0")"
 
@@ -99,11 +103,37 @@ if ! command -v caddy >/dev/null 2>&1; then
   apt-get update -qq
   apt-get install -y caddy >/dev/null
 fi
-cat > /etc/caddy/Caddyfile <<CADDY
+mkdir -p "${PAGES_ROOT}"
+# Two sites: the API proxy, and the pre-rendered tee-time pages as plain files
+# (Phase 6 builds them). Caddy provisions each certificate independently, so
+# the pages host failing ACME (e.g. DNS not pointed yet) never affects the API.
+cat > /etc/caddy/Caddyfile.new <<CADDY
 ${API_HOST} {
 	reverse_proxy 127.0.0.1:8080
 }
+
+${PAGES_HOST} {
+	root * ${PAGES_ROOT}
+	encode gzip
+	header Cache-Control "public, max-age=600"
+	handle_errors {
+		@404 {
+			expression {http.error.status_code} == 404
+		}
+		rewrite @404 /404.html
+		file_server
+	}
+	file_server
+}
 CADDY
+# Never replace a working Caddyfile with one Caddy rejects: the API host lives here too.
+if caddy validate --config /etc/caddy/Caddyfile.new --adapter caddyfile >/tmp/caddy-validate.log 2>&1; then
+  mv -f /etc/caddy/Caddyfile.new /etc/caddy/Caddyfile
+  echo "Caddyfile valid (api + pages hosts)"
+else
+  echo "WARN: new Caddyfile rejected, keeping the current one:"; tail -5 /tmp/caddy-validate.log
+  rm -f /etc/caddy/Caddyfile.new
+fi
 ufw allow 80/tcp  >/dev/null 2>&1 || true
 ufw allow 443/tcp >/dev/null 2>&1 || true
 systemctl enable caddy >/dev/null 2>&1 || true
@@ -228,6 +258,48 @@ if [ ! -f /root/.onetee-restore-verified ] && [ -f /root/onetee-r2.env ] && comm
     fi
   )
 fi
+
+# ---------- Phase 6: indexable tee-time pages ----------
+# pages/build.mjs reads today's tee times from the local API + the directory
+# bundle and writes ${PAGES_ROOT} (atomic swap). A systemd timer rebuilds every
+# two hours; one build runs now so the host is never empty after a deploy.
+mkdir -p /opt/onetee-pages
+cp -f pages/build.mjs /opt/onetee-pages/
+cat > /etc/systemd/system/onetee-pages.service <<UNIT
+[Unit]
+Description=OneTee static tee-time pages build (${PAGES_HOST})
+After=network.target onetee-api.service
+[Service]
+Type=oneshot
+Environment=API_BASE=http://127.0.0.1:8080
+Environment=PAGES_OUT=${PAGES_ROOT}
+Environment=PAGES_HOST=${PAGES_HOST}
+Environment=DIRECTORY_PATH=/opt/onetee-api/directory.json
+ExecStart=/usr/bin/node /opt/onetee-pages/build.mjs
+UNIT
+cat > /etc/systemd/system/onetee-pages.timer <<'UNIT'
+[Unit]
+Description=Rebuild OneTee tee-time pages every 2 hours
+[Timer]
+OnBootSec=3min
+OnCalendar=*-*-* 00/2:07:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable onetee-pages.timer >/dev/null 2>&1 || true
+systemctl restart onetee-pages.timer
+echo "---- first pages build ----"
+if systemctl start onetee-pages.service; then
+  journalctl -u onetee-pages.service -n 3 --no-pager -o cat || true
+  echo "pages: $(find "${PAGES_ROOT}" -name index.html 2>/dev/null | wc -l) html files; $(cat "${PAGES_ROOT}/_build.json" 2>/dev/null | tr -d '\n' | head -c 300)"
+else
+  echo "WARN: pages build failed (see: journalctl -u onetee-pages.service)"; journalctl -u onetee-pages.service -n 20 --no-pager -o cat || true
+fi
+echo "pages timer: $(systemctl is-active onetee-pages.timer); next: $(systemctl show onetee-pages.timer -p NextElapseUSecRealtime --value)"
+echo "---- pages host (localhost, Host header) ----"
+curl -s -o /dev/null -w 'HTTP %{http_code} for http://127.0.0.1/ with Host ${PAGES_HOST}\n' -H "Host: ${PAGES_HOST}" http://127.0.0.1/ || true
 
 echo "---- API /api/health (localhost) ----"; curl -s http://127.0.0.1:8080/api/health; echo
 echo "== deploy done OK =="
