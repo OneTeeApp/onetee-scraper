@@ -829,7 +829,9 @@ async function main() {
   if (fs.existsSync(OUT)) fs.renameSync(OUT, old);
   fs.renameSync(tmp, OUT);
   fs.rmSync(old, { recursive: true, force: true });
-  console.log("indexnow:", await submitIndexNow(inKey, hubs.map((h) => SITE + h), urls.map((u) => SITE + u.href)));
+  const inRes = await submitIndexNow(inKey, hubs.map((h) => SITE + h), urls.map((u) => SITE + u.href));
+  console.log("indexnow:", inRes);
+  try { fs.writeFileSync(path.join(OUT, "_indexnow.json"), JSON.stringify({ at: new Date().toISOString(), result: inRes })); } catch (e) { /* ignore */ }
   console.log(`pages: ${pages} written (${urls.length} in the sitemap) to ${OUT} — ${model.states.length} states, ${model.cities.size} cities, ${model.courses.length} courses (${live} with ${totalTimes} tee times${rolled.length ? `; ${rolled.join(",")} showing tomorrow` : ""}) in ${Math.round((Date.now() - t0) / 1000)}s`);
 }
 
