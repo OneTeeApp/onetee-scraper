@@ -6,6 +6,10 @@ name: Scrape SuperSaaS via browser (0-6 hourly, 0-30 daily)
 # and scrapes the open "new reservation" chips. Login is only needed to *book*.
 # The plain scraper excludes supersaas, so this job solely owns those slugs.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # Split so the DEEP slots have their own cron STRINGS to match on — a
@@ -36,7 +40,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +50,7 @@ jobs:
       - name: Install deps + Chromium
         run: |
           pip install requests playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium   # deps preinstalled by vps/scraper-host/bootstrap.sh
       - name: Scrape 3 days + push each to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

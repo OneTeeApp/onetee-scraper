@@ -10,6 +10,10 @@ name: Scrape mid tier (days 3-7, hourly)
 # only reads/writes its own courses in D1 (the sync is course-scoped), so shards
 # never contend. Bump SHARDS by widening the matrix list — nothing else changes.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     - cron: "17 * * * *"
@@ -38,7 +42,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     # Was 25, which this job had silently outgrown. Measured in run #213 shard
     # 0: day 3 took 10m31s, day 4 took 13m18s, day 5 started at 10:08:22 and
     # was cancelled 78 seconds later. Two of five dates, every hour, for as
