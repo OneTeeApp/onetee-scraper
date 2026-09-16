@@ -3,8 +3,8 @@ PER-STATE COVERAGE
 ==========================================================================
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
-CO          180   130    72%            2            0            0            0            0           48           61
-AZ          204   171    84%           15            0            3            0            0           15           14
+CO          180   131    73%            1            0            0            0            0           48           61
+AZ          204   170    83%           16            0            3            0            0           15           14
 VA          227   114    50%            0            0            0            4            0          109          102
 FL          646   314    49%           23            4           12           76           27          190           10
 MD          119    74    62%            2            0            0            8            2           33            1
@@ -26,11 +26,11 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
   silent       teeitup                     32   AZ:3 FL:8 MD:2 NJ:3 NY:14 VT:2
+  silent       foreup                      11   AZ:5 FL:3 NY:3
   silent       chronogolf                  11   AZ:1 FL:2 NY:8
-  silent       foreup                      10   AZ:4 FL:3 NY:3
   silent       teesnap                     10   AZ:2 FL:3 NY:5
-  silent       clubcaddie                   6   CO:1 NY:5
   silent       clubprophet                  5   CO:1 FL:2 NJ:1 NY:1
+  silent       clubcaddie                   5   NY:5
   silent       golfback                     4   FL:4
   silent       golfwithaccess               3   AZ:3
   silent       courseco                     2   AZ:2
@@ -102,12 +102,11 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   no_booking   totale                       1   FL:1
 
 ==========================================================================
-CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 private), 130 live (72%)
+CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 private), 131 live (73%)
 ==========================================================================
 
-  SILENT  (2) — believed scrapable, returning nothing
+  SILENT  (1) — believed scrapable, returning nothing
      Emerald Greens Golf Club                     clubprophet    Denver
-     Monte Vista Country Club                     clubcaddie     Monte Vista
 
   NO_BOOKING  (48) — playable, but no online booking in the source data
      Broadmoor Golf Club                          —              Colorado Springs
@@ -160,16 +159,17 @@ CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 171 live (84%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 170 live (83%)
 ==========================================================================
 
-  SILENT  (15) — believed scrapable, returning nothing
+  SILENT  (16) — believed scrapable, returning nothing
      Canoa Ranch Golf Club                        chronogolf     Green Valley
      Coldwater Golf Club                          teeitup        Avondale
      Copper Canyon Golf Club (Sun City Festival)  teeitup        Buckeye
      Deer Valley Golf Course (Sun City West)      courseco       Sun City West
      Dell Urich Golf Course                       golfwithaccess Tucson
      Desert Trails Golf Course (Sun City West)    courseco       Sun City West
+     Dorado Golf Course                           foreup         Tucson
      El Rio Golf Club                             foreup         Mohave Valley
      Francisco Grande Hotel & Golf Resort         foreup         Casa Grande
      Fred Enke Golf Course                        golfwithaccess Tucson
@@ -1265,21 +1265,21 @@ NJ  —  156 bookable courses (265 in new_jersey_golf_courses_booking.csv, 109 p
 ==========================================================================
 REGISTRY DRIFT (15) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     320 rows
-  FL  Providence Golf Club                         teeitup        1559 rows
-  FL  Willowbrook Golf Course                      teeitup        571 rows
-  MD  Fox Hollow Golf Course                       foreup         242 rows
-  MD  Rocky Point Golf Course                      foreup         186 rows
+  FL  Continental Country Club                     chronogolf     319 rows
+  FL  Providence Golf Club                         teeitup        1561 rows
+  FL  Willowbrook Golf Course                      teeitup        564 rows
+  MD  Fox Hollow Golf Course                       foreup         233 rows
+  MD  Rocky Point Golf Course                      foreup         182 rows
   NJ  Black Bear Golf Club                         ezlinks        348 rows
-  NJ  Cedar Creek Golf Course                      golfnow        290 rows
-  NJ  Mountain View Golf Course                    foreup         135 rows
-  NY  Arrowhead Golf Club                          teesnap        689 rows
-  NY  Forest Park Golf Course                      teeitup        701 rows
-  NY  Fox Run Golf Course                          teeitup        242 rows
-  NY  Old Hickory Golf Club                        teeitup        211 rows
-  NY  Willowbrook Golf Course                      foreup         358 rows
-  UT  Fox Hollow Golf Club                         membersports   88 rows
-  UT  Mountain View Golf Course                    chronogolf     250 rows
+  NJ  Cedar Creek Golf Course                      golfnow        286 rows
+  NJ  Mountain View Golf Course                    foreup         152 rows
+  NY  Arrowhead Golf Club                          teesnap        637 rows
+  NY  Forest Park Golf Course                      teeitup        673 rows
+  NY  Fox Run Golf Course                          teeitup        243 rows
+  NY  Old Hickory Golf Club                        teeitup        232 rows
+  NY  Willowbrook Golf Course                      foreup         333 rows
+  UT  Fox Hollow Golf Club                         membersports   108 rows
+  UT  Mountain View Golf Course                    chronogolf     222 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (15) — serving tee times, not traceable to a CSV course
