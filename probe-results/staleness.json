@@ -1,42 +1,45 @@
 {
- "generated_at": "2026-09-16T00:10:14+00:00",
+ "generated_at": "2026-09-16T05:52:25+00:00",
  "max_age_hours": 6.0,
  "state": null,
- "courses_with_active_rows": 1248,
- "active_rows": 715513,
+ "courses_with_active_rows": 1246,
+ "active_rows": 731244,
  "age_distribution": {
   "<2h": {
-   "courses": 836,
-   "rows": 502844
+   "courses": 822,
+   "rows": 487365
   },
   "6-24h": {
-   "courses": 130,
-   "rows": 59275
+   "courses": 139,
+   "rows": 77042
   },
   "2-6h": {
-   "courses": 273,
-   "rows": 145437
+   "courses": 251,
+   "rows": 140486
+  },
+  "1-3d": {
+   "courses": 28,
+   "rows": 19691
   },
   ">3d": {
    "courses": 6,
-   "rows": 6691
-  },
-  "1-3d": {
-   "courses": 3,
-   "rows": 1266
+   "rows": 6660
   }
  },
  "tally": {
-  "error": 47,
-  "live": 92
+  "error": 67,
+  "live": 105,
+  "orphaned": 1
  },
- "orphaned_rows": 0,
+ "orphaned_rows": 238,
  "manually_adjudicated": [
   "meeker-golf-course"
  ],
  "deactivated": {
-  "deactivated": 0,
-  "slugs": {},
+  "deactivated": 238,
+  "slugs": {
+   "san-pedro-golf-course": 238
+  },
   "dry_run": false
  },
  "results": [
@@ -46,20 +49,18 @@
    "platform": "clubprophet",
    "active_rows": 961,
    "newest_last_seen": "2026-09-02T13:25:36+00:00",
-   "age_hours": 322.7,
+   "age_hours": 328.4,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-10-02T17:00:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-10-02": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 404 Client Error: Not Found for url: https://highlandsridgefl.cps.golf/identityapi/myconnect/token/short",
     "2026-09-16: HTTPError: 404 Client Error: Not Found for url: https://highlandsridgefl.cps.golf/identityapi/myconnect/token/short",
     "2026-10-02: HTTPError: 404 Client Error: Not Found for url: https://highlandsridgefl.cps.golf/identityapi/myconnect/token/short"
    ]
@@ -70,20 +71,18 @@
    "platform": "clubprophet",
    "active_rows": 906,
    "newest_last_seen": "2026-09-02T13:25:36+00:00",
-   "age_hours": 322.7,
+   "age_hours": 328.4,
    "teetime_range": [
     "2026-09-16T08:00:00",
     "2026-10-02T18:00:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-10-02": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 404 Client Error: Not Found for url: https://stjamesbay.cps.golf/identityapi/myconnect/token/short",
     "2026-09-16: HTTPError: 404 Client Error: Not Found for url: https://stjamesbay.cps.golf/identityapi/myconnect/token/short",
     "2026-10-02: HTTPError: 404 Client Error: Not Found for url: https://stjamesbay.cps.golf/identityapi/myconnect/token/short"
    ]
@@ -94,20 +93,18 @@
    "platform": "clubprophet",
    "active_rows": 879,
    "newest_last_seen": "2026-09-02T13:25:36+00:00",
-   "age_hours": 322.7,
+   "age_hours": 328.4,
    "teetime_range": [
     "2026-09-16T08:38:00",
     "2026-10-02T16:54:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-10-02": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: tanglewood-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
     "2026-09-16: RuntimeError: tanglewood-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
     "2026-10-02: RuntimeError: tanglewood-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
    ]
@@ -118,20 +115,18 @@
    "platform": "clubprophet",
    "active_rows": 1099,
    "newest_last_seen": "2026-09-08T13:30:58+00:00",
-   "age_hours": 178.7,
+   "age_hours": 184.4,
    "teetime_range": [
     "2026-09-16T07:18:00",
     "2026-10-08T15:51:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-10-08": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: southern-dunes-golf-country-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
     "2026-09-16: RuntimeError: southern-dunes-golf-country-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
     "2026-10-08: RuntimeError: southern-dunes-golf-country-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
    ]
@@ -140,40 +135,39 @@
    "slug": "birch-ridge-golf-course",
    "state": "AK",
    "platform": "teesnap",
-   "active_rows": 995,
+   "active_rows": 969,
    "newest_last_seen": "2026-09-10T23:30:34+00:00",
-   "age_hours": 120.7,
+   "age_hours": 126.4,
    "teetime_range": [
-    "2026-09-15T16:20:00",
+    "2026-09-16T08:30:00",
     "2026-09-30T19:20:00"
    ],
    "verdict": "live",
    "fetched": {
     "2026-09-15": 76,
+    "2026-09-16": 60,
     "2026-09-30": 62
    },
-   "fetched_rows": 138
+   "fetched_rows": 198
   },
   {
    "slug": "crane-lakes-golf-country-club",
    "state": "FL",
    "platform": "clubprophet",
-   "active_rows": 1851,
+   "active_rows": 1846,
    "newest_last_seen": "2026-09-11T15:11:18+00:00",
-   "age_hours": 105.0,
+   "age_hours": 110.7,
    "teetime_range": [
     "2026-09-16T12:18:00",
     "2026-10-11T19:54:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-10-11": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 404 Client Error: Not Found for url: https://cranelakes.cps.golf/identityapi/myconnect/token/short",
     "2026-09-16: HTTPError: 404 Client Error: Not Found for url: https://cranelakes.cps.golf/identityapi/myconnect/token/short",
     "2026-10-11: HTTPError: 404 Client Error: Not Found for url: https://cranelakes.cps.golf/identityapi/myconnect/token/short"
    ]
@@ -184,14 +178,13 @@
    "platform": "teeitup",
    "active_rows": 51,
    "newest_last_seen": "2026-09-13T22:43:43+00:00",
-   "age_hours": 49.4,
+   "age_hours": 55.1,
    "teetime_range": [
     "2026-09-16T10:00:00",
     "2026-09-22T15:30:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 7,
     "2026-09-22": 0
    },
@@ -201,22 +194,20 @@
    "slug": "minerals-golf-club",
    "state": "NJ",
    "platform": "ezlinks",
-   "active_rows": 496,
+   "active_rows": 493,
    "newest_last_seen": "2026-09-14T12:17:53+00:00",
-   "age_hours": 35.9,
+   "age_hours": 41.6,
    "teetime_range": [
     "2026-09-16T09:00:00",
     "2026-09-29T16:36:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://crystalgolfresortpub.ezlinksgolf.com/api/search/search",
     "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://crystalgolfresortpub.ezlinksgolf.com/api/search/search",
     "2026-09-29: HTTPError: 403 Client Error: Forbidden for url: https://crystalgolfresortpub.ezlinksgolf.com/api/search/search"
    ]
@@ -227,7 +218,7 @@
    "platform": "clubprophet",
    "active_rows": 719,
    "newest_last_seen": "2026-09-14T17:06:08+00:00",
-   "age_hours": 31.1,
+   "age_hours": 36.8,
    "teetime_range": [
     "2026-10-01T07:00:00",
     "2026-10-13T17:00:00"
@@ -240,86 +231,10 @@
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Tue+Sep+15+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=2c93c14f-8f6f-4fc8-a7e7-9f192da6cd42&teeOffTimeMin=0&teeOffTimeMax",
-    "2026-10-01: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Oct+01+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=1664eff6-d259-44cc-b99a-638fbbe24d18&teeOffTimeMin=0&teeOffTimeMax",
-    "2026-10-13: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Tue+Oct+13+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=e6f909f2-80a7-4af6-bf15-955d0972f3bd&teeOffTimeMin=0&teeOffTimeMax"
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Tue+Sep+15+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=e4856b63-541b-4c66-af3b-d1577f9474bf&teeOffTimeMin=0&teeOffTimeMax",
+    "2026-10-01: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Oct+01+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=d660a5d3-2782-48da-b30f-d0d47f4a7b45&teeOffTimeMin=0&teeOffTimeMax",
+    "2026-10-13: HTTPError: 403 Client Error: Forbidden for url: https://sewailo.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Tue+Oct+13+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=49e70c08-bced-48c7-984a-a66678ca056b&teeOffTimeMin=0&teeOffTimeMax"
    ]
-  },
-  {
-   "slug": "mark-twain-golf-course",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 212,
-   "newest_last_seen": "2026-09-15T04:06:53+00:00",
-   "age_hours": 20.1,
-   "teetime_range": [
-    "2026-09-16T10:02:00",
-    "2026-09-18T18:58:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 97,
-    "2026-09-16": 149,
-    "2026-09-18": 78
-   },
-   "fetched_rows": 324
-  },
-  {
-   "slug": "st-johnsbury-country-club",
-   "state": "VT",
-   "platform": "chronogolf",
-   "active_rows": 191,
-   "newest_last_seen": "2026-09-15T04:10:46+00:00",
-   "age_hours": 20.0,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-21T17:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 50,
-    "2026-09-16": 40,
-    "2026-09-21": 60
-   },
-   "fetched_rows": 150
-  },
-  {
-   "slug": "hidden-lakes-golf-course",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 403,
-   "newest_last_seen": "2026-09-15T04:13:05+00:00",
-   "age_hours": 20.0,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-20T17:48:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 82,
-    "2026-09-16": 80,
-    "2026-09-20": 82
-   },
-   "fetched_rows": 244
-  },
-  {
-   "slug": "sebring-municipal-golf-course",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 355,
-   "newest_last_seen": "2026-09-15T04:13:05+00:00",
-   "age_hours": 20.0,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-20T15:45:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 71,
-    "2026-09-16": 71,
-    "2026-09-20": 71
-   },
-   "fetched_rows": 213
   },
   {
    "slug": "seminole-lake-country-club",
@@ -327,56 +242,18 @@
    "platform": "teeitup",
    "active_rows": 5,
    "newest_last_seen": "2026-09-15T04:15:43+00:00",
-   "age_hours": 19.9,
+   "age_hours": 25.6,
    "teetime_range": [
     "2026-09-18T13:22:00",
     "2026-09-23T13:07:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
+    "2026-09-16": 0,
     "2026-09-18": 1,
     "2026-09-23": 0
    },
    "fetched_rows": 1
-  },
-  {
-   "slug": "the-lakes-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 110,
-   "newest_last_seen": "2026-09-15T04:16:34+00:00",
-   "age_hours": 19.9,
-   "teetime_range": [
-    "2026-09-16T07:20:00",
-    "2026-09-22T10:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 20,
-    "2026-09-22": 20
-   },
-   "fetched_rows": 40
-  },
-  {
-   "slug": "green-s-folly-golf-course",
-   "state": "VA",
-   "platform": "teeitup",
-   "active_rows": 728,
-   "newest_last_seen": "2026-09-15T04:17:00+00:00",
-   "age_hours": 19.9,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-29T16:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 52,
-    "2026-09-29": 52
-   },
-   "fetched_rows": 104
   },
   {
    "slug": "kings-gate-golf-club",
@@ -384,151 +261,17 @@
    "platform": "teeitup",
    "active_rows": 121,
    "newest_last_seen": "2026-09-15T04:18:00+00:00",
-   "age_hours": 19.9,
+   "age_hours": 25.6,
    "teetime_range": [
     "2026-09-16T07:56:00",
     "2026-09-22T15:59:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 17,
     "2026-09-22": 19
    },
    "fetched_rows": 36
-  },
-  {
-   "slug": "lake-diamond-golf-country-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 366,
-   "newest_last_seen": "2026-09-15T04:18:00+00:00",
-   "age_hours": 19.9,
-   "teetime_range": [
-    "2026-09-16T07:18:00",
-    "2026-09-22T15:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 69,
-    "2026-09-22": 78
-   },
-   "fetched_rows": 147
-  },
-  {
-   "slug": "the-club-at-venetian-bay",
-   "state": "FL",
-   "platform": "foreup",
-   "active_rows": 455,
-   "newest_last_seen": "2026-09-15T04:19:23+00:00",
-   "age_hours": 19.8,
-   "teetime_range": [
-    "2026-09-16T06:28",
-    "2026-09-21T15:24"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 57,
-    "2026-09-21": 41
-   },
-   "fetched_rows": 98
-  },
-  {
-   "slug": "lake-ridge-golf-course",
-   "state": "VA",
-   "platform": "teeitup",
-   "active_rows": 774,
-   "newest_last_seen": "2026-09-15T04:20:11+00:00",
-   "age_hours": 19.8,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-29T16:50:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 0,
-    "2026-09-29": 54
-   },
-   "fetched_rows": 54
-  },
-  {
-   "slug": "clerbrook-golf-rv-resort",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 189,
-   "newest_last_seen": "2026-09-15T04:22:48+00:00",
-   "age_hours": 19.8,
-   "teetime_range": [
-    "2026-09-16T08:30:00",
-    "2026-09-22T13:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 28,
-    "2026-09-22": 28
-   },
-   "fetched_rows": 56
-  },
-  {
-   "slug": "hat-creek-golf-course",
-   "state": "VA",
-   "platform": "teeitup",
-   "active_rows": 520,
-   "newest_last_seen": "2026-09-15T04:30:50+00:00",
-   "age_hours": 19.7,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-25T16:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 52,
-    "2026-09-25": 52
-   },
-   "fetched_rows": 104
-  },
-  {
-   "slug": "holland-meadows-golf-course",
-   "state": "NY",
-   "platform": "teeitup",
-   "active_rows": 408,
-   "newest_last_seen": "2026-09-15T04:34:02+00:00",
-   "age_hours": 19.6,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-23T15:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 51,
-    "2026-09-23": 51
-   },
-   "fetched_rows": 102
-  },
-  {
-   "slug": "boca-dunes-golf-country-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 231,
-   "newest_last_seen": "2026-09-15T04:36:47+00:00",
-   "age_hours": 19.6,
-   "teetime_range": [
-    "2026-09-19T07:10:00",
-    "2026-09-22T16:50:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-19": 56,
-    "2026-09-22": 59
-   },
-   "fetched_rows": 115
   },
   {
    "slug": "mount-anthony-country-club",
@@ -536,113 +279,35 @@
    "platform": "teesnap",
    "active_rows": 2079,
    "newest_last_seen": "2026-09-15T04:41:27+00:00",
-   "age_hours": 19.5,
+   "age_hours": 25.2,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-10-14T17:56:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 89,
     "2026-09-16": 89,
     "2026-10-14": 83
    },
-   "fetched_rows": 261
+   "fetched_rows": 172
   },
   {
-   "slug": "tubac-golf-resort-spa",
-   "state": "AZ",
-   "platform": "teeitup",
-   "active_rows": 597,
-   "newest_last_seen": "2026-09-15T04:49:08+00:00",
-   "age_hours": 19.4,
-   "teetime_range": [
-    "2026-10-05T07:05:00",
-    "2026-10-15T16:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-10-05": 55,
-    "2026-10-15": 53
-   },
-   "fetched_rows": 108
-  },
-  {
-   "slug": "green-river-golf-course",
-   "state": "UT",
-   "platform": "teeitup",
-   "active_rows": 338,
-   "newest_last_seen": "2026-09-15T04:55:14+00:00",
-   "age_hours": 19.3,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 55,
-    "2026-09-22": 55
-   },
-   "fetched_rows": 110
-  },
-  {
-   "slug": "indianwood-golf-country-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 464,
-   "newest_last_seen": "2026-09-15T04:55:14+00:00",
-   "age_hours": 19.3,
-   "teetime_range": [
-    "2026-09-16T07:15:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 76,
-    "2026-09-22": 79
-   },
-   "fetched_rows": 155
-  },
-  {
-   "slug": "lake-chesdin-golf-club",
+   "slug": "newport-news-golf-club-at-deer-run",
    "state": "VA",
-   "platform": "teeitup",
-   "active_rows": 332,
-   "newest_last_seen": "2026-09-15T04:56:31+00:00",
-   "age_hours": 19.2,
+   "platform": "teesnap",
+   "active_rows": 1343,
+   "newest_last_seen": "2026-09-15T04:55:16+00:00",
+   "age_hours": 25.0,
    "teetime_range": [
-    "2026-09-16T14:20:00",
-    "2026-09-23T15:20:00"
+    "2026-09-16T07:30:00",
+    "2026-09-24T18:27:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 17,
-    "2026-09-23": 46
+    "2026-09-16": 148,
+    "2026-09-24": 147
    },
-   "fetched_rows": 63
-  },
-  {
-   "slug": "copper-rock-golf-course",
-   "state": "UT",
-   "platform": "golfscape",
-   "active_rows": 272,
-   "newest_last_seen": "2026-09-15T05:00:27+00:00",
-   "age_hours": 19.2,
-   "teetime_range": [
-    "2026-09-16T09:48:00",
-    "2026-10-15T15:24:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 1,
-    "2026-10-15": 1
-   },
-   "fetched_rows": 2
+   "fetched_rows": 295
   },
   {
    "slug": "belden-hill-golf-course",
@@ -650,18 +315,17 @@
    "platform": "teesnap",
    "active_rows": 978,
    "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "age_hours": 24.7,
    "teetime_range": [
     "2026-09-16T07:30:00",
     "2026-09-29T18:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 69,
     "2026-09-16": 69,
     "2026-09-29": 69
    },
-   "fetched_rows": 207
+   "fetched_rows": 138
   },
   {
    "slug": "john-p-larkin-country-club",
@@ -669,18 +333,17 @@
    "platform": "teesnap",
    "active_rows": 489,
    "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "age_hours": 24.7,
    "teetime_range": [
     "2026-09-16T12:40:00",
     "2026-09-29T16:40:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 31,
     "2026-09-16": 41,
     "2026-09-29": 47
    },
-   "fetched_rows": 119
+   "fetched_rows": 88
   },
   {
    "slug": "montague-golf-club",
@@ -688,18 +351,17 @@
    "platform": "teesnap",
    "active_rows": 523,
    "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "age_hours": 24.7,
    "teetime_range": [
     "2026-09-16T08:00:00",
     "2026-09-29T15:20:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 60,
     "2026-09-16": 7,
     "2026-09-29": 42
    },
-   "fetched_rows": 109
+   "fetched_rows": 49
   },
   {
    "slug": "osceola-golf-course",
@@ -707,18 +369,17 @@
    "platform": "teesnap",
    "active_rows": 746,
    "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "age_hours": 24.7,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-09-29T16:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 60,
     "2026-09-16": 60,
     "2026-09-29": 60
    },
-   "fetched_rows": 180
+   "fetched_rows": 120
   },
   {
    "slug": "quail-heights-country-club",
@@ -726,7 +387,313 @@
    "platform": "teesnap",
    "active_rows": 1092,
    "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-29T19:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 78,
+    "2026-09-29": 78
+   },
+   "fetched_rows": 156
+  },
+  {
+   "slug": "silver-lake-country-club",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 690,
+   "newest_last_seen": "2026-09-15T05:10:39+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-29T17:10:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 56,
+    "2026-09-29": 56
+   },
+   "fetched_rows": 112
+  },
+  {
+   "slug": "the-pines-at-clermont",
+   "state": "NJ",
+   "platform": "teesnap",
+   "active_rows": 975,
+   "newest_last_seen": "2026-09-15T05:10:39+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T09:00:00",
+    "2026-09-29T18:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 90,
+    "2026-09-29": 90
+   },
+   "fetched_rows": 180
+  },
+  {
+   "slug": "apple-greens-golf-course",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 524,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:04:00",
+    "2026-09-22T18:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 79,
+    "2026-09-22": 77
+   },
+   "fetched_rows": 156
+  },
+  {
+   "slug": "arrowhead-golf-club-ny",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 603,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T06:48:00",
+    "2026-09-22T18:24:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 86,
+    "2026-09-22": 85
+   },
+   "fetched_rows": 171
+  },
+  {
+   "slug": "fillmore-golf-club",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 385,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-22T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 55,
+    "2026-09-22": 55
+   },
+   "fetched_rows": 110
+  },
+  {
+   "slug": "kinderton-country-club",
+   "state": "VA",
+   "platform": "teesnap",
+   "active_rows": 403,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-22T19:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 72,
+    "2026-09-22": 62
+   },
+   "fetched_rows": 134
+  },
+  {
+   "slug": "moccasin-wallow-golf-club",
+   "state": "FL",
+   "platform": "teesnap",
+   "active_rows": 489,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:15:00",
+    "2026-09-22T16:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 70,
+    "2026-09-22": 78
+   },
+   "fetched_rows": 148
+  },
+  {
+   "slug": "orleans-country-club",
+   "state": "VT",
+   "platform": "teesnap",
+   "active_rows": 318,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T14:10:00",
+    "2026-09-22T18:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 29,
+    "2026-09-22": 69
+   },
+   "fetched_rows": 98
+  },
+  {
+   "slug": "scotland-yards-golf-club",
+   "state": "FL",
+   "platform": "teesnap",
+   "active_rows": 615,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-22T17:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 88,
+    "2026-09-22": 88
+   },
+   "fetched_rows": 176
+  },
+  {
+   "slug": "west-bolton-golf-club",
+   "state": "VT",
+   "platform": "teesnap",
+   "active_rows": 331,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-22T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 50,
+    "2026-09-22": 56
+   },
+   "fetched_rows": 106
+  },
+  {
+   "slug": "willowcreek-golf-club",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 1074,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-22T17:56:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 164,
+    "2026-09-22": 166
+   },
+   "fetched_rows": 330
+  },
+  {
+   "slug": "willows-course-at-willowcreek-golf-club",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 1074,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-22T17:56:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 164,
+    "2026-09-22": 166
+   },
+   "fetched_rows": 330
+  },
+  {
+   "slug": "woodgate-pines-golf-club",
+   "state": "NY",
+   "platform": "teesnap",
+   "active_rows": 358,
+   "newest_last_seen": "2026-09-15T05:13:20+00:00",
+   "age_hours": 24.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-22T16:24:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 57,
+    "2026-09-22": 57
+   },
+   "fetched_rows": 114
+  },
+  {
+   "slug": "forest-lake-golf-club-of-ocoee",
+   "state": "FL",
+   "platform": "teesnap",
+   "active_rows": 1013,
+   "newest_last_seen": "2026-09-15T05:16:13+00:00",
+   "age_hours": 24.6,
+   "teetime_range": [
+    "2026-09-16T07:04:00",
+    "2026-09-27T18:24:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 80,
+    "2026-09-27": 86
+   },
+   "fetched_rows": 166
+  },
+  {
+   "slug": "apple-island-resort-golf-course",
+   "state": "VT",
+   "platform": "foreup",
+   "active_rows": 1491,
+   "newest_last_seen": "2026-09-15T05:30:37+00:00",
+   "age_hours": 24.4,
+   "teetime_range": [
+    "2026-09-16T08:00",
+    "2026-10-15T17:20"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 52,
+    "2026-10-15": 57
+   },
+   "fetched_rows": 109
+  },
+  {
+   "slug": "blush-hill-country-club",
+   "state": "VT",
+   "platform": "teesnap",
+   "active_rows": 709,
+   "newest_last_seen": "2026-09-15T05:39:13+00:00",
+   "age_hours": 24.2,
+   "teetime_range": [
+    "2026-09-16T08:36:00",
+    "2026-10-06T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 38,
+    "2026-10-06": 41
+   },
+   "fetched_rows": 79
+  },
+  {
+   "slug": "heather-gardens-golf-course",
+   "state": "CO",
+   "platform": "teesnap",
+   "active_rows": 1092,
+   "newest_last_seen": "2026-09-15T06:04:39+00:00",
+   "age_hours": 23.8,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-09-29T19:50:00"
@@ -740,345 +707,23 @@
    "fetched_rows": 234
   },
   {
-   "slug": "silver-lake-country-club",
-   "state": "NY",
+   "slug": "mount-massive-golf-course",
+   "state": "CO",
    "platform": "teesnap",
-   "active_rows": 690,
-   "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
+   "active_rows": 531,
+   "newest_last_seen": "2026-09-15T06:04:39+00:00",
+   "age_hours": 23.8,
    "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-29T17:10:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 56,
-    "2026-09-16": 56,
-    "2026-09-29": 56
-   },
-   "fetched_rows": 168
-  },
-  {
-   "slug": "the-pines-at-clermont",
-   "state": "NJ",
-   "platform": "teesnap",
-   "active_rows": 975,
-   "newest_last_seen": "2026-09-15T05:10:39+00:00",
-   "age_hours": 19.0,
-   "teetime_range": [
-    "2026-09-16T09:00:00",
-    "2026-09-29T18:52:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 90,
-    "2026-09-16": 90,
-    "2026-09-29": 90
-   },
-   "fetched_rows": 270
-  },
-  {
-   "slug": "sunset-view-golf-course",
-   "state": "UT",
-   "platform": "membersports",
-   "active_rows": 738,
-   "newest_last_seen": "2026-09-15T05:11:42+00:00",
-   "age_hours": 19.0,
-   "teetime_range": [
-    "2026-09-15T18:10:00",
-    "2026-09-28T17:50:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 58,
-    "2026-09-28": 54
-   },
-   "fetched_rows": 112
-  },
-  {
-   "slug": "apple-greens-golf-course",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 524,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:04:00",
-    "2026-09-22T18:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 79,
-    "2026-09-16": 79,
-    "2026-09-22": 77
-   },
-   "fetched_rows": 235
-  },
-  {
-   "slug": "arrowhead-golf-club-ny",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 603,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T06:48:00",
-    "2026-09-22T18:24:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 86,
-    "2026-09-16": 86,
-    "2026-09-22": 85
-   },
-   "fetched_rows": 257
-  },
-  {
-   "slug": "fillmore-golf-club",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 385,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T17:00:00"
+    "2026-09-16T11:10:00",
+    "2026-09-29T17:00:00"
    ],
    "verdict": "live",
    "fetched": {
     "2026-09-15": 55,
     "2026-09-16": 55,
-    "2026-09-22": 55
+    "2026-09-29": 43
    },
-   "fetched_rows": 165
-  },
-  {
-   "slug": "moccasin-wallow-golf-club",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 489,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:15:00",
-    "2026-09-22T16:52:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 70,
-    "2026-09-16": 70,
-    "2026-09-22": 78
-   },
-   "fetched_rows": 218
-  },
-  {
-   "slug": "orleans-country-club",
-   "state": "VT",
-   "platform": "teesnap",
-   "active_rows": 318,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T14:10:00",
-    "2026-09-22T18:50:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 70,
-    "2026-09-16": 29,
-    "2026-09-22": 69
-   },
-   "fetched_rows": 168
-  },
-  {
-   "slug": "scotland-yards-golf-club",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 615,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T17:52:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 88,
-    "2026-09-16": 88,
-    "2026-09-22": 88
-   },
-   "fetched_rows": 264
-  },
-  {
-   "slug": "west-bolton-golf-club",
-   "state": "VT",
-   "platform": "teesnap",
-   "active_rows": 331,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 49,
-    "2026-09-16": 50,
-    "2026-09-22": 56
-   },
-   "fetched_rows": 155
-  },
-  {
-   "slug": "willowcreek-golf-club",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 1074,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T17:56:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 93,
-    "2026-09-16": 164,
-    "2026-09-22": 166
-   },
-   "fetched_rows": 423
-  },
-  {
-   "slug": "willows-course-at-willowcreek-golf-club",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 1074,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T17:56:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 93,
-    "2026-09-16": 164,
-    "2026-09-22": 166
-   },
-   "fetched_rows": 423
-  },
-  {
-   "slug": "woodgate-pines-golf-club",
-   "state": "NY",
-   "platform": "teesnap",
-   "active_rows": 358,
-   "newest_last_seen": "2026-09-15T05:13:20+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T16:24:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 57,
-    "2026-09-16": 57,
-    "2026-09-22": 57
-   },
-   "fetched_rows": 171
-  },
-  {
-   "slug": "forest-lake-golf-club-of-ocoee",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 1013,
-   "newest_last_seen": "2026-09-15T05:16:13+00:00",
-   "age_hours": 18.9,
-   "teetime_range": [
-    "2026-09-16T07:04:00",
-    "2026-09-27T18:24:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 87,
-    "2026-09-16": 80,
-    "2026-09-27": 86
-   },
-   "fetched_rows": 253
-  },
-  {
-   "slug": "the-plantation-at-leesburg-golf-club-otter-creek-course",
-   "state": "FL",
-   "platform": "chronogolf",
-   "active_rows": 480,
-   "newest_last_seen": "2026-09-15T05:27:52+00:00",
-   "age_hours": 18.7,
-   "teetime_range": [
-    "2026-09-16T08:30:00",
-    "2026-09-22T17:56:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 74,
-    "2026-09-16": 85,
-    "2026-09-22": 67
-   },
-   "fetched_rows": 226
-  },
-  {
-   "slug": "thousand-acres-golf-club",
-   "state": "MD",
-   "platform": "chronogolf",
-   "active_rows": 237,
-   "newest_last_seen": "2026-09-15T05:27:52+00:00",
-   "age_hours": 18.7,
-   "teetime_range": [
-    "2026-09-18T08:00:00",
-    "2026-09-22T17:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-18": 35,
-    "2026-09-22": 55
-   },
-   "fetched_rows": 90
-  },
-  {
-   "slug": "apple-island-resort-golf-course",
-   "state": "VT",
-   "platform": "foreup",
-   "active_rows": 1491,
-   "newest_last_seen": "2026-09-15T05:30:37+00:00",
-   "age_hours": 18.7,
-   "teetime_range": [
-    "2026-09-16T08:00",
-    "2026-10-15T17:20"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 52,
-    "2026-10-15": 57
-   },
-   "fetched_rows": 109
-  },
-  {
-   "slug": "blush-hill-country-club",
-   "state": "VT",
-   "platform": "teesnap",
-   "active_rows": 709,
-   "newest_last_seen": "2026-09-15T05:39:13+00:00",
-   "age_hours": 18.5,
-   "teetime_range": [
-    "2026-09-16T08:36:00",
-    "2026-10-06T17:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 45,
-    "2026-09-16": 38,
-    "2026-10-06": 41
-   },
-   "fetched_rows": 124
+   "fetched_rows": 153
   },
   {
    "slug": "newcastle-country-club",
@@ -1086,7 +731,7 @@
    "platform": "teesnap",
    "active_rows": 440,
    "newest_last_seen": "2026-09-15T06:04:39+00:00",
-   "age_hours": 18.1,
+   "age_hours": 23.8,
    "teetime_range": [
     "2026-09-16T10:00:00",
     "2026-09-29T16:45:00"
@@ -1100,12 +745,31 @@
    "fetched_rows": 84
   },
   {
+   "slug": "the-course-at-petteys-park",
+   "state": "CO",
+   "platform": "teesnap",
+   "active_rows": 565,
+   "newest_last_seen": "2026-09-15T06:04:39+00:00",
+   "age_hours": 23.8,
+   "teetime_range": [
+    "2026-09-16T09:40:00",
+    "2026-09-29T17:10:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 59,
+    "2026-09-16": 59,
+    "2026-09-29": 59
+   },
+   "fetched_rows": 177
+  },
+  {
    "slug": "trinidad-golf-course",
    "state": "CO",
    "platform": "teeitup",
    "active_rows": 1327,
    "newest_last_seen": "2026-09-15T06:08:11+00:00",
-   "age_hours": 18.0,
+   "age_hours": 23.7,
    "teetime_range": [
     "2026-09-16T08:30:00",
     "2026-10-15T16:00:00"
@@ -1119,49 +783,12 @@
    "fetched_rows": 89
   },
   {
-   "slug": "davis-park-golf-course",
-   "state": "UT",
-   "platform": "foreup",
-   "active_rows": 5,
-   "newest_last_seen": "2026-09-15T06:13:22+00:00",
-   "age_hours": 17.9,
-   "teetime_range": [
-    "2026-09-17T11:44",
-    "2026-09-17T12:28"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-17": 5
-   },
-   "fetched_rows": 5
-  },
-  {
-   "slug": "village-golf-club",
-   "state": "FL",
-   "platform": "chronogolf",
-   "active_rows": 560,
-   "newest_last_seen": "2026-09-15T06:19:05+00:00",
-   "age_hours": 17.9,
-   "teetime_range": [
-    "2026-09-16T07:27:00",
-    "2026-09-25T16:54:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 60,
-    "2026-09-16": 51,
-    "2026-09-25": 53
-   },
-   "fetched_rows": 164
-  },
-  {
    "slug": "cedaredge-golf-club",
    "state": "CO",
    "platform": "foreup",
    "active_rows": 432,
    "newest_last_seen": "2026-09-15T06:29:58+00:00",
-   "age_hours": 17.7,
+   "age_hours": 23.4,
    "teetime_range": [
     "2026-09-16T10:30",
     "2026-09-28T16:20"
@@ -1180,7 +807,7 @@
    "platform": "foreup",
    "active_rows": 210,
    "newest_last_seen": "2026-09-15T06:48:10+00:00",
-   "age_hours": 17.4,
+   "age_hours": 23.1,
    "teetime_range": [
     "2026-09-16T10:00",
     "2026-09-21T16:50"
@@ -1199,60 +826,55 @@
    "platform": "foreup",
    "active_rows": 492,
    "newest_last_seen": "2026-09-15T06:48:14+00:00",
-   "age_hours": 17.4,
+   "age_hours": 23.1,
    "teetime_range": [
     "2026-09-16T07:00",
     "2026-09-21T17:48"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 82,
     "2026-09-21": 82
    },
    "fetched_rows": 164
   },
   {
-   "slug": "stonebrook-golf-club",
-   "state": "FL",
-   "platform": "clubprophet",
-   "active_rows": 2791,
-   "newest_last_seen": "2026-09-15T09:42:00+00:00",
-   "age_hours": 14.5,
+   "slug": "hollydot-golf-course",
+   "state": "CO",
+   "platform": "teesnap",
+   "active_rows": 322,
+   "newest_last_seen": "2026-09-15T06:58:11+00:00",
+   "age_hours": 22.9,
    "teetime_range": [
-    "2026-09-16T06:54:00",
-    "2026-10-11T17:10:00"
+    "2026-09-16T07:30:00",
+    "2026-09-22T16:26:00"
    ],
-   "verdict": "error",
+   "verdict": "live",
    "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-10-11": null
+    "2026-09-15": 63,
+    "2026-09-16": 66,
+    "2026-09-22": 58
    },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: RuntimeError: stonebrook-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
-    "2026-09-16: RuntimeError: stonebrook-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
-    "2026-10-11: RuntimeError: stonebrook-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
-   ]
+   "fetched_rows": 187
   },
   {
    "slug": "the-links-at-coyote-wash",
    "state": "AZ",
    "platform": "teeitup",
-   "active_rows": 679,
+   "active_rows": 670,
    "newest_last_seen": "2026-09-15T10:07:45+00:00",
-   "age_hours": 14.0,
+   "age_hours": 19.7,
    "teetime_range": [
-    "2026-09-15T17:37:00",
+    "2026-09-16T06:07:00",
     "2026-09-22T18:30:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 7,
+    "2026-09-15": 0,
+    "2026-09-16": 96,
     "2026-09-22": 100
    },
-   "fetched_rows": 107
+   "fetched_rows": 196
   },
   {
    "slug": "the-links-of-spruce-creek-south",
@@ -1260,23 +882,17 @@
    "platform": "teeitup",
    "active_rows": 111,
    "newest_last_seen": "2026-09-15T10:14:31+00:00",
-   "age_hours": 13.9,
+   "age_hours": 19.6,
    "teetime_range": [
     "2026-09-16T07:30:00",
     "2026-09-21T09:52:00"
    ],
-   "verdict": "error",
+   "verdict": "live",
    "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-21": null
+    "2026-09-16": 18,
+    "2026-09-21": 20
    },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-21: HTTPError: 429"
-   ]
+   "fetched_rows": 38
   },
   {
    "slug": "haven-golf-course",
@@ -1284,22 +900,65 @@
    "platform": "teeitup",
    "active_rows": 278,
    "newest_last_seen": "2026-09-15T10:19:16+00:00",
-   "age_hours": 13.8,
+   "age_hours": 19.6,
    "teetime_range": [
     "2026-09-26T07:03:00",
     "2026-09-29T15:41:00"
    ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-26": 69,
+    "2026-09-29": 70
+   },
+   "fetched_rows": 139
+  },
+  {
+   "slug": "foothills-executive-golf-course",
+   "state": "AZ",
+   "platform": "clubcaddie",
+   "active_rows": 595,
+   "newest_last_seen": "2026-09-15T10:26:30+00:00",
+   "age_hours": 19.4,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-09-22T17:52:00"
+   ],
    "verdict": "error",
    "fetched": {
     "2026-09-15": null,
-    "2026-09-26": null,
-    "2026-09-29": null
+    "2026-09-16": null,
+    "2026-09-22": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-26: HTTPError: 429",
-    "2026-09-29: HTTPError: 429"
+    "2026-09-15: RuntimeError: foothills-executive-golf-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-16: RuntimeError: foothills-executive-golf-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-22: RuntimeError: foothills-executive-golf-course: could not resolve Club Caddie CourseId from the booking page"
+   ]
+  },
+  {
+   "slug": "las-barrancas-golf-course",
+   "state": "AZ",
+   "platform": "clubcaddie",
+   "active_rows": 667,
+   "newest_last_seen": "2026-09-15T10:26:30+00:00",
+   "age_hours": 19.4,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-09-22T18:48:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: las-barrancas-golf-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-16: RuntimeError: las-barrancas-golf-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-22: RuntimeError: las-barrancas-golf-course: could not resolve Club Caddie CourseId from the booking page"
    ]
   },
   {
@@ -1308,23 +967,18 @@
    "platform": "teeitup",
    "active_rows": 28,
    "newest_last_seen": "2026-09-15T10:26:58+00:00",
-   "age_hours": 13.7,
+   "age_hours": 19.4,
    "teetime_range": [
     "2026-09-16T13:00:00",
     "2026-09-29T14:00:00"
    ],
-   "verdict": "error",
+   "verdict": "live",
    "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-29": null
+    "2026-09-15": 0,
+    "2026-09-16": 2,
+    "2026-09-29": 2
    },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-29: HTTPError: 429"
-   ]
+   "fetched_rows": 4
   },
   {
    "slug": "poplar-grove-golf-club",
@@ -1332,42 +986,21 @@
    "platform": "clubcaddie",
    "active_rows": 724,
    "newest_last_seen": "2026-09-15T10:33:29+00:00",
-   "age_hours": 13.6,
+   "age_hours": 19.3,
    "teetime_range": [
     "2026-09-16T08:10:00",
     "2026-09-29T17:50:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: poplar-grove-golf-club: could not resolve Club Caddie CourseId from the booking page",
     "2026-09-16: RuntimeError: poplar-grove-golf-club: could not resolve Club Caddie CourseId from the booking page",
     "2026-09-29: RuntimeError: poplar-grove-golf-club: could not resolve Club Caddie CourseId from the booking page"
    ]
-  },
-  {
-   "slug": "hunting-hawk-golf-club",
-   "state": "VA",
-   "platform": "quick18",
-   "active_rows": 42,
-   "newest_last_seen": "2026-09-15T10:48:27+00:00",
-   "age_hours": 13.4,
-   "teetime_range": [
-    "2026-09-16T16:36:00",
-    "2026-09-20T17:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 6,
-    "2026-09-20": 12
-   },
-   "fetched_rows": 18
   },
   {
    "slug": "canasawacta-country-club",
@@ -1375,36 +1008,36 @@
    "platform": "teesnap",
    "active_rows": 371,
    "newest_last_seen": "2026-09-15T11:00:23+00:00",
-   "age_hours": 13.2,
+   "age_hours": 18.9,
    "teetime_range": [
     "2026-09-16T10:06:00",
     "2026-09-22T17:54:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 120,
     "2026-09-16": 120,
     "2026-09-22": 120
    },
-   "fetched_rows": 360
+   "fetched_rows": 240
   },
   {
    "slug": "palmer-municipal-golf-course",
    "state": "AK",
    "platform": "teesnap",
-   "active_rows": 541,
+   "active_rows": 519,
    "newest_last_seen": "2026-09-15T11:00:23+00:00",
-   "age_hours": 13.2,
+   "age_hours": 18.9,
    "teetime_range": [
-    "2026-09-15T16:20:00",
+    "2026-09-16T07:31:00",
     "2026-09-22T19:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 75,
+    "2026-09-15": 66,
+    "2026-09-16": 75,
     "2026-09-22": 72
    },
-   "fetched_rows": 147
+   "fetched_rows": 213
   },
   {
    "slug": "the-preserve-at-turnbull-bay",
@@ -1412,36 +1045,55 @@
    "platform": "teesnap",
    "active_rows": 604,
    "newest_last_seen": "2026-09-15T11:00:23+00:00",
-   "age_hours": 13.2,
+   "age_hours": 18.9,
    "teetime_range": [
     "2026-09-16T06:44:00",
     "2026-09-22T18:12:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 87,
     "2026-09-16": 87,
     "2026-09-22": 86
    },
-   "fetched_rows": 260
+   "fetched_rows": 173
   },
   {
    "slug": "kenai-golf-course",
    "state": "AK",
    "platform": "teesnap",
-   "active_rows": 713,
+   "active_rows": 700,
    "newest_last_seen": "2026-09-15T11:03:44+00:00",
-   "age_hours": 13.1,
+   "age_hours": 18.8,
    "teetime_range": [
-    "2026-09-15T16:20:00",
+    "2026-09-16T10:10:00",
     "2026-09-29T18:20:00"
    ],
    "verdict": "live",
    "fetched": {
     "2026-09-15": 112,
+    "2026-09-16": 112,
     "2026-09-29": 112
    },
-   "fetched_rows": 224
+   "fetched_rows": 336
+  },
+  {
+   "slug": "stoneridge-golf-course",
+   "state": "AZ",
+   "platform": "teesnap",
+   "active_rows": 747,
+   "newest_last_seen": "2026-09-15T11:03:44+00:00",
+   "age_hours": 18.8,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-29T16:03:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 58,
+    "2026-09-16": 58,
+    "2026-09-29": 58
+   },
+   "fetched_rows": 174
   },
   {
    "slug": "wellesley-island-state-park-golf-course",
@@ -1449,18 +1101,17 @@
    "platform": "teesnap",
    "active_rows": 518,
    "newest_last_seen": "2026-09-15T11:03:44+00:00",
-   "age_hours": 13.1,
+   "age_hours": 18.8,
    "teetime_range": [
     "2026-09-16T11:00:00",
     "2026-09-29T17:00:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 49,
     "2026-09-16": 49,
     "2026-09-29": 49
    },
-   "fetched_rows": 147
+   "fetched_rows": 98
   },
   {
    "slug": "chaparral-golf-country-club",
@@ -1468,7 +1119,7 @@
    "platform": "foreup",
    "active_rows": 470,
    "newest_last_seen": "2026-09-15T11:06:46+00:00",
-   "age_hours": 13.1,
+   "age_hours": 18.8,
    "teetime_range": [
     "2026-09-16T09:24",
     "2026-09-28T16:48"
@@ -1487,42 +1138,40 @@
    "platform": "golfnow",
    "active_rows": 648,
    "newest_last_seen": "2026-09-15T11:12:34+00:00",
-   "age_hours": 13.0,
+   "age_hours": 18.7,
    "teetime_range": [
     "2026-09-16T10:30:00",
     "2026-09-29T17:40:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11112-zenwoods-golf-club/search",
     "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11112-zenwoods-golf-club/search",
     "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11112-zenwoods-golf-club/search"
    ]
   },
   {
-   "slug": "mulligans-golf-games",
-   "state": "UT",
-   "platform": "foreup",
-   "active_rows": 503,
-   "newest_last_seen": "2026-09-15T12:25:07+00:00",
-   "age_hours": 11.8,
+   "slug": "pagosa-springs-golf-club",
+   "state": "CO",
+   "platform": "teesnap",
+   "active_rows": 932,
+   "newest_last_seen": "2026-09-15T11:19:00+00:00",
+   "age_hours": 18.6,
    "teetime_range": [
-    "2026-09-16T08:04",
-    "2026-09-21T19:00"
+    "2026-09-16T08:00:00",
+    "2026-10-06T15:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 74,
-    "2026-09-21": 83
+    "2026-09-15": 44,
+    "2026-09-16": 44,
+    "2026-10-06": 42
    },
-   "fetched_rows": 157
+   "fetched_rows": 130
   },
   {
    "slug": "majestic-hills-golf-course",
@@ -1530,14 +1179,13 @@
    "platform": "foreup",
    "active_rows": 491,
    "newest_last_seen": "2026-09-15T12:45:54+00:00",
-   "age_hours": 11.4,
+   "age_hours": 17.1,
    "teetime_range": [
     "2026-09-16T08:00",
     "2026-09-24T17:50"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 60,
     "2026-09-24": 60
    },
@@ -1549,14 +1197,13 @@
    "platform": "foreup",
    "active_rows": 175,
    "newest_last_seen": "2026-09-15T12:54:04+00:00",
-   "age_hours": 11.3,
+   "age_hours": 17.0,
    "teetime_range": [
     "2026-09-16T08:00",
     "2026-09-19T16:50"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 43,
     "2026-09-19": 41
    },
@@ -1568,14 +1215,13 @@
    "platform": "foreup",
    "active_rows": 175,
    "newest_last_seen": "2026-09-15T12:59:07+00:00",
-   "age_hours": 11.2,
+   "age_hours": 16.9,
    "teetime_range": [
     "2026-09-16T08:00",
     "2026-09-19T16:50"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 43,
     "2026-09-19": 41
    },
@@ -1587,37 +1233,17 @@
    "platform": "foreup",
    "active_rows": 175,
    "newest_last_seen": "2026-09-15T13:00:00+00:00",
-   "age_hours": 11.2,
+   "age_hours": 16.9,
    "teetime_range": [
     "2026-09-16T08:00",
     "2026-09-19T16:50"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 43,
     "2026-09-19": 41
    },
    "fetched_rows": 84
-  },
-  {
-   "slug": "river-course-at-louisville-landing",
-   "state": "NY",
-   "platform": "foreup",
-   "active_rows": 290,
-   "newest_last_seen": "2026-09-15T13:00:22+00:00",
-   "age_hours": 11.2,
-   "teetime_range": [
-    "2026-09-16T07:15",
-    "2026-09-21T17:22"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 39,
-    "2026-09-21": 92
-   },
-   "fetched_rows": 131
   },
   {
    "slug": "victor-hills-golf-club-executive-course",
@@ -1625,14 +1251,13 @@
    "platform": "foreup",
    "active_rows": 175,
    "newest_last_seen": "2026-09-15T13:02:57+00:00",
-   "age_hours": 11.1,
+   "age_hours": 16.8,
    "teetime_range": [
     "2026-09-16T08:00",
     "2026-09-19T16:50"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
     "2026-09-16": 43,
     "2026-09-19": 41
    },
@@ -1644,50 +1269,25 @@
    "platform": "teesnap",
    "active_rows": 430,
    "newest_last_seen": "2026-09-15T13:20:28+00:00",
-   "age_hours": 10.8,
+   "age_hours": 16.5,
    "teetime_range": [
     "2026-09-16T07:03:00",
     "2026-09-22T18:54:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 48,
     "2026-09-16": 55,
     "2026-09-22": 69
    },
-   "fetched_rows": 172
-  },
-  {
-   "slug": "the-oaks-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 431,
-   "newest_last_seen": "2026-09-15T13:25:42+00:00",
-   "age_hours": 10.7,
-   "teetime_range": [
-    "2026-09-16T07:30:00",
-    "2026-09-25T16:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-25": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-25: HTTPError: 429"
-   ]
+   "fetched_rows": 124
   },
   {
    "slug": "old-mill-golf-course",
    "state": "UT",
    "platform": "chronogolf",
-   "active_rows": 65,
+   "active_rows": 59,
    "newest_last_seen": "2026-09-15T13:39:12+00:00",
-   "age_hours": 10.5,
+   "age_hours": 16.2,
    "teetime_range": [
     "2026-09-17T08:40:00",
     "2026-09-22T13:40:00"
@@ -1695,29 +1295,10 @@
    "verdict": "live",
    "fetched": {
     "2026-09-15": 3,
-    "2026-09-17": 9,
-    "2026-09-22": 6
+    "2026-09-17": 8,
+    "2026-09-22": 5
    },
-   "fetched_rows": 18
-  },
-  {
-   "slug": "renditions-golf-course",
-   "state": "MD",
-   "platform": "chronogolf",
-   "active_rows": 373,
-   "newest_last_seen": "2026-09-15T13:39:12+00:00",
-   "age_hours": 10.5,
-   "teetime_range": [
-    "2026-09-16T15:10:00",
-    "2026-09-29T19:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 57,
-    "2026-09-16": 15,
-    "2026-09-29": 25
-   },
-   "fetched_rows": 97
+   "fetched_rows": 16
   },
   {
    "slug": "rock-spring-golf-club",
@@ -1725,37 +1306,17 @@
    "platform": "chronogolf",
    "active_rows": 93,
    "newest_last_seen": "2026-09-15T13:43:54+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T07:20:00",
     "2026-09-21T15:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 19,
-    "2026-09-16": 27,
+    "2026-09-16": 26,
     "2026-09-21": 41
    },
-   "fetched_rows": 87
-  },
-  {
-   "slug": "penderbrook-golf-club",
-   "state": "VA",
-   "platform": "chronogolf",
-   "active_rows": 245,
-   "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
-   "teetime_range": [
-    "2026-09-17T08:30:00",
-    "2026-09-22T15:50:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 44,
-    "2026-09-17": 45,
-    "2026-09-22": 45
-   },
-   "fetched_rows": 134
+   "fetched_rows": 67
   },
   {
    "slug": "pine-hills-country-club",
@@ -1763,18 +1324,17 @@
    "platform": "chronogolf",
    "active_rows": 138,
    "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T06:48:00",
     "2026-09-22T17:48:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 13,
     "2026-09-16": 11,
     "2026-09-22": 26
    },
-   "fetched_rows": 50
+   "fetched_rows": 37
   },
   {
    "slug": "port-jefferson-country-club-at-harbor-hills",
@@ -1782,18 +1342,17 @@
    "platform": "chronogolf",
    "active_rows": 448,
    "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T06:50:00",
     "2026-09-22T19:00:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 51,
     "2026-09-16": 69,
     "2026-09-22": 59
    },
-   "fetched_rows": 179
+   "fetched_rows": 128
   },
   {
    "slug": "rifle-creek-golf-course",
@@ -1801,7 +1360,7 @@
    "platform": "chronogolf",
    "active_rows": 398,
    "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T08:00:00",
     "2026-09-22T18:00:00"
@@ -1820,7 +1379,7 @@
    "platform": "chronogolf",
    "active_rows": 208,
    "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T08:30:00",
     "2026-09-21T17:50:00"
@@ -1828,10 +1387,10 @@
    "verdict": "live",
    "fetched": {
     "2026-09-15": 28,
-    "2026-09-16": 15,
-    "2026-09-21": 0
+    "2026-09-16": 20,
+    "2026-09-21": 56
    },
-   "fetched_rows": 43
+   "fetched_rows": 104
   },
   {
    "slug": "sebring-international-golf-resort",
@@ -1839,85 +1398,17 @@
    "platform": "chronogolf",
    "active_rows": 481,
    "newest_last_seen": "2026-09-15T13:45:47+00:00",
-   "age_hours": 10.4,
+   "age_hours": 16.1,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-09-22T16:52:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 69,
     "2026-09-16": 72,
     "2026-09-22": 69
    },
-   "fetched_rows": 210
-  },
-  {
-   "slug": "florida-keys-country-club",
-   "state": "FL",
-   "platform": "foreup",
-   "active_rows": 184,
-   "newest_last_seen": "2026-09-15T13:48:07+00:00",
-   "age_hours": 10.4,
-   "teetime_range": [
-    "2026-09-16T08:10",
-    "2026-09-21T12:50"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 39,
-    "2026-09-21": 29
-   },
-   "fetched_rows": 68
-  },
-  {
-   "slug": "the-country-club-at-lake-city",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 237,
-   "newest_last_seen": "2026-09-15T14:07:25+00:00",
-   "age_hours": 10.0,
-   "teetime_range": [
-    "2026-09-16T07:20:00",
-    "2026-09-22T18:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "martin-downs-golf-club-osprey-creek-course",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 458,
-   "newest_last_seen": "2026-09-15T14:26:11+00:00",
-   "age_hours": 9.7,
-   "teetime_range": [
-    "2026-09-16T07:32:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
+   "fetched_rows": 141
   },
   {
    "slug": "abbey-course-at-saint-leo-university",
@@ -1925,20 +1416,20 @@
    "platform": "golfnow",
    "active_rows": 4,
    "newest_last_seen": "2026-09-15T14:56:04+00:00",
-   "age_hours": 9.2,
+   "age_hours": 14.9,
    "teetime_range": [
     "2026-09-17T10:45:00",
     "2026-09-20T10:45:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
+    "2026-09-16": null,
     "2026-09-17": null,
     "2026-09-20": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2764-abbey-course-at-st-leo-university/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2764-abbey-course-at-st-leo-university/search",
     "2026-09-17: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2764-abbey-course-at-st-leo-university/search",
     "2026-09-20: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/2764-abbey-course-at-st-leo-university/search"
    ]
@@ -1949,20 +1440,18 @@
    "platform": "golfnow",
    "active_rows": 362,
    "newest_last_seen": "2026-09-15T14:56:04+00:00",
-   "age_hours": 9.2,
+   "age_hours": 14.9,
    "teetime_range": [
     "2026-09-16T07:34:00",
     "2026-09-21T16:43:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-21": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4314-belle-glade-municipal/search",
     "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4314-belle-glade-municipal/search",
     "2026-09-21: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/4314-belle-glade-municipal/search"
    ]
@@ -1973,7 +1462,7 @@
    "platform": "golfnow",
    "active_rows": 42,
    "newest_last_seen": "2026-09-15T14:56:04+00:00",
-   "age_hours": 9.2,
+   "age_hours": 14.9,
    "teetime_range": [
     "2026-09-16T11:00:00",
     "2026-09-22T11:52:00"
@@ -1992,23 +1481,76 @@
    ]
   },
   {
-   "slug": "quinton-oaks-golf-course",
-   "state": "VA",
-   "platform": "foreup",
-   "active_rows": 540,
-   "newest_last_seen": "2026-09-15T15:14:02+00:00",
-   "age_hours": 8.9,
+   "slug": "nutters-crossing-golf-club",
+   "state": "MD",
+   "platform": "clubprophet",
+   "active_rows": 1041,
+   "newest_last_seen": "2026-09-15T15:19:56+00:00",
+   "age_hours": 14.5,
    "teetime_range": [
-    "2026-09-16T06:28",
-    "2026-09-21T18:52"
+    "2026-09-24T07:30:00",
+    "2026-10-14T18:00:00"
    ],
-   "verdict": "live",
+   "verdict": "error",
    "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 90,
-    "2026-09-21": 92
+    "2026-09-16": null,
+    "2026-09-24": null,
+    "2026-10-14": null
    },
-   "fetched_rows": 182
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://nutterscrossing.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Sep+16+2026&holes=0&numberOfPlayer=0&courseIds=4&searchTimeType=0&transactionId=3ec66976-a198-4400-a58c-df5ac1be9d49&teeOffTimeMin=0&teeOf",
+    "2026-09-24: HTTPError: 403 Client Error: Forbidden for url: https://nutterscrossing.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Sep+24+2026&holes=0&numberOfPlayer=0&courseIds=4&searchTimeType=0&transactionId=e6f362cf-c630-44c3-a612-2c637d5bf261&teeOffTimeMin=0&teeOf",
+    "2026-10-14: HTTPError: 403 Client Error: Forbidden for url: https://nutterscrossing.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Oct+14+2026&holes=0&numberOfPlayer=0&courseIds=4&searchTimeType=0&transactionId=08879ea8-c882-493f-b572-1a4146c2b9d2&teeOffTimeMin=0&teeOf"
+   ]
+  },
+  {
+   "slug": "rum-pointe-seaside-golf-links",
+   "state": "MD",
+   "platform": "clubprophet",
+   "active_rows": 678,
+   "newest_last_seen": "2026-09-15T15:36:05+00:00",
+   "age_hours": 14.3,
+   "teetime_range": [
+    "2026-09-24T08:34:00",
+    "2026-10-14T16:58:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-24": null,
+    "2026-10-14": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://rumpointe.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Sep+16+2026&holes=0&numberOfPlayer=0&courseIds=5&searchTimeType=0&transactionId=550ec67b-0dd3-4365-a4bb-331d4d5864a5&teeOffTimeMin=0&teeOffTimeM",
+    "2026-09-24: HTTPError: 403 Client Error: Forbidden for url: https://rumpointe.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Sep+24+2026&holes=0&numberOfPlayer=0&courseIds=5&searchTimeType=0&transactionId=8bef1aef-6a26-45e7-9c80-8f067ae13b3c&teeOffTimeMin=0&teeOffTimeM",
+    "2026-10-14: HTTPError: 403 Client Error: Forbidden for url: https://rumpointe.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Oct+14+2026&holes=0&numberOfPlayer=0&courseIds=5&searchTimeType=0&transactionId=5196e1e9-c6b1-43d3-8019-7a8f5b9f6aa3&teeOffTimeMin=0&teeOffTimeM"
+   ]
+  },
+  {
+   "slug": "links-at-lighthouse-sound",
+   "state": "MD",
+   "platform": "clubprophet",
+   "active_rows": 727,
+   "newest_last_seen": "2026-09-15T15:36:41+00:00",
+   "age_hours": 14.3,
+   "teetime_range": [
+    "2026-09-24T07:00:00",
+    "2026-10-15T15:57:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-24": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://lighthousesound.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Sep+16+2026&holes=0&numberOfPlayer=0&courseIds=2&searchTimeType=0&transactionId=ce9e0e69-5b32-49ad-95de-26f5819b5095&teeOffTimeMin=0&teeOf",
+    "2026-09-24: HTTPError: 403 Client Error: Forbidden for url: https://lighthousesound.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Sep+24+2026&holes=0&numberOfPlayer=0&courseIds=2&searchTimeType=0&transactionId=d264d9ee-7146-41e2-850d-edd1a239ace3&teeOffTimeMin=0&teeOf",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://lighthousesound.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Thu+Oct+15+2026&holes=0&numberOfPlayer=0&courseIds=2&searchTimeType=0&transactionId=0ae2509a-280f-4e5c-8a3c-b7c121bbada4&teeOffTimeMin=0&teeOf"
+   ]
   },
   {
    "slug": "lake-bess-golf-club",
@@ -2016,179 +1558,260 @@
    "platform": "teeitup",
    "active_rows": 123,
    "newest_last_seen": "2026-09-15T15:48:15+00:00",
-   "age_hours": 8.4,
+   "age_hours": 14.1,
    "teetime_range": [
     "2026-09-16T07:00:00",
     "2026-09-22T18:00:00"
    ],
-   "verdict": "error",
+   "verdict": "live",
    "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
+    "2026-09-16": 23,
+    "2026-09-22": 18
    },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "birch-creek-golf-course",
-   "state": "UT",
-   "platform": "golfrev",
-   "active_rows": 65,
-   "newest_last_seen": "2026-09-15T16:11:44+00:00",
-   "age_hours": 8.0,
-   "teetime_range": [
-    "2026-09-16T08:32:00",
-    "2026-09-22T15:20:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: RuntimeError: golfrev: curl_cffi is not installed; it is required to clear golfrev.com's Cloudflare TLS fingerprinting",
-    "2026-09-16: RuntimeError: golfrev: curl_cffi is not installed; it is required to clear golfrev.com's Cloudflare TLS fingerprinting",
-    "2026-09-22: RuntimeError: golfrev: curl_cffi is not installed; it is required to clear golfrev.com's Cloudflare TLS fingerprinting"
-   ]
+   "fetched_rows": 41
   },
   {
    "slug": "lake-of-the-woods-golf-club",
    "state": "VA",
    "platform": "ezlinks",
-   "active_rows": 146,
+   "active_rows": 145,
    "newest_last_seen": "2026-09-15T16:14:22+00:00",
-   "age_hours": 7.9,
+   "age_hours": 13.6,
    "teetime_range": [
     "2026-09-16T14:00:00",
     "2026-09-20T17:20:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-20": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://lotw.ezlinksgolf.com/api/search/search",
     "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://lotw.ezlinksgolf.com/api/search/search",
     "2026-09-20: HTTPError: 403 Client Error: Forbidden for url: https://lotw.ezlinksgolf.com/api/search/search"
    ]
   },
   {
-   "slug": "golden-eagle-golf-club",
-   "state": "VA",
-   "platform": "foreup",
-   "active_rows": 157,
-   "newest_last_seen": "2026-09-15T16:15:23+00:00",
-   "age_hours": 7.9,
+   "slug": "shore-gate-golf-club",
+   "state": "NJ",
+   "platform": "teesnap",
+   "active_rows": 638,
+   "newest_last_seen": "2026-09-15T17:08:20+00:00",
+   "age_hours": 12.7,
    "teetime_range": [
-    "2026-09-17T08:00",
-    "2026-09-21T15:50"
+    "2026-09-17T11:00:00",
+    "2026-09-29T16:50:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 0,
-    "2026-09-17": 37,
-    "2026-09-21": 42
+    "2026-09-16": 0,
+    "2026-09-17": 2,
+    "2026-09-29": 54
    },
-   "fetched_rows": 79
+   "fetched_rows": 56
   },
   {
-   "slug": "glenrock-golf-club",
-   "state": "WY",
-   "platform": "golfback",
-   "active_rows": 566,
-   "newest_last_seen": "2026-09-15T16:19:18+00:00",
-   "age_hours": 7.8,
+   "slug": "swan-point-yacht-country-club",
+   "state": "MD",
+   "platform": "golfnow",
+   "active_rows": 117,
+   "newest_last_seen": "2026-09-15T17:13:09+00:00",
+   "age_hours": 12.7,
    "teetime_range": [
-    "2026-09-15T18:15:00",
-    "2026-09-28T18:15:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-28": 46
-   },
-   "fetched_rows": 46
-  },
-  {
-   "slug": "malone-golf-club-west-course",
-   "state": "NY",
-   "platform": "chronogolf",
-   "active_rows": 614,
-   "newest_last_seen": "2026-09-15T16:22:13+00:00",
-   "age_hours": 7.8,
-   "teetime_range": [
-    "2026-09-16T07:09:00",
-    "2026-09-22T19:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 119,
-    "2026-09-16": 142,
-    "2026-09-22": 52
-   },
-   "fetched_rows": 313
-  },
-  {
-   "slug": "diamond-hawk-golf-course",
-   "state": "NY",
-   "platform": "quick18",
-   "active_rows": 71,
-   "newest_last_seen": "2026-09-15T16:26:42+00:00",
-   "age_hours": 7.7,
-   "teetime_range": [
-    "2026-09-17T08:20:00",
-    "2026-09-22T17:40:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-17": 4,
-    "2026-09-22": 48
-   },
-   "fetched_rows": 52
-  },
-  {
-   "slug": "mount-graham-golf-course",
-   "state": "AZ",
-   "platform": "ezlinks",
-   "active_rows": 471,
-   "newest_last_seen": "2026-09-15T16:30:03+00:00",
-   "age_hours": 7.7,
-   "teetime_range": [
-    "2026-09-15T17:10:00",
-    "2026-09-25T17:30:00"
+    "2026-09-16T13:00:00",
+    "2026-09-20T17:50:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
-    "2026-09-25": null
+    "2026-09-16": null,
+    "2026-09-20": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://mtgrahampub.ezlinksgolf.com/api/search/search",
-    "2026-09-25: HTTPError: 403 Client Error: Forbidden for url: https://mtgrahampub.ezlinksgolf.com/api/search/search"
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search",
+    "2026-09-20: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search"
    ]
   },
   {
-   "slug": "polo-park-east-golf-club",
+   "slug": "eagle-dunes-golf-club",
+   "state": "FL",
+   "platform": "teesnap",
+   "active_rows": 590,
+   "newest_last_seen": "2026-09-15T17:26:20+00:00",
+   "age_hours": 12.4,
+   "teetime_range": [
+    "2026-09-16T06:40:00",
+    "2026-09-22T17:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 85,
+    "2026-09-22": 85
+   },
+   "fetched_rows": 170
+  },
+  {
+   "slug": "black-desert-resort-golf-course",
+   "state": "UT",
+   "platform": "agilysys",
+   "active_rows": 21,
+   "newest_last_seen": "2026-09-15T17:31:10+00:00",
+   "age_hours": 12.4,
+   "teetime_range": [
+    "2026-10-07T16:24:00",
+    "2026-10-15T16:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-10-07": 4,
+    "2026-10-15": 1
+   },
+   "fetched_rows": 5
+  },
+  {
+   "slug": "top-of-the-world-golf-resort",
+   "state": "NY",
+   "platform": "teeitup",
+   "active_rows": 186,
+   "newest_last_seen": "2026-09-15T17:49:34+00:00",
+   "age_hours": 12.0,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-20T15:56:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 51,
+    "2026-09-20": 58
+   },
+   "fetched_rows": 109
+  },
+  {
+   "slug": "juliette-falls-golf-club",
+   "state": "FL",
+   "platform": "chronogolf",
+   "active_rows": 458,
+   "newest_last_seen": "2026-09-15T17:53:22+00:00",
+   "age_hours": 12.0,
+   "teetime_range": [
+    "2026-09-16T08:54:00",
+    "2026-09-27T15:30:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 33,
+    "2026-09-27": 43
+   },
+   "fetched_rows": 76
+  },
+  {
+   "slug": "ralph-myhre-golf-course",
+   "state": "VT",
+   "platform": "teesnap",
+   "active_rows": 934,
+   "newest_last_seen": "2026-09-15T17:59:41+00:00",
+   "age_hours": 11.9,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-10-02T21:20:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 61,
+    "2026-10-02": 75
+   },
+   "fetched_rows": 136
+  },
+  {
+   "slug": "queen-valley-golf-course",
+   "state": "AZ",
+   "platform": "teeitup",
+   "active_rows": 1083,
+   "newest_last_seen": "2026-09-15T18:04:47+00:00",
+   "age_hours": 11.8,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-10-11T13:20:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 25,
+    "2026-10-11": 56
+   },
+   "fetched_rows": 81
+  },
+  {
+   "slug": "quail-dunes-golf-course",
+   "state": "CO",
+   "platform": "teeitup",
+   "active_rows": 268,
+   "newest_last_seen": "2026-09-15T18:12:04+00:00",
+   "age_hours": 11.7,
+   "teetime_range": [
+    "2026-09-16T12:40:00",
+    "2026-09-22T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 27,
+    "2026-09-22": 55
+   },
+   "fetched_rows": 82
+  },
+  {
+   "slug": "golf-hammock-country-club",
    "state": "FL",
    "platform": "teeitup",
-   "active_rows": 230,
-   "newest_last_seen": "2026-09-15T16:35:26+00:00",
-   "age_hours": 7.6,
+   "active_rows": 291,
+   "newest_last_seen": "2026-09-15T18:13:41+00:00",
+   "age_hours": 11.6,
    "teetime_range": [
-    "2026-09-16T10:10:00",
-    "2026-09-22T13:50:00"
+    "2026-09-16T06:45:00",
+    "2026-09-22T13:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 71,
+    "2026-09-22": 50
+   },
+   "fetched_rows": 121
+  },
+  {
+   "slug": "rothland-golf-course",
+   "state": "NY",
+   "platform": "clubcaddie",
+   "active_rows": 405,
+   "newest_last_seen": "2026-09-15T18:17:20+00:00",
+   "age_hours": 11.6,
+   "teetime_range": [
+    "2026-09-16T08:04:00",
+    "2026-09-22T17:24:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: rothland-golf-course: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-22: RuntimeError: rothland-golf-course: could not resolve Club Caddie CourseId from the booking page"
+   ]
+  },
+  {
+   "slug": "apache-creek-golf-club",
+   "state": "AZ",
+   "platform": "ezlinks",
+   "active_rows": 413,
+   "newest_last_seen": "2026-09-15T18:35:18+00:00",
+   "age_hours": 11.3,
+   "teetime_range": [
+    "2026-09-16T06:15:00",
+    "2026-09-22T15:30:00"
    ],
    "verdict": "error",
    "fetched": {
@@ -2198,68 +1821,1336 @@
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://apachecreek.ezlinksgolf.com/api/search/search",
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://apachecreek.ezlinksgolf.com/api/search/search",
+    "2026-09-22: HTTPError: 403 Client Error: Forbidden for url: https://apachecreek.ezlinksgolf.com/api/search/search"
    ]
   },
   {
-   "slug": "briar-bay-golf-course",
+   "slug": "the-club-at-eaglebrooke",
    "state": "FL",
    "platform": "ezlinks",
-   "active_rows": 350,
-   "newest_last_seen": "2026-09-15T16:38:57+00:00",
-   "age_hours": 7.5,
+   "active_rows": 320,
+   "newest_last_seen": "2026-09-15T18:42:35+00:00",
+   "age_hours": 11.2,
    "teetime_range": [
-    "2026-09-16T07:22:30",
-    "2026-09-23T18:00:00"
+    "2026-09-16T10:20:00",
+    "2026-09-22T15:20:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://eaglebrooke.ezlinksgolf.com/api/search/search",
+    "2026-09-22: HTTPError: 403 Client Error: Forbidden for url: https://eaglebrooke.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "arizona-city-golf-club",
+   "state": "AZ",
+   "platform": "teeitup",
+   "active_rows": 371,
+   "newest_last_seen": "2026-09-15T18:45:20+00:00",
+   "age_hours": 11.1,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-20T16:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 76,
+    "2026-09-20": 72
+   },
+   "fetched_rows": 148
+  },
+  {
+   "slug": "fore-sisters-golf-course",
+   "state": "MD",
+   "platform": "chronogolf",
+   "active_rows": 166,
+   "newest_last_seen": "2026-09-15T18:52:58+00:00",
+   "age_hours": 11.0,
+   "teetime_range": [
+    "2026-09-16T08:10:00",
+    "2026-09-18T17:30:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-18": 54
+   },
+   "fetched_rows": 54,
+   "errors": [
+    "2026-09-16: RuntimeError: fore-sisters-golf-course: teetimes endpoint failed at every party size for every course_id"
+   ]
+  },
+  {
+   "slug": "the-foothills-golf-club",
+   "state": "AZ",
+   "platform": "ezlinks",
+   "active_rows": 1119,
+   "newest_last_seen": "2026-09-15T19:04:26+00:00",
+   "age_hours": 10.8,
+   "teetime_range": [
+    "2026-09-16T06:15:00",
+    "2026-10-03T16:54:00"
    ],
    "verdict": "error",
    "fetched": {
     "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-10-03": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://foothills.ezlinksgolf.com/api/search/search",
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://foothills.ezlinksgolf.com/api/search/search",
+    "2026-10-03: HTTPError: 403 Client Error: Forbidden for url: https://foothills.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "dogwood-lakes-golf-club",
+   "state": "FL",
+   "platform": "teesnap",
+   "active_rows": 808,
+   "newest_last_seen": "2026-09-15T19:26:56+00:00",
+   "age_hours": 10.4,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-29T16:30:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 58,
+    "2026-09-29": 58
+   },
+   "fetched_rows": 116
+  },
+  {
+   "slug": "fountain-of-the-sun-country-club",
+   "state": "AZ",
+   "platform": "clubprophet",
+   "active_rows": 131,
+   "newest_last_seen": "2026-09-15T19:29:20+00:00",
+   "age_hours": 10.4,
+   "teetime_range": [
+    "2026-09-16T09:10:00",
+    "2026-09-30T10:20:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-30": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://fountainofthesuncc.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Tue+Sep+15+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=f5d45f89-ae02-47f8-a8cd-40d3402bd35e&teeOffTimeMin=0&te",
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://fountainofthesuncc.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Sep+16+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=02e0c5be-ca8f-45e1-8935-a80b1827778b&teeOffTimeMin=0&te",
+    "2026-09-30: HTTPError: 403 Client Error: Forbidden for url: https://fountainofthesuncc.cps.golf/onlineres/onlineapi/api/v1/onlinereservation/TeeTimes?searchDate=Wed+Sep+30+2026&holes=0&numberOfPlayer=0&courseIds=1&searchTimeType=0&transactionId=3d709590-c53d-4660-be8e-99181287fe98&teeOffTimeMin=0&te"
+   ]
+  },
+  {
+   "slug": "ruggles-golf-course",
+   "state": "MD",
+   "platform": "golfnow",
+   "active_rows": 159,
+   "newest_last_seen": "2026-09-15T20:01:43+00:00",
+   "age_hours": 9.8,
+   "teetime_range": [
+    "2026-09-17T11:00:00",
+    "2026-09-29T12:44:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-17": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9672-ruggles-golf-course/search",
+    "2026-09-17: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9672-ruggles-golf-course/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/9672-ruggles-golf-course/search"
+   ]
+  },
+  {
+   "slug": "divide-ranch-club",
+   "state": "CO",
+   "platform": "clubcaddie",
+   "active_rows": 578,
+   "newest_last_seen": "2026-09-15T20:03:12+00:00",
+   "age_hours": 9.8,
+   "teetime_range": [
+    "2026-09-16T11:48:00",
+    "2026-10-01T10:48:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-10-01": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: divide-ranch-club: could not resolve Club Caddie CourseId from the booking page",
+    "2026-09-16: RuntimeError: divide-ranch-club: could not resolve Club Caddie CourseId from the booking page",
+    "2026-10-01: RuntimeError: divide-ranch-club: could not resolve Club Caddie CourseId from the booking page"
+   ]
+  },
+  {
+   "slug": "the-monarch-at-royal-highlands",
+   "state": "FL",
+   "platform": "teeitup",
+   "active_rows": 109,
+   "newest_last_seen": "2026-09-15T20:08:20+00:00",
+   "age_hours": 9.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-20T14:52:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 8,
+    "2026-09-20": 46
+   },
+   "fetched_rows": 54
+  },
+  {
+   "slug": "big-oak-golf-course",
+   "state": "NY",
+   "platform": "teequest",
+   "active_rows": 7,
+   "newest_last_seen": "2026-09-15T20:25:04+00:00",
+   "age_hours": 9.5,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-23T10:04:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 4,
+    "2026-09-23": 1
+   },
+   "fetched_rows": 5
+  },
+  {
+   "slug": "willowbrook-golf-course",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 242,
+   "newest_last_seen": "2026-09-15T20:31:36+00:00",
+   "age_hours": 9.3,
+   "teetime_range": [
+    "2026-09-16T07:08:00",
+    "2026-09-18T16:56:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-18": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6398-sun-city-willowbrook-golf-course/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6398-sun-city-willowbrook-golf-course/search",
+    "2026-09-18: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6398-sun-city-willowbrook-golf-course/search"
+   ]
+  },
+  {
+   "slug": "desert-hills-par-3-golf-course",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 582,
+   "newest_last_seen": "2026-09-15T20:33:33+00:00",
+   "age_hours": 9.3,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-09-22T17:04:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/15282-desert-hills-par-3/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/15282-desert-hills-par-3/search",
+    "2026-09-22: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/15282-desert-hills-par-3/search"
+   ]
+  },
+  {
+   "slug": "king-ferry-golf-course",
+   "state": "NY",
+   "platform": "golfnow",
+   "active_rows": 124,
+   "newest_last_seen": "2026-09-15T20:33:33+00:00",
+   "age_hours": 9.3,
+   "teetime_range": [
+    "2026-09-17T17:08:00",
+    "2026-09-22T17:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-17": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/18959-king-ferry-golf-club/search",
+    "2026-09-17: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/18959-king-ferry-golf-club/search",
+    "2026-09-22: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/18959-king-ferry-golf-club/search"
+   ]
+  },
+  {
+   "slug": "bartlett-country-club",
+   "state": "NY",
+   "platform": "foreup",
+   "active_rows": 1176,
+   "newest_last_seen": "2026-09-15T20:45:21+00:00",
+   "age_hours": 9.1,
+   "teetime_range": [
+    "2026-09-16T10:24",
+    "2026-10-05T18:16"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 47,
+    "2026-10-05": 48
+   },
+   "fetched_rows": 95
+  },
+  {
+   "slug": "cypress-greens-golf-course",
+   "state": "FL",
+   "platform": "teeitup",
+   "active_rows": 285,
+   "newest_last_seen": "2026-09-15T20:46:30+00:00",
+   "age_hours": 9.1,
+   "teetime_range": [
+    "2026-09-16T07:14:00",
+    "2026-09-22T14:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 44,
+    "2026-09-22": 46
+   },
+   "fetched_rows": 90
+  },
+  {
+   "slug": "twin-brooks-golf-course",
+   "state": "FL",
+   "platform": "foreup",
+   "active_rows": 387,
+   "newest_last_seen": "2026-09-15T20:46:34+00:00",
+   "age_hours": 9.1,
+   "teetime_range": [
+    "2026-09-16T07:10",
+    "2026-09-22T14:50"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 43,
+    "2026-09-22": 38
+   },
+   "fetched_rows": 81
+  },
+  {
+   "slug": "packsaddle-ridge-golf-club",
+   "state": "VA",
+   "platform": "chronogolf",
+   "active_rows": 254,
+   "newest_last_seen": "2026-09-15T20:57:05+00:00",
+   "age_hours": 8.9,
+   "teetime_range": [
+    "2026-09-16T08:45:00",
+    "2026-09-25T15:15:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 31,
+    "2026-09-25": 30
+   },
+   "fetched_rows": 61
+  },
+  {
+   "slug": "somerset-farms-golf-course",
+   "state": "VA",
+   "platform": "chronogolf",
+   "active_rows": 676,
+   "newest_last_seen": "2026-09-15T20:57:05+00:00",
+   "age_hours": 8.9,
+   "teetime_range": [
+    "2026-09-16T08:09:00",
+    "2026-09-29T17:09:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 59,
+    "2026-09-29": 61
+   },
+   "fetched_rows": 120
+  },
+  {
+   "slug": "fox-run-golf-club",
+   "state": "VT",
+   "platform": "clubprophet",
+   "active_rows": 727,
+   "newest_last_seen": "2026-09-15T20:57:51+00:00",
+   "age_hours": 8.9,
+   "teetime_range": [
+    "2026-09-16T17:00:00",
+    "2026-10-14T15:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-14": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: fox-run-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
+    "2026-10-14: RuntimeError: fox-run-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
+   ]
+  },
+  {
+   "slug": "tanner-valley-golf-course",
+   "state": "NY",
+   "platform": "quick18",
+   "active_rows": 1647,
+   "newest_last_seen": "2026-09-15T20:59:07+00:00",
+   "age_hours": 8.9,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-10-15T16:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 54,
+    "2026-10-15": 58
+   },
+   "fetched_rows": 112
+  },
+  {
+   "slug": "bryce-resort-golf-course",
+   "state": "VA",
+   "platform": "ezlinks",
+   "active_rows": 513,
+   "newest_last_seen": "2026-09-15T21:01:20+00:00",
+   "age_hours": 8.9,
+   "teetime_range": [
+    "2026-09-16T08:10:00",
+    "2026-09-29T18:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://bryceresort.ezlinksgolf.com/api/search/search",
+    "2026-09-29: HTTPError: 403 Client Error: Forbidden for url: https://bryceresort.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "attica-golf-club",
+   "state": "NY",
+   "platform": "golfnow",
+   "active_rows": 431,
+   "newest_last_seen": "2026-09-15T21:05:16+00:00",
+   "age_hours": 8.8,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-23T17:10:00"
+   ],
+   "verdict": "error",
+   "fetched": {
     "2026-09-16": null,
     "2026-09-23": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://briarbay.ezlinksgolf.com/api/search/search",
-    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://briarbay.ezlinksgolf.com/api/search/search",
-    "2026-09-23: HTTPError: 403 Client Error: Forbidden for url: https://briarbay.ezlinksgolf.com/api/search/search"
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/8528-atticas-10th-hole/search",
+    "2026-09-23: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/8528-atticas-10th-hole/search"
    ]
   },
   {
-   "slug": "tpc-scottsdale",
-   "state": "AZ",
-   "platform": "ezlinks",
-   "active_rows": 247,
-   "newest_last_seen": "2026-09-15T16:47:53+00:00",
-   "age_hours": 7.4,
+   "slug": "citrus-springs-golf-country-club",
+   "state": "FL",
+   "platform": "golfnow",
+   "active_rows": 2859,
+   "newest_last_seen": "2026-09-15T21:05:16+00:00",
+   "age_hours": 8.8,
    "teetime_range": [
-    "2026-09-16T13:30:00",
-    "2026-09-27T16:40:00"
+    "2026-09-16T07:12:00",
+    "2026-10-15T17:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6647-citrus-springs-country-club/search",
+    "2026-10-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/6647-citrus-springs-country-club/search"
+   ]
+  },
+  {
+   "slug": "patriots-glen-golf-club",
+   "state": "MD",
+   "platform": "chronogolf",
+   "active_rows": 406,
+   "newest_last_seen": "2026-09-15T21:14:18+00:00",
+   "age_hours": 8.6,
+   "teetime_range": [
+    "2026-09-16T07:20:00",
+    "2026-09-25T17:30:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 52,
+    "2026-09-25": 10
+   },
+   "fetched_rows": 62
+  },
+  {
+   "slug": "the-club-at-hidden-creek",
+   "state": "FL",
+   "platform": "teequest",
+   "active_rows": 2159,
+   "newest_last_seen": "2026-09-15T21:17:11+00:00",
+   "age_hours": 8.6,
+   "teetime_range": [
+    "2026-09-16T07:18:00",
+    "2026-10-15T17:42:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 74,
+    "2026-10-15": 81
+   },
+   "fetched_rows": 155
+  },
+  {
+   "slug": "bird-homestead-golf-course",
+   "state": "AK",
+   "platform": "golfnow",
+   "active_rows": 427,
+   "newest_last_seen": "2026-09-15T21:20:52+00:00",
+   "age_hours": 8.5,
+   "teetime_range": [
+    "2026-09-15T22:00:00",
+    "2026-10-15T09:30:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/17923-bird-homestead-golf-course/search",
+    "2026-10-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/17923-bird-homestead-golf-course/search"
+   ]
+  },
+  {
+   "slug": "mcconnellsville-golf-course",
+   "state": "NY",
+   "platform": "golfnow",
+   "active_rows": 218,
+   "newest_last_seen": "2026-09-15T21:20:52+00:00",
+   "age_hours": 8.5,
+   "teetime_range": [
+    "2026-09-16T09:00:00",
+    "2026-09-22T17:20:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/10182-mcconnellsville-country-club/search",
+    "2026-09-22: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/10182-mcconnellsville-country-club/search"
+   ]
+  },
+  {
+   "slug": "palm-creek-golf-rv-resort",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 279,
+   "newest_last_seen": "2026-09-15T21:20:52+00:00",
+   "age_hours": 8.5,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-09-29T10:32:00"
    ],
    "verdict": "error",
    "fetched": {
     "2026-09-15": null,
     "2026-09-16": null,
-    "2026-09-27": null
+    "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://tpcscottsdale.ezlinksgolf.com/api/search/search",
-    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://tpcscottsdale.ezlinksgolf.com/api/search/search",
-    "2026-09-27: HTTPError: 403 Client Error: Forbidden for url: https://tpcscottsdale.ezlinksgolf.com/api/search/search"
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/10749-palm-creek-resort-and-residences/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/10749-palm-creek-resort-and-residences/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/10749-palm-creek-resort-and-residences/search"
    ]
   },
   {
-   "slug": "dogwood-trace-golf-course",
-   "state": "VA",
+   "slug": "village-green-golf-club-of-sarasota",
+   "state": "FL",
    "platform": "teeitup",
-   "active_rows": 551,
-   "newest_last_seen": "2026-09-15T16:59:28+00:00",
+   "active_rows": 884,
+   "newest_last_seen": "2026-09-15T21:23:52+00:00",
+   "age_hours": 8.5,
+   "teetime_range": [
+    "2026-09-16T07:06:00",
+    "2026-09-25T17:30:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 91,
+    "2026-09-25": 99
+   },
+   "fetched_rows": 190
+  },
+  {
+   "slug": "aileron-golf-club",
+   "state": "FL",
+   "platform": "foreup",
+   "active_rows": 131,
+   "newest_last_seen": "2026-09-15T21:24:53+00:00",
+   "age_hours": 8.5,
+   "teetime_range": [
+    "2026-09-16T07:18",
+    "2026-09-19T17:30"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 45,
+    "2026-09-19": 12
+   },
+   "fetched_rows": 57
+  },
+  {
+   "slug": "royal-palms-golf-course",
+   "state": "AZ",
+   "platform": "teeitup",
+   "active_rows": 689,
+   "newest_last_seen": "2026-09-15T21:25:29+00:00",
+   "age_hours": 8.4,
+   "teetime_range": [
+    "2026-09-16T06:32:00",
+    "2026-09-23T18:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 86,
+    "2026-09-23": 87
+   },
+   "fetched_rows": 173
+  },
+  {
+   "slug": "atlantic-national-golf-club",
+   "state": "FL",
+   "platform": "teeitup",
+   "active_rows": 440,
+   "newest_last_seen": "2026-09-15T21:26:33+00:00",
+   "age_hours": 8.4,
+   "teetime_range": [
+    "2026-09-18T07:29:00",
+    "2026-09-25T16:56:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 0,
+    "2026-09-18": 53,
+    "2026-09-25": 55
+   },
+   "fetched_rows": 108
+  },
+  {
+   "slug": "douglas-municipal-golf-course",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 660,
+   "newest_last_seen": "2026-09-15T21:26:47+00:00",
+   "age_hours": 8.4,
+   "teetime_range": [
+    "2026-09-16T08:04:00",
+    "2026-09-29T13:56:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5326-city-of-douglas-municipal-golf-course/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5326-city-of-douglas-municipal-golf-course/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/5326-city-of-douglas-municipal-golf-course/search"
+   ]
+  },
+  {
+   "slug": "meadowbrook-golf-course",
+   "state": "NY",
+   "platform": "golfnow",
+   "active_rows": 272,
+   "newest_last_seen": "2026-09-15T21:26:47+00:00",
+   "age_hours": 8.4,
+   "teetime_range": [
+    "2026-09-16T11:00:00",
+    "2026-09-29T19:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/12986-meadowbrook-golf-club/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/12986-meadowbrook-golf-club/search"
+   ]
+  },
+  {
+   "slug": "bluewater-bay-resort-marsh-course",
+   "state": "FL",
+   "platform": "teeitup",
+   "active_rows": 727,
+   "newest_last_seen": "2026-09-15T21:44:52+00:00",
+   "age_hours": 8.1,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-29T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 47,
+    "2026-09-29": 54
+   },
+   "fetched_rows": 101
+  },
+  {
+   "slug": "the-club-of-staunton",
+   "state": "VA",
+   "platform": "golfnow",
+   "active_rows": 37,
+   "newest_last_seen": "2026-09-15T21:53:32+00:00",
+   "age_hours": 8.0,
+   "teetime_range": [
+    "2026-09-16T09:20:00",
+    "2026-09-22T11:40:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16989-the-club-of-staunton/search",
+    "2026-09-22: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/16989-the-club-of-staunton/search"
+   ]
+  },
+  {
+   "slug": "dixie-red-hills-golf-course",
+   "state": "UT",
+   "platform": "trutee",
+   "active_rows": 35,
+   "newest_last_seen": "2026-09-15T21:55:52+00:00",
+   "age_hours": 7.9,
+   "teetime_range": [
+    "2026-09-24T13:10:00",
+    "2026-09-29T11:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-24": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: no adapter for platform trutee",
+    "2026-09-24: no adapter for platform trutee",
+    "2026-09-29: no adapter for platform trutee"
+   ]
+  },
+  {
+   "slug": "sunbrook-golf-club",
+   "state": "UT",
+   "platform": "trutee",
+   "active_rows": 40,
+   "newest_last_seen": "2026-09-15T21:55:52+00:00",
+   "age_hours": 7.9,
+   "teetime_range": [
+    "2026-09-23T14:00:00",
+    "2026-09-29T11:40:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-23": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: no adapter for platform trutee",
+    "2026-09-23: no adapter for platform trutee",
+    "2026-09-29: no adapter for platform trutee"
+   ]
+  },
+  {
+   "slug": "pinebrook-ironwood-golf-course",
+   "state": "FL",
+   "platform": "teeitup",
+   "active_rows": 302,
+   "newest_last_seen": "2026-09-15T21:58:20+00:00",
+   "age_hours": 7.9,
+   "teetime_range": [
+    "2026-09-16T07:21:00",
+    "2026-09-19T17:58:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-19": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 429",
+    "2026-09-19: HTTPError: 429"
+   ]
+  },
+  {
+   "slug": "the-golf-club-at-heather-ridge",
+   "state": "CO",
+   "platform": "ezlinks",
+   "active_rows": 341,
+   "newest_last_seen": "2026-09-15T22:02:28+00:00",
+   "age_hours": 7.8,
+   "teetime_range": [
+    "2026-09-16T07:12:00",
+    "2026-09-22T17:24:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://heatherridge.ezlinksgolf.com/api/search/search",
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://heatherridge.ezlinksgolf.com/api/search/search",
+    "2026-09-22: HTTPError: 403 Client Error: Forbidden for url: https://heatherridge.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "skyline-mountain-resort-golf-course",
+   "state": "UT",
+   "platform": "foreup",
+   "active_rows": 113,
+   "newest_last_seen": "2026-09-15T22:03:54+00:00",
+   "age_hours": 7.8,
+   "teetime_range": [
+    "2026-09-16T10:30",
+    "2026-09-20T16:45"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 26,
+    "2026-09-20": 26
+   },
+   "fetched_rows": 52
+  },
+  {
+   "slug": "massanutten-resort-mountain-greens-golf-course",
+   "state": "VA",
+   "platform": "foreup",
+   "active_rows": 715,
+   "newest_last_seen": "2026-09-15T22:06:39+00:00",
+   "age_hours": 7.8,
+   "teetime_range": [
+    "2026-09-16T08:10",
+    "2026-09-28T17:50"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 51,
+    "2026-09-28": 60
+   },
+   "fetched_rows": 111
+  },
+  {
+   "slug": "apache-wells-country-club",
+   "state": "AZ",
+   "platform": "ezlinks",
+   "active_rows": 497,
+   "newest_last_seen": "2026-09-15T22:10:04+00:00",
+   "age_hours": 7.7,
+   "teetime_range": [
+    "2026-09-16T06:17:00",
+    "2026-09-22T16:54:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://apachewells.ezlinksgolf.com/api/search/search",
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://apachewells.ezlinksgolf.com/api/search/search",
+    "2026-09-22: HTTPError: 403 Client Error: Forbidden for url: https://apachewells.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "rock-creek-park-golf-course",
+   "state": "DC",
+   "platform": "teeitup",
+   "active_rows": 427,
+   "newest_last_seen": "2026-09-15T22:10:59+00:00",
+   "age_hours": 7.7,
+   "teetime_range": [
+    "2026-09-16T08:00:00",
+    "2026-09-22T18:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 429",
+    "2026-09-22: HTTPError: 429"
+   ]
+  },
+  {
+   "slug": "the-highlands-at-dove-mountain",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 5,
+   "newest_last_seen": "2026-09-15T22:14:29+00:00",
+   "age_hours": 7.6,
+   "teetime_range": [
+    "2026-09-17T11:40:00",
+    "2026-09-19T12:32:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-17": null,
+    "2026-09-19": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/512-the-highlands-at-dove-mountain/search",
+    "2026-09-17: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/512-the-highlands-at-dove-mountain/search",
+    "2026-09-19: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/512-the-highlands-at-dove-mountain/search"
+   ]
+  },
+  {
+   "slug": "tiburon-golf-club-black-course",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 765,
+   "newest_last_seen": "2026-09-15T22:17:01+00:00",
+   "age_hours": 7.6,
+   "teetime_range": [
+    "2026-09-16T11:10:00",
+    "2026-10-11T16:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-11": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search",
+    "2026-10-11: HTTPError: 403 Client Error: Forbidden for url: https://tiburon.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "tpc-sawgrass-the-players-stadium-course",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 76,
+   "newest_last_seen": "2026-09-15T22:17:12+00:00",
+   "age_hours": 7.6,
+   "teetime_range": [
+    "2026-09-16T08:10:00",
+    "2026-10-14T13:30:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-14": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://tpcsawgrass.ezlinksgolf.com/api/search/search",
+    "2026-10-14: HTTPError: 403 Client Error: Forbidden for url: https://tpcsawgrass.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "willow-springs-golf-course",
+   "state": "MD",
+   "platform": "teesnap",
+   "active_rows": 829,
+   "newest_last_seen": "2026-09-15T22:17:51+00:00",
+   "age_hours": 7.6,
+   "teetime_range": [
+    "2026-09-16T09:00:00",
+    "2026-09-29T18:10:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 60,
+    "2026-09-29": 69
+   },
+   "fetched_rows": 129
+  },
+  {
+   "slug": "queenfield-golf-club",
+   "state": "VA",
+   "platform": "teesnap",
+   "active_rows": 707,
+   "newest_last_seen": "2026-09-15T22:21:06+00:00",
+   "age_hours": 7.5,
+   "teetime_range": [
+    "2026-09-16T07:30:00",
+    "2026-09-29T17:40:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 57,
+    "2026-09-29": 62
+   },
+   "fetched_rows": 119
+  },
+  {
+   "slug": "sunridge-canyon-golf-club",
+   "state": "AZ",
+   "platform": "quick18",
+   "active_rows": 473,
+   "newest_last_seen": "2026-09-15T22:27:19+00:00",
+   "age_hours": 7.4,
+   "teetime_range": [
+    "2026-10-01T07:16:00",
+    "2026-10-15T12:39:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-10-01": 36,
+    "2026-10-15": 30
+   },
+   "fetched_rows": 66
+  },
+  {
+   "slug": "the-dunes-golf-tennis-club",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 899,
+   "newest_last_seen": "2026-09-15T22:30:51+00:00",
+   "age_hours": 7.4,
+   "teetime_range": [
+    "2026-09-16T07:30:00",
+    "2026-09-29T15:52:30"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://thedunesgolffm.ezlinksgolf.com/api/search/search",
+    "2026-09-29: HTTPError: 403 Client Error: Forbidden for url: https://thedunesgolffm.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "millsite-golf-course",
+   "state": "UT",
+   "platform": "foreup",
+   "active_rows": 2316,
+   "newest_last_seen": "2026-09-15T22:31:24+00:00",
+   "age_hours": 7.4,
+   "teetime_range": [
+    "2026-09-16T07:00",
+    "2026-10-15T19:50"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 71,
+    "2026-10-15": 78
+   },
+   "fetched_rows": 149
+  },
+  {
+   "slug": "falcon-golf-club",
+   "state": "AZ",
+   "platform": "foreup",
+   "active_rows": 811,
+   "newest_last_seen": "2026-09-15T22:33:10+00:00",
+   "age_hours": 7.3,
+   "teetime_range": [
+    "2026-09-16T09:30",
+    "2026-10-14T16:50"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 12,
+    "2026-10-14": 47
+   },
+   "fetched_rows": 59
+  },
+  {
+   "slug": "spreading-antlers-golf-course",
+   "state": "CO",
+   "platform": "supersaas",
+   "active_rows": 45,
+   "newest_last_seen": "2026-09-15T22:34:34+00:00",
+   "age_hours": 7.3,
+   "teetime_range": [
+    "2026-09-16T07:30:00",
+    "2026-10-11T13:30:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-10-11": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: no adapter for platform supersaas",
+    "2026-09-16: no adapter for platform supersaas",
+    "2026-10-11: no adapter for platform supersaas"
+   ]
+  },
+  {
+   "slug": "essex-country-club",
+   "state": "VT",
+   "platform": "foreup",
+   "active_rows": 777,
+   "newest_last_seen": "2026-09-15T22:37:58+00:00",
    "age_hours": 7.2,
    "teetime_range": [
-    "2026-09-16T11:54:00",
+    "2026-09-16T07:00",
+    "2026-09-28T16:50"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 59,
+    "2026-09-28": 60
+   },
+   "fetched_rows": 119
+  },
+  {
+   "slug": "pitman-golf-course",
+   "state": "NJ",
+   "platform": "clubprophet",
+   "active_rows": 39,
+   "newest_last_seen": "2026-09-15T22:38:15+00:00",
+   "age_hours": 7.2,
+   "teetime_range": [
+    "2026-09-16T07:40:00",
+    "2026-09-22T16:40:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: pitman-golf-course: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
+    "2026-09-22: RuntimeError: pitman-golf-course: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
+   ]
+  },
+  {
+   "slug": "desert-hills-golf-course",
+   "state": "AZ",
+   "platform": "golfnow",
+   "active_rows": 405,
+   "newest_last_seen": "2026-09-15T22:42:00+00:00",
+   "age_hours": 7.2,
+   "teetime_range": [
+    "2026-09-16T06:08:00",
+    "2026-09-22T15:52:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11026-desert-hills-golf-course/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11026-desert-hills-golf-course/search",
+    "2026-09-22: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/11026-desert-hills-golf-course/search"
+   ]
+  },
+  {
+   "slug": "shenvalee-golf-resort",
+   "state": "VA",
+   "platform": "golfnow",
+   "active_rows": 378,
+   "newest_last_seen": "2026-09-15T22:42:00+00:00",
+   "age_hours": 7.2,
+   "teetime_range": [
+    "2026-09-16T07:30:00",
+    "2026-09-29T15:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/8834-shenvalee-golf-resort/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/8834-shenvalee-golf-resort/search"
+   ]
+  },
+  {
+   "slug": "the-hideout-golf-club",
+   "state": "UT",
+   "platform": "golfnow",
+   "active_rows": 752,
+   "newest_last_seen": "2026-09-15T22:42:00+00:00",
+   "age_hours": 7.2,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-09-29T17:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-15": null,
+    "2026-09-16": null,
+    "2026-09-29": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/17083-hideout-golf-club/search",
+    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/17083-hideout-golf-club/search",
+    "2026-09-29: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/17083-hideout-golf-club/search"
+   ]
+  },
+  {
+   "slug": "shadow-lake-executive-course",
+   "state": "NY",
+   "platform": "chronogolf",
+   "active_rows": 454,
+   "newest_last_seen": "2026-09-15T22:43:06+00:00",
+   "age_hours": 7.2,
+   "teetime_range": [
+    "2026-09-17T06:50:00",
+    "2026-09-29T16:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 0,
+    "2026-09-17": 11,
+    "2026-09-29": 45
+   },
+   "fetched_rows": 56
+  },
+  {
+   "slug": "pine-lakes-golf-club",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 144,
+   "newest_last_seen": "2026-09-15T22:44:29+00:00",
+   "age_hours": 7.1,
+   "teetime_range": [
+    "2026-09-16T07:36:00",
+    "2026-09-22T17:34:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-22": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://gcpinelakes.ezlinksgolf.com/api/search/search",
+    "2026-09-22: HTTPError: 403 Client Error: Forbidden for url: https://gcpinelakes.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "country-club-of-sebring",
+   "state": "FL",
+   "platform": "quick18",
+   "active_rows": 2366,
+   "newest_last_seen": "2026-09-15T22:44:50+00:00",
+   "age_hours": 7.1,
+   "teetime_range": [
+    "2026-09-16T07:07:00",
+    "2026-10-15T17:58:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 81,
+    "2026-10-15": 79
+   },
+   "fetched_rows": 160
+  },
+  {
+   "slug": "jackson-hole-golf-tennis-club",
+   "state": "WY",
+   "platform": "quick18",
+   "active_rows": 85,
+   "newest_last_seen": "2026-09-15T22:46:35+00:00",
+   "age_hours": 7.1,
+   "teetime_range": [
+    "2026-09-16T13:10:00",
+    "2026-10-08T13:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 4,
+    "2026-10-08": 6
+   },
+   "fetched_rows": 10
+  },
+  {
+   "slug": "peoria-pines-golf-course",
+   "state": "AZ",
+   "platform": "teeitup",
+   "active_rows": 1016,
+   "newest_last_seen": "2026-09-15T22:47:24+00:00",
+   "age_hours": 7.1,
+   "teetime_range": [
+    "2026-09-16T06:52:00",
     "2026-09-29T17:00:00"
    ],
    "verdict": "error",
@@ -2276,634 +3167,364 @@
    ]
   },
   {
-   "slug": "peridia-golf-country-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 307,
-   "newest_last_seen": "2026-09-15T17:03:59+00:00",
-   "age_hours": 7.1,
+   "slug": "gypsy-hill-golf-club",
+   "state": "VA",
+   "platform": "chronogolf",
+   "active_rows": 630,
+   "newest_last_seen": "2026-09-15T23:01:57+00:00",
+   "age_hours": 6.8,
    "teetime_range": [
-    "2026-09-16T09:48:00",
-    "2026-09-22T16:34:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "glen-abbey-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 761,
-   "newest_last_seen": "2026-09-15T17:05:08+00:00",
-   "age_hours": 7.1,
-   "teetime_range": [
-    "2026-09-16T07:21:00",
-    "2026-09-25T16:55:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-25": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-25: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "shore-gate-golf-club",
-   "state": "NJ",
-   "platform": "teesnap",
-   "active_rows": 638,
-   "newest_last_seen": "2026-09-15T17:08:20+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-17T11:00:00",
-    "2026-09-29T16:50:00"
+    "2026-09-16T09:21:00",
+    "2026-09-29T17:27:00"
    ],
    "verdict": "live",
    "fetched": {
-    "2026-09-15": 2,
-    "2026-09-17": 2,
-    "2026-09-29": 54
+    "2026-09-16": 43,
+    "2026-09-29": 61
    },
-   "fetched_rows": 58
+   "fetched_rows": 104
   },
   {
-   "slug": "the-saints-at-port-st-lucie-golf-course",
-   "state": "FL",
+   "slug": "greenway-park-golf-course",
+   "state": "CO",
    "platform": "teeitup",
-   "active_rows": 264,
-   "newest_last_seen": "2026-09-15T17:09:10+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T07:15:00",
-    "2026-09-20T17:22:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-20": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-20: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "summerglen-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 363,
-   "newest_last_seen": "2026-09-15T17:12:01+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "fox-run-golf-course",
-   "state": "WY",
-   "platform": "teeitup",
-   "active_rows": 227,
-   "newest_last_seen": "2026-09-15T17:12:12+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T16:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "fox-run-golf-course-ny",
-   "state": "NY",
-   "platform": "teeitup",
-   "active_rows": 227,
-   "newest_last_seen": "2026-09-15T17:12:13+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T16:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "willow-lakes-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 377,
-   "newest_last_seen": "2026-09-15T17:13:05+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "swan-point-yacht-country-club",
-   "state": "MD",
-   "platform": "golfnow",
-   "active_rows": 118,
-   "newest_last_seen": "2026-09-15T17:13:09+00:00",
-   "age_hours": 7.0,
-   "teetime_range": [
-    "2026-09-16T13:00:00",
-    "2026-09-20T17:50:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-20": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search",
-    "2026-09-16: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search",
-    "2026-09-20: RuntimeError: GolfNow/EZLinks needs partner-feed access (bot-protected). Course visible at: https://www.golfnow.com/tee-times/facility/952-swan-point-yacht-country-club/search"
-   ]
-  },
-  {
-   "slug": "big-cypress-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 328,
-   "newest_last_seen": "2026-09-15T17:18:44+00:00",
-   "age_hours": 6.9,
-   "teetime_range": [
-    "2026-09-16T11:30:00",
-    "2026-09-22T15:30:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "palmetto-golf-course",
-   "state": "FL",
-   "platform": "ezlinks",
-   "active_rows": 586,
-   "newest_last_seen": "2026-09-15T17:23:38+00:00",
+   "active_rows": 496,
+   "newest_last_seen": "2026-09-15T23:02:06+00:00",
    "age_hours": 6.8,
    "teetime_range": [
-    "2026-09-16T07:04:00",
-    "2026-09-27T14:32:00"
+    "2026-09-16T07:15:00",
+    "2026-09-29T18:30:00"
    ],
    "verdict": "error",
    "fetched": {
     "2026-09-15": null,
     "2026-09-16": null,
-    "2026-09-27": null
+    "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 403 Client Error: Forbidden for url: https://palmettogc.ezlinksgolf.com/api/search/search",
-    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://palmettogc.ezlinksgolf.com/api/search/search",
-    "2026-09-27: HTTPError: 403 Client Error: Forbidden for url: https://palmettogc.ezlinksgolf.com/api/search/search"
+    "2026-09-15: HTTPError: 429",
+    "2026-09-16: HTTPError: 429",
+    "2026-09-29: HTTPError: 429"
    ]
   },
   {
-   "slug": "stonegate-golf-club-at-solivita-cypress-course",
+   "slug": "dunedin-golf-club",
+   "state": "FL",
+   "platform": "foreup",
+   "active_rows": 294,
+   "newest_last_seen": "2026-09-15T23:15:37+00:00",
+   "age_hours": 6.6,
+   "teetime_range": [
+    "2026-09-16T07:09",
+    "2026-09-22T17:48"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 34,
+    "2026-09-22": 49
+   },
+   "fetched_rows": 83
+  },
+  {
+   "slug": "little-america-golf-course",
+   "state": "WY",
+   "platform": "agilysys",
+   "active_rows": 2170,
+   "newest_last_seen": "2026-09-15T23:19:11+00:00",
+   "age_hours": 6.6,
+   "teetime_range": [
+    "2026-09-16T06:00:00",
+    "2026-10-15T18:50:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 70,
+    "2026-10-15": 71
+   },
+   "fetched_rows": 141
+  },
+  {
+   "slug": "springfield-golf-resort",
+   "state": "AZ",
+   "platform": "chronogolf",
+   "active_rows": 976,
+   "newest_last_seen": "2026-09-15T23:21:07+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T06:12:00",
+    "2026-10-02T17:00:00"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-15": 75,
+    "2026-09-16": 63,
+    "2026-10-02": 67
+   },
+   "fetched_rows": 205
+  },
+  {
+   "slug": "arrowhead-golf-club",
+   "state": "CO",
+   "platform": "ezlinks",
+   "active_rows": 614,
+   "newest_last_seen": "2026-09-15T23:21:56+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T14:40:00",
+    "2026-10-15T16:00:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://arrowheadpp.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://arrowheadpp.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "ballamor-golf-club",
+   "state": "NJ",
+   "platform": "ezlinks",
+   "active_rows": 470,
+   "newest_last_seen": "2026-09-15T23:21:56+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T07:10:00",
+    "2026-10-15T18:20:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://ottingerpp.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://ottingerpp.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "grand-elk-golf-club",
+   "state": "CO",
+   "platform": "ezlinks",
+   "active_rows": 916,
+   "newest_last_seen": "2026-09-15T23:21:56+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T11:20:00",
+    "2026-10-15T16:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://grandelk.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://grandelk.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "huntington-hills-golf-country-club",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 2519,
+   "newest_last_seen": "2026-09-15T23:21:56+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T07:15:00",
+    "2026-10-15T18:07:30"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://huntingtonhills.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://huntingtonhills.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "palatka-golf-club",
+   "state": "FL",
+   "platform": "ezlinks",
+   "active_rows": 1855,
+   "newest_last_seen": "2026-09-15T23:21:56+00:00",
+   "age_hours": 6.5,
+   "teetime_range": [
+    "2026-09-16T07:00:00",
+    "2026-10-15T15:52:30"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://palatka.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://palatka.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "san-pedro-golf-course",
+   "state": "AZ",
+   "platform": "golfwithaccess",
+   "active_rows": 238,
+   "newest_last_seen": "2026-09-15T23:25:53+00:00",
+   "age_hours": 6.4,
+   "teetime_range": [
+    "2026-09-16T06:54:00",
+    "2026-09-20T16:48:00"
+   ],
+   "verdict": "orphaned",
+   "fetched": {
+    "2026-09-15": 0,
+    "2026-09-16": 0,
+    "2026-09-20": 0
+   },
+   "fetched_rows": 0
+  },
+  {
+   "slug": "timber-banks-golf-club",
+   "state": "NY",
+   "platform": "clubprophet",
+   "active_rows": 934,
+   "newest_last_seen": "2026-09-15T23:34:23+00:00",
+   "age_hours": 6.3,
+   "teetime_range": [
+    "2026-09-17T11:00:00",
+    "2026-10-15T16:20:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-17": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: RuntimeError: timber-banks-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
+    "2026-09-17: RuntimeError: timber-banks-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)",
+    "2026-10-15: RuntimeError: timber-banks-golf-club: could not resolve Club Prophet courseIds (OnlineCourses discovery failed)"
+   ]
+  },
+  {
+   "slug": "saratoga-national-golf-club",
+   "state": "NY",
+   "platform": "ezlinks",
+   "active_rows": 464,
+   "newest_last_seen": "2026-09-15T23:36:12+00:00",
+   "age_hours": 6.3,
+   "teetime_range": [
+    "2026-09-18T07:20:00",
+    "2026-10-15T17:50:00"
+   ],
+   "verdict": "error",
+   "fetched": {
+    "2026-09-16": null,
+    "2026-09-18": null,
+    "2026-10-15": null
+   },
+   "fetched_rows": 0,
+   "errors": [
+    "2026-09-16: HTTPError: 403 Client Error: Forbidden for url: https://saratoganational.ezlinksgolf.com/api/search/search",
+    "2026-09-18: HTTPError: 403 Client Error: Forbidden for url: https://saratoganational.ezlinksgolf.com/api/search/search",
+    "2026-10-15: HTTPError: 403 Client Error: Forbidden for url: https://saratoganational.ezlinksgolf.com/api/search/search"
+   ]
+  },
+  {
+   "slug": "riverfront-golf-club",
+   "state": "VA",
+   "platform": "foreup",
+   "active_rows": 546,
+   "newest_last_seen": "2026-09-15T23:42:40+00:00",
+   "age_hours": 6.2,
+   "teetime_range": [
+    "2026-09-16T07:54",
+    "2026-09-29T14:12"
+   ],
+   "verdict": "live",
+   "fetched": {
+    "2026-09-16": 53,
+    "2026-09-29": 36
+   },
+   "fetched_rows": 89
+  },
+  {
+   "slug": "stonegate-golf-club-at-solivita-oaks-course",
    "state": "FL",
    "platform": "teeitup",
-   "active_rows": 364,
-   "newest_last_seen": "2026-09-15T17:26:14+00:00",
-   "age_hours": 6.7,
+   "active_rows": 304,
+   "newest_last_seen": "2026-09-15T23:43:28+00:00",
+   "age_hours": 6.1,
    "teetime_range": [
-    "2026-09-16T10:04:00",
+    "2026-09-16T07:32:00",
     "2026-09-22T15:56:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-22": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 429",
     "2026-09-16: HTTPError: 429",
     "2026-09-22: HTTPError: 429"
    ]
   },
   {
-   "slug": "eagle-dunes-golf-club",
-   "state": "FL",
-   "platform": "teesnap",
-   "active_rows": 590,
-   "newest_last_seen": "2026-09-15T17:26:20+00:00",
-   "age_hours": 6.7,
-   "teetime_range": [
-    "2026-09-16T06:40:00",
-    "2026-09-22T17:52:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 85,
-    "2026-09-16": 85,
-    "2026-09-22": 85
-   },
-   "fetched_rows": 255
-  },
-  {
-   "slug": "shell-point-golf-club",
-   "state": "FL",
-   "platform": "clubcaddie",
-   "active_rows": 31,
-   "newest_last_seen": "2026-09-15T17:27:21+00:00",
-   "age_hours": 6.7,
-   "teetime_range": [
-    "2026-09-19T09:38:00",
-    "2026-09-19T14:58:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-19": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: RuntimeError: shell-point-golf-club: could not resolve Club Caddie CourseId from the booking page",
-    "2026-09-19: RuntimeError: shell-point-golf-club: could not resolve Club Caddie CourseId from the booking page"
-   ]
-  },
-  {
-   "slug": "rogues-roost-golf-club-teeitup",
-   "state": "NY",
+   "slug": "chena-bend-golf-course",
+   "state": "AK",
    "platform": "teeitup",
-   "active_rows": 429,
-   "newest_last_seen": "2026-09-15T17:30:38+00:00",
-   "age_hours": 6.7,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-24T18:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-24": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-24: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "black-desert-resort-golf-course",
-   "state": "UT",
-   "platform": "agilysys",
-   "active_rows": 21,
-   "newest_last_seen": "2026-09-15T17:31:10+00:00",
-   "age_hours": 6.7,
-   "teetime_range": [
-    "2026-10-07T16:24:00",
-    "2026-10-15T16:00:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-10-07": 4,
-    "2026-10-15": 1
-   },
-   "fetched_rows": 5
-  },
-  {
-   "slug": "sumo-golf-village",
-   "state": "CO",
-   "platform": "teeitup",
-   "active_rows": 239,
-   "newest_last_seen": "2026-09-15T17:33:30+00:00",
-   "age_hours": 6.6,
-   "teetime_range": [
-    "2026-09-16T07:30:00",
-    "2026-09-22T17:00:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "paint-branch-golf-course",
-   "state": "MD",
-   "platform": "teeitup",
-   "active_rows": 407,
-   "newest_last_seen": "2026-09-15T17:34:08+00:00",
-   "age_hours": 6.6,
-   "teetime_range": [
-    "2026-09-16T14:00:00",
-    "2026-09-22T19:50:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "sycamore-creek-golf-course",
-   "state": "VA",
-   "platform": "chronogolf",
-   "active_rows": 827,
-   "newest_last_seen": "2026-09-15T17:48:20+00:00",
-   "age_hours": 6.4,
-   "teetime_range": [
-    "2026-09-16T08:24:00",
-    "2026-09-29T16:56:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 39,
-    "2026-09-16": 45,
-    "2026-09-29": 64
-   },
-   "fetched_rows": 148
-  },
-  {
-   "slug": "top-of-the-world-golf-resort",
-   "state": "NY",
-   "platform": "teeitup",
-   "active_rows": 186,
-   "newest_last_seen": "2026-09-15T17:49:34+00:00",
-   "age_hours": 6.3,
-   "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-20T15:56:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-20": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-20: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "victoria-hills-golf-club",
-   "state": "FL",
-   "platform": "teeitup",
-   "active_rows": 433,
-   "newest_last_seen": "2026-09-15T17:49:34+00:00",
-   "age_hours": 6.3,
-   "teetime_range": [
-    "2026-09-16T07:04:00",
-    "2026-09-22T16:56:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-22": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-22: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "juliette-falls-golf-club",
-   "state": "FL",
-   "platform": "chronogolf",
-   "active_rows": 458,
-   "newest_last_seen": "2026-09-15T17:53:22+00:00",
-   "age_hours": 6.3,
-   "teetime_range": [
-    "2026-09-16T08:54:00",
-    "2026-09-27T15:30:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 39,
-    "2026-09-16": 33,
-    "2026-09-27": 46
-   },
-   "fetched_rows": 118
-  },
-  {
-   "slug": "south-park-golf-course",
-   "state": "NY",
-   "platform": "chronogolf",
-   "active_rows": 322,
-   "newest_last_seen": "2026-09-15T17:57:05+00:00",
-   "age_hours": 6.2,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-09-22T17:45:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 18,
-    "2026-09-16": 30,
-    "2026-09-22": 23
-   },
-   "fetched_rows": 71
-  },
-  {
-   "slug": "ralph-myhre-golf-course",
-   "state": "VT",
-   "platform": "teesnap",
-   "active_rows": 934,
-   "newest_last_seen": "2026-09-15T17:59:41+00:00",
-   "age_hours": 6.2,
-   "teetime_range": [
-    "2026-09-16T08:00:00",
-    "2026-10-02T21:20:00"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 61,
-    "2026-09-16": 61,
-    "2026-10-02": 75
-   },
-   "fetched_rows": 197
-  },
-  {
-   "slug": "sterling-grove-golf-country-club",
-   "state": "AZ",
-   "platform": "teeitup",
-   "active_rows": 399,
-   "newest_last_seen": "2026-09-15T18:01:02+00:00",
-   "age_hours": 6.2,
-   "teetime_range": [
-    "2026-09-16T10:56:00",
-    "2026-09-26T16:56:00"
-   ],
-   "verdict": "error",
-   "fetched": {
-    "2026-09-15": null,
-    "2026-09-16": null,
-    "2026-09-26": null
-   },
-   "fetched_rows": 0,
-   "errors": [
-    "2026-09-15: HTTPError: 429",
-    "2026-09-16: HTTPError: 429",
-    "2026-09-26: HTTPError: 429"
-   ]
-  },
-  {
-   "slug": "queen-valley-golf-course",
-   "state": "AZ",
-   "platform": "teeitup",
-   "active_rows": 1083,
-   "newest_last_seen": "2026-09-15T18:04:47+00:00",
+   "active_rows": 543,
+   "newest_last_seen": "2026-09-15T23:45:24+00:00",
    "age_hours": 6.1,
    "teetime_range": [
-    "2026-09-16T06:00:00",
-    "2026-10-11T13:20:00"
+    "2026-09-16T09:40:00",
+    "2026-09-29T16:30:00"
    ],
    "verdict": "error",
    "fetched": {
     "2026-09-15": null,
     "2026-09-16": null,
-    "2026-10-11": null
+    "2026-09-29": null
    },
    "fetched_rows": 0,
    "errors": [
     "2026-09-15: HTTPError: 429",
     "2026-09-16: HTTPError: 429",
-    "2026-10-11: HTTPError: 429"
+    "2026-09-29: HTTPError: 429"
    ]
   },
   {
-   "slug": "redtail-golf-club",
-   "state": "FL",
+   "slug": "monroe-country-club",
+   "state": "NY",
    "platform": "teeitup",
-   "active_rows": 329,
-   "newest_last_seen": "2026-09-15T18:07:48+00:00",
-   "age_hours": 6.0,
+   "active_rows": 296,
+   "newest_last_seen": "2026-09-15T23:49:03+00:00",
+   "age_hours": 6.1,
    "teetime_range": [
-    "2026-09-16T07:00:00",
-    "2026-09-22T16:20:00"
+    "2026-09-16T08:00:00",
+    "2026-09-22T17:50:00"
    ],
    "verdict": "error",
    "fetched": {
-    "2026-09-15": null,
     "2026-09-16": null,
     "2026-09-22": null
    },
    "fetched_rows": 0,
    "errors": [
-    "2026-09-15: HTTPError: 429",
     "2026-09-16: HTTPError: 429",
     "2026-09-22: HTTPError: 429"
    ]
-  },
-  {
-   "slug": "stamford-golf-club",
-   "state": "NY",
-   "platform": "foreup",
-   "active_rows": 249,
-   "newest_last_seen": "2026-09-15T18:08:12+00:00",
-   "age_hours": 6.0,
-   "teetime_range": [
-    "2026-09-16T07:00",
-    "2026-09-21T17:50"
-   ],
-   "verdict": "live",
-   "fetched": {
-    "2026-09-15": 0,
-    "2026-09-16": 66,
-    "2026-09-21": 66
-   },
-   "fetched_rows": 132
   }
  ]
 }
