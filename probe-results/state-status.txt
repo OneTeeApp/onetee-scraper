@@ -6,17 +6,17 @@ state  bookable  live  cover       silent    needs_ids experimental  unsupported
 CO          180   131    73%            1            0            0            0            0           48           61
 AZ          204   169    83%           17            0            3            0            0           15           14
 VA          227   114    50%            0            0            0            4            0          109          102
-FL          646   314    49%           23            4           12           76           27          190           10
+FL          646   313    48%           24            4           12           76           27          190           10
 MD          119    74    62%            2            0            0            8            2           33            1
-UT           91    75    82%            1            0            3            2            2            8           22
+UT           91    75    82%            2            0            2            2            2            8           22
 DC            5     5   100%            0            0            0            0            0            0            1
 AK           25     7    28%            0            0            0            6            0           12            2
 VT           59    33    56%            3            0            0            4            0           19           13
 WY           50    20    40%            0            0            0            8            0           22           11
-NY          495   185    37%           39            1           15           50            5          200          180
+NY          495   188    38%           36            1           15           50            5          200          180
 NJ          156    91    58%            4            0            5           11            3           42          109
 -----------------------------------------------------------------------------------------------------------------------
-ALL        2257  1218    54%           90            5           38          169           39          698          526
+ALL        2257  1220    54%           89            5           37          169           39          698          526
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -25,9 +25,9 @@ ALL        2257  1218    54%           90            5           38          169
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     34   AZ:4 FL:9 MD:2 NJ:3 NY:14 VT:2
-  silent       foreup                      13   AZ:4 FL:3 NY:6
-  silent       chronogolf                  10   AZ:1 FL:1 NY:8
+  silent       teeitup                     35   AZ:4 FL:9 MD:2 NJ:3 NY:14 UT:1 VT:2
+  silent       chronogolf                  11   AZ:1 FL:2 NY:8
+  silent       foreup                      10   AZ:4 FL:3 NY:3
   silent       teesnap                     10   AZ:2 FL:3 NY:5
   silent       clubprophet                  5   CO:1 FL:2 NJ:1 NY:1
   silent       clubcaddie                   5   NY:5
@@ -42,7 +42,7 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   needs_ids    golfwithaccess               1   NY:1
   experimental golfnow                     21   AZ:2 NJ:4 NY:14 UT:1
   experimental ezlinks                     15   AZ:1 FL:12 NJ:1 NY:1
-  experimental trutee                       2   UT:2
+  experimental trutee                       1   UT:1
   unsupported  other:native                42   FL:38 NJ:1 NY:3
   unsupported  other:webtrac               14   FL:6 NY:5 VA:1 WY:2
   unsupported  clubprophet                 14   FL:3 NJ:1 NY:10
@@ -326,10 +326,10 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Woodside Country Club                        —              Tappahannock
 
 ==========================================================================
-FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 314 live (49%)
+FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 313 live (48%)
 ==========================================================================
 
-  SILENT  (23) — believed scrapable, returning nothing
+  SILENT  (24) — believed scrapable, returning nothing
      Beacon Woods Golf Club                       teeitup        Hudson
      Blackstone Golf Course                       teeitup        DeFuniak Springs
      Deer Creek Golf Club                         teesnap        Deerfield Beach
@@ -348,6 +348,7 @@ FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 priva
      The Golf Club at South Hampton               teeitup        St. Augustine
      The Links at Boynton Beach - Championship Co foreup         Boynton Beach
      The Links at Boynton Beach - The Family Cour foreup         Boynton Beach
+     The Plantation at Leesburg Golf Club - Crane chronogolf     Leesburg
      The Ritz-Carlton Golf Club, Orlando, Grande  rguest         Orlando
      Wakulla Sands Golf Course                    clubprophet    Crawfordville
      Wentworth Golf Club                          golfback       Tarpon Springs
@@ -734,13 +735,13 @@ MD  —  119 bookable courses (120 in maryland_golf_courses_booking.csv, 1 priva
 UT  —  91 bookable courses (113 in utah_golf_courses_booking.csv, 22 private), 75 live (82%)
 ==========================================================================
 
-  SILENT  (1) — believed scrapable, returning nothing
+  SILENT  (2) — believed scrapable, returning nothing
      Schneiter's Pebblebrook Golf Club            easytee        Sandy
+     Wasatch Mountain State Park Golf Course - Mo teeitup        Midway
 
-  EXPERIMENTAL  (3) — adapter exists but is not production
+  EXPERIMENTAL  (2) — adapter exists but is not production
      Roosevelt Municipal Golf Course              golfnow        Roosevelt
      Southgate Golf Club                          trutee         St. George
-     St. George Golf Club                         trutee         St. George
 
   UNSUPPORTED  (2) — no adapter possible today
      Schneiter's Bluff Golf Course                other:teerocket West Point
@@ -865,15 +866,12 @@ WY  —  50 bookable courses (61 in wyoming_golf_courses_booking.csv, 11 private
      Wheatland Golf Club                          —              Wheatland
 
 ==========================================================================
-NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 private), 185 live (37%)
+NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 private), 188 live (38%)
 ==========================================================================
 
-  SILENT  (39) — believed scrapable, returning nothing
+  SILENT  (36) — believed scrapable, returning nothing
      Amsterdam Municipal Golf Course              teeitup        Amsterdam
      Bergen Point Golf Course                     teeitup        West Babylon
-     Bethpage State Park - Black Course           foreup         Farmingdale
-     Bethpage State Park - Green Course           foreup         Farmingdale
-     Bethpage State Park - Yellow Course          foreup         Farmingdale
      Blue Heron Hills Country Club                teeitup        West Walworth
      Burden Lake Country Club                     clubprophet    Averill Park
      Calverton Links                              chronogolf     Calverton
@@ -1272,21 +1270,21 @@ NJ  —  156 bookable courses (265 in new_jersey_golf_courses_booking.csv, 109 p
 ==========================================================================
 REGISTRY DRIFT (15) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     328 rows
-  FL  Providence Golf Club                         teeitup        1603 rows
-  FL  Willowbrook Golf Course                      teeitup        497 rows
-  MD  Fox Hollow Golf Course                       foreup         219 rows
-  MD  Rocky Point Golf Course                      foreup         200 rows
-  NJ  Black Bear Golf Club                         ezlinks        280 rows
-  NJ  Cedar Creek Golf Course                      golfnow        247 rows
-  NJ  Mountain View Golf Course                    foreup         135 rows
-  NY  Arrowhead Golf Club                          teesnap        677 rows
-  NY  Forest Park Golf Course                      teeitup        646 rows
-  NY  Fox Run Golf Course                          teeitup        237 rows
-  NY  Old Hickory Golf Club                        teeitup        312 rows
-  NY  Willowbrook Golf Course                      foreup         274 rows
-  UT  Fox Hollow Golf Club                         membersports   77 rows
-  UT  Mountain View Golf Course                    chronogolf     188 rows
+  FL  Continental Country Club                     chronogolf     324 rows
+  FL  Providence Golf Club                         teeitup        1588 rows
+  FL  Willowbrook Golf Course                      teeitup        531 rows
+  MD  Fox Hollow Golf Course                       foreup         213 rows
+  MD  Rocky Point Golf Course                      foreup         194 rows
+  NJ  Black Bear Golf Club                         ezlinks        266 rows
+  NJ  Cedar Creek Golf Course                      golfnow        250 rows
+  NJ  Mountain View Golf Course                    foreup         133 rows
+  NY  Arrowhead Golf Club                          teesnap        603 rows
+  NY  Forest Park Golf Course                      teeitup        650 rows
+  NY  Fox Run Golf Course                          teeitup        233 rows
+  NY  Old Hickory Golf Club                        teeitup        299 rows
+  NY  Willowbrook Golf Course                      foreup         337 rows
+  UT  Fox Hollow Golf Club                         membersports   84 rows
+  UT  Mountain View Golf Course                    chronogolf     190 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (15) — serving tee times, not traceable to a CSV course
