@@ -4,8 +4,8 @@ PER-STATE COVERAGE
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
 CO          180   131    73%            1            0            0            0            0           48           61
-AZ          204   173    85%           12            0            4            0            0           15           14
-VA          227   114    50%            0            0            0            4            0          109          102
+AZ          204   168    82%           15            0            6            0            0           15           14
+VA          227   113    50%            1            0            0            4            0          109          102
 FL          646   314    49%           23            4           12           76           27          190           10
 MD          119    74    62%            2            0            0            8            2           33            1
 UT           91    77    85%            1            0            1            2            2            8           22
@@ -16,7 +16,7 @@ WY           50    20    40%            0            0            0            8
 NY          495   188    38%           35            1           16           50            5          200          180
 NJ          156    91    58%            4            0            5           11            3           42          109
 -----------------------------------------------------------------------------------------------------------------------
-ALL        2257  1227    54%           81            5           38          169           39          698          526
+ALL        2257  1221    54%           85            5           40          169           39          698          526
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -25,11 +25,11 @@ ALL        2257  1227    54%           81            5           38          169
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     33   AZ:4 FL:8 MD:2 NJ:3 NY:14 VT:2
+  silent       teeitup                     35   AZ:5 FL:8 MD:2 NJ:3 NY:14 VA:1 VT:2
+  silent       teesnap                     11   AZ:3 FL:3 NY:5
   silent       chronogolf                  11   AZ:1 FL:2 NY:8
-  silent       teesnap                     10   AZ:2 FL:3 NY:5
+  silent       foreup                       6   AZ:1 FL:3 NY:2
   silent       clubprophet                  5   CO:1 FL:2 NJ:1 NY:1
-  silent       foreup                       5   FL:3 NY:2
   silent       clubcaddie                   5   NY:5
   silent       golfback                     4   FL:4
   silent       golfwithaccess               3   AZ:3
@@ -40,8 +40,8 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   needs_ids    totale                       1   FL:1
   needs_ids    teeitup                      1   FL:1
   needs_ids    golfwithaccess               1   NY:1
-  experimental golfnow                     23   AZ:3 NJ:4 NY:15 UT:1
-  experimental ezlinks                     15   AZ:1 FL:12 NJ:1 NY:1
+  experimental golfnow                     24   AZ:4 NJ:4 NY:15 UT:1
+  experimental ezlinks                     16   AZ:2 FL:12 NJ:1 NY:1
   unsupported  other:native                42   FL:38 NJ:1 NY:3
   unsupported  other:webtrac               14   FL:6 NY:5 VA:1 WY:2
   unsupported  clubprophet                 14   FL:3 NJ:1 NY:10
@@ -159,10 +159,10 @@ CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 173 live (85%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 168 live (82%)
 ==========================================================================
 
-  SILENT  (12) — believed scrapable, returning nothing
+  SILENT  (15) — believed scrapable, returning nothing
      Canoa Ranch Golf Club                        chronogolf     Green Valley
      Coldwater Golf Club                          teeitup        Avondale
      Copper Canyon Golf Club (Sun City Festival)  teeitup        Buckeye
@@ -172,12 +172,17 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Fred Enke Golf Course                        golfwithaccess Tucson
      Havasu Island Golf Course                    teesnap        Lake Havasu City
      Lake Havasu Golf Club (formerly London Bridg teesnap        Lake Havasu City
+     Royal Palms Golf Course                      teeitup        Mesa
      San Pedro Golf Course                        golfwithaccess Benson
      Silverbell Golf Course                       golfwithaccess Tucson
+     Sundance Golf Club                           teesnap        Buckeye
+     The 500 Club                                 foreup         Glendale
      Torres Blancas Golf Club                     teeitup        Green Valley
 
-  EXPERIMENTAL  (4) — adapter exists but is not production
+  EXPERIMENTAL  (6) — adapter exists but is not production
+     Desert Hills Par 3 Golf Course               golfnow        Yuma
      Los Caballeros Golf Club                     golfnow        Wickenburg
+     Mount Graham Golf Course                     ezlinks        Safford
      Quarry Pines Golf Club                       ezlinks        Marana
      The Highlands at Dove Mountain (Heritage Hig golfnow        Marana
      The Preserve Golf Club at SaddleBrooke       golfnow        SaddleBrooke
@@ -200,8 +205,11 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Villa de Paz Golf Club                       teeitup        Phoenix
 
 ==========================================================================
-VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 114 live (50%)
+VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 113 live (50%)
 ==========================================================================
+
+  SILENT  (1) — believed scrapable, returning nothing
+     Ford's Colony Country Club - Blackheath Cour teeitup        Williamsburg
 
   UNSUPPORTED  (4) — no adapter possible today
      Draper Valley Golf Club                      other:eagleclubsystems Draper
@@ -1262,21 +1270,21 @@ NJ  —  156 bookable courses (265 in new_jersey_golf_courses_booking.csv, 109 p
 ==========================================================================
 REGISTRY DRIFT (15) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     290 rows
-  FL  Providence Golf Club                         teeitup        1555 rows
-  FL  Willowbrook Golf Course                      teeitup        532 rows
-  MD  Fox Hollow Golf Course                       foreup         236 rows
-  MD  Rocky Point Golf Course                      foreup         196 rows
-  NJ  Black Bear Golf Club                         ezlinks        329 rows
-  NJ  Cedar Creek Golf Course                      golfnow        279 rows
-  NJ  Mountain View Golf Course                    foreup         104 rows
-  NY  Arrowhead Golf Club                          teesnap        590 rows
-  NY  Forest Park Golf Course                      teeitup        666 rows
-  NY  Fox Run Golf Course                          teeitup        134 rows
-  NY  Old Hickory Golf Club                        teeitup        259 rows
-  NY  Willowbrook Golf Course                      foreup         348 rows
-  UT  Fox Hollow Golf Club                         membersports   163 rows
-  UT  Mountain View Golf Course                    chronogolf     229 rows
+  FL  Continental Country Club                     chronogolf     295 rows
+  FL  Providence Golf Club                         teeitup        1560 rows
+  FL  Willowbrook Golf Course                      teeitup        541 rows
+  MD  Fox Hollow Golf Course                       foreup         215 rows
+  MD  Rocky Point Golf Course                      foreup         198 rows
+  NJ  Black Bear Golf Club                         ezlinks        333 rows
+  NJ  Cedar Creek Golf Course                      golfnow        265 rows
+  NJ  Mountain View Golf Course                    foreup         90 rows
+  NY  Arrowhead Golf Club                          teesnap        552 rows
+  NY  Forest Park Golf Course                      teeitup        661 rows
+  NY  Fox Run Golf Course                          teeitup        100 rows
+  NY  Old Hickory Golf Club                        teeitup        276 rows
+  NY  Willowbrook Golf Course                      foreup         344 rows
+  UT  Fox Hollow Golf Club                         membersports   171 rows
+  UT  Mountain View Golf Course                    chronogolf     222 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (15) — serving tee times, not traceable to a CSV course
