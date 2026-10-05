@@ -3,20 +3,20 @@ PER-STATE COVERAGE
 ==========================================================================
 state  bookable  live  cover       silent    needs_ids experimental  unsupported  no_platform   no_booking      private
 -----------------------------------------------------------------------------------------------------------------------
-CO          180   129    72%            3            0            0            0            0           48           61
-AZ          204   145    71%           31            0           13            0            0           15           14
-VA          227   113    50%            0            0            1            4            0          109          102
-FL          646   313    48%           24            4           12           76           27          190           10
+CO          180   124    69%            8            0            0            0            0           48           61
+AZ          204   140    69%           35            0           14            0            0           15           14
+VA          227   112    49%            1            0            1            4            0          109          102
+FL          646   311    48%           26            4           12           76           27          190           10
 MD          119    74    62%            2            0            0            8            2           33            1
 UT           91    77    85%            1            0            1            2            2            8           22
 DC            5     5   100%            0            0            0            0            0            0            1
 AK           25     5    20%            2            0            0            6            0           12            2
 VT           59    33    56%            3            0            0            4            0           19           13
 WY           50    20    40%            0            0            0            8            0           22           11
-NY          495   187    38%           36            1           16           50            5          200          180
+NY          495   181    37%           43            1           15           50            5          200          180
 NJ          156    91    58%            4            0            5           11            3           42          109
 -----------------------------------------------------------------------------------------------------------------------
-ALL        2257  1192    53%          106            5           48          169           39          698          526
+ALL        2257  1173    52%          125            5           48          169           39          698          526
 
   bookable = every course in the state's directory minus private and military clubs,
   which no aggregator can sell. cover = live / bookable.
@@ -25,24 +25,24 @@ ALL        2257  1192    53%          106            5           48          169
 WHAT'S BLOCKING — one row per fix, sorted by how far along it is
 ==========================================================================
   bucket       platform               courses   states
-  silent       teeitup                     43   AK:1 AZ:14 FL:7 MD:2 NJ:3 NY:14 VT:2
-  silent       teesnap                     14   AK:1 AZ:3 FL:4 NY:6
+  silent       teeitup                     48   AK:1 AZ:18 FL:7 MD:2 NJ:3 NY:14 VA:1 VT:2
+  silent       teesnap                     19   AK:1 AZ:3 FL:6 NY:9
+  silent       foreup                      13   AZ:2 CO:2 FL:3 NY:6
+  silent       chronogolf                  10   CO:1 FL:1 NY:8
   silent       clubprophet                  9   AZ:1 CO:1 FL:5 NJ:1 NY:1
-  silent       chronogolf                   9   FL:1 NY:8
-  silent       foreup                       8   AZ:2 CO:1 FL:3 NY:2
-  silent       clubcaddie                   7   AZ:2 NY:5
+  silent       clubcaddie                   8   AZ:2 CO:1 NY:5
+  silent       quick18                      4   AZ:1 CO:3
   silent       courseco                     4   AZ:4
   silent       golfback                     4   FL:4
   silent       golfwithaccess               3   AZ:3
-  silent       quick18                      2   AZ:1 CO:1
   silent       easytee                      2   UT:1 VT:1
   silent       teequest                     1   AZ:1
   needs_ids    foreup                       2   FL:2
   needs_ids    totale                       1   FL:1
   needs_ids    teeitup                      1   FL:1
   needs_ids    golfwithaccess               1   NY:1
-  experimental golfnow                     31   AZ:10 NJ:4 NY:15 UT:1 VA:1
-  experimental ezlinks                     17   AZ:3 FL:12 NJ:1 NY:1
+  experimental golfnow                     30   AZ:10 NJ:4 NY:14 UT:1 VA:1
+  experimental ezlinks                     18   AZ:4 FL:12 NJ:1 NY:1
   unsupported  other:native                42   FL:38 NJ:1 NY:3
   unsupported  other:webtrac               14   FL:6 NY:5 VA:1 WY:2
   unsupported  clubprophet                 14   FL:3 NJ:1 NY:10
@@ -103,13 +103,18 @@ WHAT'S BLOCKING — one row per fix, sorted by how far along it is
   no_booking   totale                       1   FL:1
 
 ==========================================================================
-CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 private), 129 live (72%)
+CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 private), 124 live (69%)
 ==========================================================================
 
-  SILENT  (3) — believed scrapable, returning nothing
+  SILENT  (8) — believed scrapable, returning nothing
      Beaver Creek Golf Club                       quick18        Avon
      Breckenridge Golf Club                       foreup         Breckenridge
+     Copper Creek Golf Club                       foreup         Frisco
+     EagleVail Golf Club                          clubcaddie     Avon
      Emerald Greens Golf Club                     clubprophet    Denver
+     Golf Granby Ranch                            chronogolf     Granby
+     The Ranch Course At Keystone                 quick18        Dillon
+     The River Course At Keystone                 quick18        Dillon
 
   NO_BOOKING  (48) — playable, but no online booking in the source data
      Broadmoor Golf Club                          —              Colorado Springs
@@ -162,19 +167,19 @@ CO  —  180 bookable courses (241 in colorado_golf_courses_booking.csv, 61 priv
      Wray Country Club                            —              Wray
 
 ==========================================================================
-AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 145 live (71%)
+AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 private), 140 live (69%)
 ==========================================================================
 
-  SILENT  (31) — believed scrapable, returning nothing
+  SILENT  (35) — believed scrapable, returning nothing
      Aguila Golf Course                           teeitup        Laveen
      Arizona City Golf Club                       teeitup        Arizona City
-     Arizona National Golf Club                   golfwithaccess Tucson
      Chaparral Golf & Country Club                foreup         Bullhead City
      Cimarron Golf Course (Sun City Grand)        teeitup        Surprise
      Coldwater Golf Club                          teeitup        Avondale
      Copper Canyon Golf Club (Sun City Festival)  teeitup        Buckeye
      Coronado Golf Course                         teeitup        Scottsdale
      Corte Bella Golf Club                        teeitup        Sun City West
+     Dave White Municipal Golf Course             foreup         Casa Grande
      Deer Valley Golf Course (Sun City West)      courseco       Sun City West
      Desert Trails Golf Course (Sun City West)    courseco       Sun City West
      Echo Mesa Golf Course (Sun City West)        courseco       Sun City West
@@ -183,28 +188,33 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Foothills Executive Golf Course              clubcaddie     Yuma
      Fountain of the Sun Country Club             clubprophet    Mesa
      Granite Falls South (Sun City Grand)         teeitup        Surprise
+     Greenfield Lakes Golf Course                 teeitup        Gilbert
      Havasu Island Golf Course                    teesnap        Lake Havasu City
      Lake Havasu Golf Club (formerly London Bridg teesnap        Lake Havasu City
      Las Barrancas Golf Course                    clubcaddie     Yuma
      Longbow Golf Club                            teeitup        Mesa
-     Palo Duro Creek Golf Course                  foreup         Nogales
+     Palo Verde Golf Course                       teeitup        Phoenix
      Pebblebrook Golf Course (Sun City West)      courseco       Sun City West
+     Pueblo El Mirage Golf Club                   teeitup        El Mirage
+     Randolph North Golf Course                   golfwithaccess Tucson
      San Ignacio Golf Club                        teeitup        Green Valley
      San Pedro Golf Course                        golfwithaccess Benson
      Sterling Grove Golf & Country Club           teeitup        Surprise
+     Sun Village Golf Course                      teeitup        Surprise
      Sundance Golf Club                           teesnap        Buckeye
      Sunland Village East Golf Club               teeitup        Mesa
      Sunland Village Golf Club                    teeitup        Mesa
      Torres Blancas Golf Club                     teeitup        Green Valley
      Trilogy Golf Club at Vistancia               quick18        Peoria
 
-  EXPERIMENTAL  (13) — adapter exists but is not production
+  EXPERIMENTAL  (14) — adapter exists but is not production
+     Arizona Traditions Golf Club                 ezlinks        Surprise
      Desert Hills Golf Course                     golfnow        Yuma
      Desert Hills Par 3 Golf Course               golfnow        Yuma
      Mission Royale Golf Club                     golfnow        Casa Grande
      Mount Graham Golf Course                     ezlinks        Safford
      Quarry Pines Golf Club                       ezlinks        Marana
-     Sun City Country Club                        golfnow        Sun City
+     Riverview Golf Course (RCSC)                 golfnow        Sun City
      Sun City Lakes East Golf Course (RCSC)       golfnow        Sun City
      Sun City South Golf Course (RCSC)            golfnow        Sun City
      SunBird Golf Club                            golfnow        Chandler
@@ -231,8 +241,11 @@ AZ  —  204 bookable courses (218 in arizona_golf_courses_booking.csv, 14 priva
      Villa de Paz Golf Club                       teeitup        Phoenix
 
 ==========================================================================
-VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 113 live (50%)
+VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 private), 112 live (49%)
 ==========================================================================
+
+  SILENT  (1) — believed scrapable, returning nothing
+     Ford's Colony Country Club - Blackheath Cour teeitup        Williamsburg
 
   EXPERIMENTAL  (1) — adapter exists but is not production
      The Club of Staunton                         golfnow        Staunton
@@ -355,19 +368,21 @@ VA  —  227 bookable courses (329 in virginia_golf_courses_booking.csv, 102 pri
      Woodside Country Club                        —              Tappahannock
 
 ==========================================================================
-FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 313 live (48%)
+FL  —  646 bookable courses (656 in florida_golf_courses_booking.csv, 10 private), 311 live (48%)
 ==========================================================================
 
-  SILENT  (24) — believed scrapable, returning nothing
+  SILENT  (26) — believed scrapable, returning nothing
      Beacon Woods Golf Club                       teeitup        Hudson
      Blackstone Golf Course                       teeitup        DeFuniak Springs
      Deer Creek Golf Club                         teesnap        Deerfield Beach
      Eagle Ridge Golf Club at Del Webb Spruce Cre golfback       Summerfield
      Eco Golf Club                                teeitup        Hollywood
+     Hidden Lakes Golf Course                     teesnap        New Smyrna Beach
      Highlands Ridge Golf Club - North Course     clubprophet    Avon Park
      Highlands Ridge Golf Club - South Course     clubprophet    Avon Park
      Hollywood Beach Golf Club                    foreup         Hollywood
      Magnolia Landing Golf & Country Club         teeitup        North Fort Myers
+     Moccasin Wallow Golf Club                    teesnap        Palmetto
      Ocean Village Golf Course                    chronogolf     Fort Pierce
      Placid Lakes Country Club                    teesnap        Lake Placid
      Saltleaf Golf Preserve - The Leaf            teeitup        Bonita Springs
@@ -897,12 +912,16 @@ WY  —  50 bookable courses (61 in wyoming_golf_courses_booking.csv, 11 private
      Wheatland Golf Club                          —              Wheatland
 
 ==========================================================================
-NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 private), 187 live (38%)
+NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 private), 181 live (37%)
 ==========================================================================
 
-  SILENT  (36) — believed scrapable, returning nothing
+  SILENT  (43) — believed scrapable, returning nothing
      Amsterdam Municipal Golf Course              teeitup        Amsterdam
      Bergen Point Golf Course                     teeitup        West Babylon
+     Bethpage State Park - Black Course           foreup         Farmingdale
+     Bethpage State Park - Blue Course            foreup         Farmingdale
+     Bethpage State Park - Red Course             foreup         Farmingdale
+     Bethpage State Park - Yellow Course          foreup         Farmingdale
      Blue Heron Hills Country Club                teeitup        West Walworth
      Burden Lake Country Club                     clubprophet    Averill Park
      Calverton Links                              chronogolf     Calverton
@@ -914,12 +933,14 @@ NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 pri
      Delhi College Golf Course                    teesnap        Delhi
      Dutch Hollow Country Club                    chronogolf     Owasco
      Elm Tree Golf Course                         teesnap        Cortland
+     Fillmore Golf Club                           teesnap        Locke
      Ford Hill Country Club                       teeitup        Whitney Point
      Greenview Country Club                       chronogolf     West Monroe
      Hickory Ridge Golf & Country Club            foreup         Holley
      Highland Meadows Golf & Country Club         clubcaddie     Watertown
      Highland Park Golf Club                      chronogolf     Auburn
      Hiland Golf Club                             teeitup        Queensbury
+     Island's End Golf & Country Club             teesnap        Greenport
      Little Falls Municipal Golf Course           teeitup        Little Falls
      Mark Twain Golf Course                       teesnap        Elmira
      New Paltz Golf Course                        teesnap        New Paltz
@@ -937,11 +958,12 @@ NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 pri
      Turtle Creek Golf Course                     teesnap        Wallkill
      Wiltwyck Golf Club                           clubcaddie     Kingston
      Windham Country Club                         teeitup        Windham
+     Woodgate Pines Golf Club                     teesnap        Boonville
 
   NEEDS_IDS  (1) — right platform, identifiers not captured
      The Golf Club at Mansion Ridge               golfwithaccess Monroe
 
-  EXPERIMENTAL  (16) — adapter exists but is not production
+  EXPERIMENTAL  (15) — adapter exists but is not production
      Brierwood Country Club                       golfnow        Hamburg
      Brookwoods Country Club                      golfnow        Ontario
      Crooked Pines Golf Club                      golfnow        Macedon
@@ -951,7 +973,6 @@ NY  —  495 bookable courses (675 in new_york_golf_courses_booking.csv, 180 pri
      Grandview Farms Golf Course                  golfnow        Berkshire
      Greystone Golf Club                          golfnow        Walworth
      Heatherwood Golf Club                        golfnow        Centereach
-     King Ferry Golf Course                       golfnow        King Ferry
      Leatherstocking Golf Course                  ezlinks        Cooperstown
      Lima Golf and Country Club                   golfnow        Lima
      Port Bay Golf Club                           golfnow        Wolcott
@@ -1302,21 +1323,21 @@ NJ  —  156 bookable courses (265 in new_jersey_golf_courses_booking.csv, 109 p
 ==========================================================================
 REGISTRY DRIFT (15) — in registry.json, no matching course in the state CSV
 ==========================================================================
-  FL  Continental Country Club                     chronogolf     328 rows
-  FL  Providence Golf Club                         teeitup        1598 rows
-  FL  Willowbrook Golf Course                      teeitup        579 rows
-  MD  Fox Hollow Golf Course                       foreup         192 rows
-  MD  Rocky Point Golf Course                      foreup         173 rows
-  NJ  Black Bear Golf Club                         ezlinks        389 rows
-  NJ  Cedar Creek Golf Course                      golfnow        230 rows
-  NJ  Mountain View Golf Course                    foreup         113 rows
-  NY  Arrowhead Golf Club                          teesnap        128 rows
-  NY  Forest Park Golf Course                      teeitup        610 rows
-  NY  Fox Run Golf Course                          teeitup        218 rows
-  NY  Old Hickory Golf Club                        teeitup        358 rows
-  NY  Willowbrook Golf Course                      foreup         379 rows
-  UT  Fox Hollow Golf Club                         membersports   222 rows
-  UT  Mountain View Golf Course                    chronogolf     250 rows
+  FL  Continental Country Club                     chronogolf     298 rows
+  FL  Providence Golf Club                         teeitup        1625 rows
+  FL  Willowbrook Golf Course                      teeitup        550 rows
+  MD  Fox Hollow Golf Course                       foreup         174 rows
+  MD  Rocky Point Golf Course                      foreup         154 rows
+  NJ  Black Bear Golf Club                         ezlinks        348 rows
+  NJ  Cedar Creek Golf Course                      golfnow        217 rows
+  NJ  Mountain View Golf Course                    foreup         98 rows
+  NY  Arrowhead Golf Club                          teesnap        13 rows
+  NY  Forest Park Golf Course                      teeitup        600 rows
+  NY  Fox Run Golf Course                          teeitup        203 rows
+  NY  Old Hickory Golf Club                        teeitup        353 rows
+  NY  Willowbrook Golf Course                      foreup         354 rows
+  UT  Fox Hollow Golf Club                         membersports   216 rows
+  UT  Mountain View Golf Course                    chronogolf     253 rows
 
 ==========================================================================
 UNATTRIBUTED LIVE (15) — serving tee times, not traceable to a CSV course
