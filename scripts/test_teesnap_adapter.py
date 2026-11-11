@@ -2,27 +2,34 @@
 
 Two findings are locked in here.
 
-1. window.courses embeds each course's parent PROPERTY object and a list of
-   text notices under `infos`, both of which carry their own "id"/"created_at"
-   pair. The old regex harvested those as course ids, and Hollydot's property
-   id 1329 / Petteys Park's 1081 answer HTTP 500 on the tee-sheet route, which
-   threw away the 60-70 real slots the course's own id returned
-   (probe-results/diag4.txt section B).
+1. The tenant's property document carries ids that are not courses — its own
+   `data.id`, each course's embedded PROPERTY object and a list of text
+   notices under `infos`, all with their own "id"/"created_at" pair. An old
+   regex harvested those as course ids, and Hollydot's property id 1329 /
+   Petteys Park's 1081 answer HTTP 500 on the tee-sheet route, which threw
+   away the 60-70 real slots the course's own id returned
+   (probe-results/diag4.txt section B). Only top-level `data.courses` count.
 
 2. `?course=` is resolved GLOBALLY — the tenant subdomain is decorative
    (probe-results/diag_teesnap2.txt: ten ids x four tenants, every one
    byte-identical everywhere). So a foreign id does not fail, it returns
    ANOTHER CLUB'S tee sheet, which we would publish under our course's name.
    That makes over-collection worse than under-collection, and it is why
-   discover_courses has no regex fallback and why pinned ids are validated
-   against the tenant's own window.courses.
+   discover_courses recovers nothing by pattern. An explicit registry pin is
+   the one exception: it is trusted even when the tenant does not list it
+   (heathergardens' bookable sheet is 131, which its course list omits), and
+   the adapter says so out loud every time it uses one.
+
+Since 2026-11 the course list comes from
+https://<sub>.api.teesnap.net/api/bookingsite/property (`data.courses`) rather
+than a `window.courses` literal inlined in the homepage; the fixtures below are
+that document.
 
 Run: python scripts/test_teesnap_adapter.py
 """
 from __future__ import annotations
 
 import datetime as dt
-import json
 import sys
 from typing import Any
 
@@ -33,10 +40,16 @@ from scraper.adapters.teesnap import TeesnapAdapter  # noqa: E402
 
 DATE = dt.date(2026, 7, 26)
 
-# Homepage shape: two live courses, one deleted. Each embeds its property and
-# a text notice under infos — mirroring lakehavasu / sundancegolfclub, where
-# exactly those notice ids returned 60 slots of somebody else's inventory.
-HOMEPAGE = "<html><script>window.courses = " + json.dumps([
+# Property document: two live courses, one deleted. Each embeds its property
+# and a text notice under infos — mirroring lakehavasu / sundancegolfclub,
+# where exactly those notice ids returned 60 slots of somebody else's inventory.
+def prop(courses: Any) -> dict:
+    return {"success": True,
+            "data": {"id": 1329, "key": "hollydotgolf",
+                     "name": "Hollydot Golf Course, CO", "courses": courses}}
+
+
+HOMEPAGE = prop([
     {"id": 1550, "created_at": "2023-05-18T16:09:13.000000Z",
      "deleted_at": None, "property_id": 1329, "key": "hollydotgolf",
      "name": "Hollydot Golf Course", "enabled": True,
@@ -52,7 +65,7 @@ HOMEPAGE = "<html><script>window.courses = " + json.dumps([
     {"id": 1552, "created_at": "2019-01-01T00:00:00.000000Z",
      "deleted_at": "2024-06-01T00:00:00.000000Z", "key": "old-course",
      "name": "Retired Course", "enabled": True},
-]) + ";</script></html>"
+])
 
 
 def slot(hhmm: str, price18: str = "38.00") -> dict:
@@ -72,23 +85,25 @@ def sheet(times: list[str], price18: str = "38.00") -> dict:
 class Fake(TeesnapAdapter):
     """Replays recorded responses; records what was requested."""
 
-    def __init__(self, sheets: dict[int, Any], homepage: str = HOMEPAGE):
+    def __init__(self, sheets: dict[int, Any], homepage: Any = HOMEPAGE):
         super().__init__()
         self.sheets = sheets
         self.homepage = homepage
         self.asked: list[int] = []
+        self.urls: list[str] = []
         self.homepage_fetches = 0
         # The real cache is class-level and shared across the fleet; give each
         # test its own so one check cannot poison the next.
         self._COURSES = {}
 
-    def _get_text(self, url):  # noqa: D102
+    def _get_property(self, sub):  # noqa: D102
         self.homepage_fetches += 1
         if isinstance(self.homepage, Exception):
             raise self.homepage
         return self.homepage
 
     def get_json(self, url, **kw):  # noqa: D102
+        self.urls.append(url)
         cid = int(kw["params"]["course"])
         self.asked.append(cid)
         v = self.sheets.get(cid)
@@ -126,14 +141,25 @@ def main() -> None:
     check("names come back with the ids",
           [c["name"] for c in found] == ["Hollydot Golf Course", "Hollydot Nine"])
 
-    print("\ndiscover_courses: no regex fallback (ids are global)")
-    a = Fake({}, homepage='<script>window.courses = [{"id": 1550, '
-                          '"created_at": "2023-01-01"}, BROKEN;</script>')
-    check("an unparseable array yields nothing at all",
-          a.discover_courses("hollydotgolf") == [])
+    print("\ndiscover_courses: nothing is recovered by pattern (ids are global)")
+    for label, doc in (
+            ("no courses key", {"success": True, "data": {"id": 1329}}),
+            ("courses is not a list", prop({"id": 1550})),
+            ("data is null", {"success": False, "data": None}),
+            ("the old HTML shell, as a string", "<!doctype html><html>"),
+            ("a bare list", [{"id": 1550, "name": "x"}])):
+        check(f"{label} yields nothing at all",
+              Fake({}, homepage=doc).discover_courses("hollydotgolf") == [])
+    check("non-dict and id-less entries are skipped",
+          Fake({}, homepage=prop([1550, "1550", {"name": "no id"},
+                                  {"id": "1550", "name": "string id"},
+                                  {"id": 7, "name": "ok"}])
+               ).discover_courses("hollydotgolf") == [{"id": 7, "name": "ok"}])
+    check("a disabled course is skipped",
+          Fake({}, homepage=prop([{"id": 7, "name": "off", "enabled": False}])
+               ).discover_courses("hollydotgolf") == [])
     a = Fake({1550: sheet(["07:10"])},
-             homepage='<script>window.courses = [{"id": 1550, "created_at": '
-                      '"2023-01-01"}, BROKEN;</script>')
+             homepage={"success": True, "data": {"id": 1550}})
     try:
         a.fetch(COURSE, DATE)
         check("fetch raises rather than guessing an id", False, "returned")
@@ -225,18 +251,39 @@ def main() -> None:
           and out[1].price_max == 44.0)
 
     print("\nfetch: single live course stays unlabelled")
-    single = ("<script>window.courses = " + json.dumps([
+    single = prop([
         {"id": 1550, "created_at": "2023-05-18T16:09:13.000000Z",
          "deleted_at": None, "key": "hollydotgolf",
          "name": "Hollydot Golf Course",
          "property": {"id": 1329, "created_at": "2020-01-01T00:00:00.000000Z"}},
-    ]) + ";</script>")
+    ])
     a = Fake({1550: sheet(["07:10"])}, homepage=single)
     out = a.fetch(COURSE, DATE)
     check("one course -> no course_label",
           all(t.course_label == "" for t in out) and len(out) == 1)
+    check("the tee sheet is asked of the 2026 API host",
+          a.urls == ["https://hollydotgolf.api.teesnap.net/api/bookingsite/"
+                     "teetimes-day"], str(a.urls))
 
-    print("\nfetch: pinned registry ids are honoured but validated")
+    print("\nfetch: the 2026 slot shape (top-level teeTime, no turnTo)")
+    live = {"teeTimes": {"bookings": [], "golfers": [],
+                         "teeSheetPriceOverrides": [], "teeTimes": [
+        {"prices": [{"roundType": "EIGHTEEN_HOLE", "price": "16.00",
+                     "priceWithAddOn": "36.00", "taxInclusive": False},
+                    {"roundType": "NINE_HOLE", "price": "16.00",
+                     "priceWithAddOn": "28.00", "taxInclusive": False}],
+         "teeOffSections": [{"teeOff": "FRONT_NINE", "bookings": [55731718],
+                             "isHeld": False}],
+         "rackRateName": "Tuesday/Thursday", "teeTime": "2026-11-12T09:02:00",
+         "shotgun": False, "squeezeTime": False}]}}
+    out = Fake({1550: live}, homepage=single).fetch(COURSE, DATE)
+    check("one slot, timed from teeTime",
+          [t.teetime for t in out] == ["2026-11-12T09:02:00"],
+          str([t.teetime for t in out]))
+    check("its price and holes", out and out[0].price_min == 16.0
+          and out[0].holes == [9, 18])
+
+    print("\nfetch: pinned registry ids are honoured, and flagged when foreign")
     c = dict(COURSE, ids={"subdomain": "hollydotgolf",
                           "teesnap_course_ids": [1550]})
     a = Fake({1550: sheet(["07:10", "07:20"])})
@@ -249,26 +296,25 @@ def main() -> None:
                           "teesnap_course_ids": [1550, 131]})
     a = Fake({1550: sheet(["07:10"]), 131: sheet(["06:00", "06:10"])})
     out = a.fetch(c, DATE)
-    check("a pinned id outside this tenant's courses is dropped",
-          a.asked == [1550], str(a.asked))
-    check("and its foreign slots never reach the output", len(out) == 1,
-          f"got {len(out)}")
+    # An explicit pin is trusted even when the tenant does not list it —
+    # heathergardens' real sheet is 131 and its course list only has 148.
+    # (These three checks used to assert the opposite, from before that fix.)
+    check("a pinned id outside this tenant's courses is still requested",
+          a.asked == [1550, 131], str(a.asked))
+    check("and its slots are published", len(out) == 3, f"got {len(out)}")
 
     c = dict(COURSE, ids={"subdomain": "hollydotgolf",
                           "teesnap_course_ids": [131]})
     a = Fake({131: sheet(["06:00"])})
-    try:
-        a.fetch(c, DATE)
-        check("all-foreign pins raise rather than publish", False, "returned")
-    except RuntimeError as exc:
-        check("all-foreign pins raise rather than publish",
-              "no Teesnap course id" in str(exc))
+    out = a.fetch(c, DATE)
+    check("an all-foreign pin (the heathergardens case) publishes",
+          a.asked == [131] and len(out) == 1, f"{a.asked} / {len(out)}")
 
     print("\ndiscovery is cached per subdomain")
     a = Fake({1550: sheet(["07:10"]), 1551: sheet(["08:00"])})
     a.fetch(COURSE, DATE)
     a.fetch(COURSE, DATE + dt.timedelta(days=1))
-    check("the homepage is fetched once for two dates",
+    check("the property document is fetched once for two dates",
           a.homepage_fetches == 1, f"fetched {a.homepage_fetches}x")
 
     print(f"\n{'ALL CHECKS PASSED' if not FAILS else str(FAILS) + ' CHECK(S) FAILED'}")
