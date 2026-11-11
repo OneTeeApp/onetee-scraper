@@ -153,7 +153,7 @@ jobs:
             echo "::group::far ${DATE} shard ${{ matrix.shard }}"
             python -m scraper.aggregate --date "${DATE}" --workers 10 \
               --shard "${{ matrix.shard }}/${{ strategy.job-total }}" \
-              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,teesnap \
+              --exclude clubprophet,ezlinks,golfnow,clubcaddie,supersaas,golfwithaccess,teeitup,totale,trutee,teesnap,chronogolf \
               ${ARGS} --out "${OUT}" || true
             python -m scraper.d1 push --data "${OUT}" || true
             echo "::endgroup::"
