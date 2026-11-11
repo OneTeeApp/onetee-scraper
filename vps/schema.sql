@@ -47,6 +47,29 @@ CREATE INDEX IF NOT EXISTS idx_tt_last_seen  ON tee_times (last_seen_at);
 -- filters active = 1 first. Only ~active rows are indexed, so it stays small
 -- even though deactivated rows accumulate in the heap.
 CREATE INDEX IF NOT EXISTS idx_tt_active_teetime ON tee_times (teetime) WHERE active = 1;
+-- The prune's own predicate is `active = 1 AND state IN (...) AND teetime < now`,
+-- and the index above cannot serve it: active rows are ~6% of the table and
+-- nearly all in the future, but Postgres assumes `teetime < now` is independent
+-- of `active` and so expects most active rows to match — and picks a parallel
+-- seq scan of the whole heap instead (measured on a 7M-row copy: 173,000 buffers
+-- per COUNT, six COUNTs per prune run; with this index, 385). That scan is what
+-- ran into /exec's 25 s statement_timeout and failed `Prune elapsed tee times`
+-- from 2026-08-22 on. Leading with `state` also serves every "active rows in
+-- one state" read. INCLUDE (course_slug) is for the prune's second half, which
+-- asks "which slugs have active rows" to find courses that left the registry:
+-- with the slug in the index that is an index-only scan of the active rows
+-- (8,452 buffers) instead of another pass over the heap (173,716).
+-- CONCURRENTLY so the build never blocks ingest; psql -f runs
+-- each statement in its own transaction, which CONCURRENTLY requires. A
+-- concurrent build that dies leaves an INVALID index that IF NOT EXISTS would
+-- then skip forever, so drop a broken one first.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+              WHERE c.relname = 'idx_tt_active_state_teetime' AND NOT i.indisvalid) THEN
+    EXECUTE 'DROP INDEX idx_tt_active_state_teetime';
+  END IF;
+END $$;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tt_active_state_teetime ON tee_times (state, teetime) INCLUDE (course_slug) WHERE active = 1;
 
 CREATE TABLE IF NOT EXISTS venue_geo (
   venue_id TEXT PRIMARY KEY,
