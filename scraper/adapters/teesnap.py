@@ -1,18 +1,47 @@
-"""Teesnap adapter — captured from live traffic (July 2026), no auth, no CAPTCHA
-for viewing tee times (reCAPTCHA only gates the actual booking step).
+"""Teesnap adapter — no auth, no CAPTCHA for viewing tee times (reCAPTCHA
+only gates the actual booking step).
 
-Discovery + fetch (both plain HTTP):
+Discovery + fetch (both plain HTTP, both JSON):
 
-  1. GET https://<sub>.teesnap.net/         (the homepage shell)
-       inlines `window.courses = [{ id, key, name, min_players, max_players,
-       holes, enabled }, ...]` — regex out the course id(s).
-  2. GET https://<sub>.teesnap.net/customer-api/teetimes-day
+  1. GET https://<sub>.api.teesnap.net/api/bookingsite/property
+       -> { success, data: { id, key, name, ...,
+                             courses: [{ id, key, name, min_players,
+                                         max_players, holes, enabled,
+                                         deleted_at, property_id }, ...] } }
+  2. GET https://<sub>.api.teesnap.net/api/bookingsite/teetimes-day
          ?course=<id>&date=YYYY-MM-DD&players=1&holes=18&addons=off
-       -> { teeTimes: { teeTimes: [ { prices:[{roundType, price}],
-                                      teeOffSections:[{turnTo:{time}}] } ],
+       -> { teeTimes: { teeTimes: [ { teeTime, prices:[{roundType, price}],
+                                      teeOffSections:[{teeOff, bookings}] } ],
                         bookings: [...] } }
 
+MOVED 2026 (found 2026-11-11). Teesnap rebuilt the booking site as a JS app:
+the homepage at <sub>.teesnap.net no longer inlines `window.courses`, and
+<sub>.teesnap.net/customer-api/teetimes-day now answers 200 with the app's
+HTML shell instead of JSON. Every course failed with "no Teesnap course id in
+<sub>'s window.courses" and the whole platform served nothing from about
+2026-09-29. It is the same backend on a new host — the course list is the
+same objects under `data.courses`, the tee sheet has the shape shown
+above, and every quirk recorded here was re-measured on the new host that
+day: heathergardens 148 -> 0 slots and 131 -> 78, hollydot's property id 1329
+-> HTTP 500 "Be right back.", and hollydot's 1550 served from the
+heathergardens host. Verified from a home connection and from two
+GitHub-hosted runners with plain requests (run 42965653257): 200 JSON, no
+challenge.
+
 Prices are strings ("55.00"); times are ISO ("2026-07-24T09:40:00").
+
+teeTimes IS THE WHOLE SHEET, NOT WHAT IS LEFT. Every slot the course runs that
+day comes back whether or not anyone can still book it, and `players=` does
+not filter it (players=1 and players=4 return the same 45 slots). What is
+taken is in `bookings`: each slot section lists booking ids, and each booking
+carries its `golfers`. Teesnap's own page hides a slot once its golfers reach
+the course's `max_players`. Checked against that page on 2026-11-11, Hollydot
+for the 11th: 45 slots in the feed, 17 with four golfers, and the page showed
+exactly the other 28 — none of the 17, all of the 28. Until that day this
+adapter published all 45 with open_spots unknown, i.e. more than a third of
+that sheet was tee times nobody could book. So a section's open seats are
+max_players minus its booked golfers, and a slot with no seats left anywhere
+is not emitted — which also lets sync deactivate it the pass after it fills.
 
 THE HAZARD THAT SHAPES THIS FILE — `?course=` IS RESOLVED GLOBALLY.
 
@@ -35,124 +64,82 @@ notices out of `courses[].infos` — lakehavasu 1517, sundance 1785 — answer
 with 60 slots each. None of those are courses on those tenants.
 
 So: an id may be used ONLY if it is a top-level entry of that tenant's own
-`window.courses`. There is deliberately no regex fallback, and pinned ids
-are checked against discovery. Returning zero for a tenant we cannot read is
+`data.courses`. There is deliberately no pattern-matching fallback, and pinned
+ids are checked against discovery. Returning zero for a tenant we cannot read is
 correct; guessing is not.
 """
 from __future__ import annotations
 
 import datetime as dt
-import json
-import re
 import threading
 from typing import Any
 
 from .base import Adapter, PartialFetchError
 from ..models import TeeTime
 
-# (There used to be a COURSES_RE non-greedy `window.courses = (\[.*?\]);`
-# here. It is gone on purpose: it stops at the first "];" inside a nested
-# array, and anything that recovers ids by pattern rather than by parsing can
-# hand us an id this tenant does not own. Parse or fail — see the docstring.)
+# Booking-site API root for one tenant. The tenant label is decorative for
+# teetimes-day (ids resolve globally — see the docstring) but it is what makes
+# `property` return THIS tenant's course list, which is the only thing that
+# makes an id safe to use.
+API = "https://{sub}.api.teesnap.net/api/bookingsite"
+
+# Seats on a tee time when the course's own max_players is not available.
+DEFAULT_MAX_PLAYERS = 4
 
 
 class TeesnapAdapter(Adapter):
     platform = "teesnap"
 
     # subdomain -> discovered top-level courses. The fleet scrapes several
-    # dates per course, and the homepage answer does not change between them;
+    # dates per course, and the property answer does not change between them;
     # Teesnap also resets connections from datacenter IPs, so every fetch we
-    # can skip is one less chance to trip _get_text's retry loop.
+    # can skip is one less chance to trip _get_property's retry loop.
     _COURSES: dict[str, list[dict]] = {}
     _COURSES_LOCK = threading.Lock()
 
-    def _get_text(self, url: str) -> str:
-        """GET page text with retry — Teesnap intermittently resets the
-        connection (ConnectionResetError 104) from datacenter IPs; a retry
-        almost always succeeds on the next attempt."""
+    def _get_property(self, sub: str) -> Any:
+        """GET the tenant's property document with retry — Teesnap
+        intermittently resets the connection (ConnectionResetError 104) from
+        datacenter IPs; a retry almost always succeeds on the next attempt."""
         import time
         last: Exception | None = None
         for attempt in range(4):
             try:
-                r = self.session.get(url, timeout=20)
+                r = self.session.get(API.format(sub=sub) + "/property",
+                                     timeout=20)
                 r.raise_for_status()
-                return r.text
+                return r.json()
             except Exception as e:  # noqa: BLE001 — connection resets included
                 last = e
                 if attempt < 3:
                     time.sleep(1.0 + attempt)
         raise last  # type: ignore[misc]
 
-    @staticmethod
-    def _window_courses_json(html: str) -> list[dict]:
-        """Return the TOP-LEVEL objects of `window.courses = [...]`.
-
-        Bracket-matched and JSON-parsed rather than regexed, because a course
-        object embeds its parent property object — which has its own
-        `"id":<n>,"created_at"` pair. Anchoring on that pattern therefore
-        harvested property ids and passed them off as course ids; see
-        discover_courses. Returns [] if the array can't be parsed, so the
-        regex fallback still applies.
-        """
-        m = re.search(r"window\.courses\s*=\s*", html)
-        if not m:
-            return []
-        try:
-            start = html.index("[", m.end())
-        except ValueError:
-            return []
-        depth, i, in_str, esc = 0, start, False, False
-        while i < len(html):
-            ch = html[i]
-            if in_str:
-                if esc:
-                    esc = False
-                elif ch == "\\":
-                    esc = True
-                elif ch == '"':
-                    in_str = False
-            elif ch == '"':
-                in_str = True
-            elif ch in "[{":
-                depth += 1
-            elif ch in "]}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        data = json.loads(html[start:i + 1])
-                    except Exception:  # noqa: BLE001 — fall back to regex
-                        return []
-                    return [c for c in data if isinstance(c, dict)]
-            i += 1
-        return []
-
     def discover_courses(self, sub: str) -> list[dict]:
-        """Course ids (and names) from the homepage-inlined `window.courses`.
+        """Course ids (and names) from the tenant's own `data.courses`.
 
-        Only the TOP-LEVEL entries of that array are courses. Each one embeds
-        its parent property (`"property": {"id": 1329, "created_at": ...}`),
-        and the old regex — anchored on `"id":<n>,"created_at"` anywhere in the
-        region — swept those property ids up as if they were courses. On most
-        tenants that was merely wasteful (a bogus id answers 200 with an empty
-        list), but Hollydot's property id 1329 and Petteys Park's 1081 answer
-        HTTP 500 "Be right back.", which killed the whole fetch and lost the
-        60-70 real slots the course's own id was returning. See
-        probe-results/diag4.txt section B.
+        Only the TOP-LEVEL entries of that list are courses. The property
+        document carries other ids — its own (`data.id`, e.g. Hollydot 1329,
+        Petteys Park 1081, which answer HTTP 500 "Be right back." when asked
+        for as a course and used to kill the whole fetch), each course's
+        `property_id`, and notice rows — and because `?course=` resolves
+        globally (see the module docstring) an id that is not a course here
+        returns another club's sheet rather than failing. So nothing is
+        recovered by pattern: a document without a `data.courses` list yields
+        [], the caller raises, and that is the honest outcome.
 
         Disabled/deleted courses are skipped; a live one that simply has no
         sheet for the day answers 200 with an empty list, which is harmless.
-
-        There is NO regex fallback. The old one anchored on `"id":<n>,
-        "created_at"` across a 30000-char slice, which matches the embedded
-        property object and every row of `courses[].infos` — and because
-        `?course=` resolves globally (see the module docstring), those ids
-        return other clubs' sheets rather than failing. An unparseable
-        homepage now yields [], and the caller raises, which is the honest
-        outcome.
         """
-        html = self._get_text(f"https://{sub}.teesnap.net/")
+        doc = self._get_property(sub)
+        data = doc.get("data") if isinstance(doc, dict) else None
+        courses = data.get("courses") if isinstance(data, dict) else None
+        if not isinstance(courses, list):
+            return []
         out: list[dict] = []
-        for c in self._window_courses_json(html):
+        for c in courses:
+            if not isinstance(c, dict):
+                continue
             cid = c.get("id")
             if not isinstance(cid, int) or c.get("deleted_at"):
                 continue
@@ -160,7 +147,10 @@ class TeesnapAdapter(Adapter):
                 continue
             if c.get("key") is None and c.get("name") is None:
                 continue
-            out.append({"id": cid, "name": (c.get("name") or "").strip()})
+            mp = c.get("max_players")
+            out.append({"id": cid, "name": (c.get("name") or "").strip(),
+                        "max_players": mp if isinstance(mp, int) and mp > 0
+                        else None})
         return out
 
     def _courses_cached(self, sub: str) -> list[dict]:
@@ -179,30 +169,35 @@ class TeesnapAdapter(Adapter):
         discovered = self._courses_cached(sub)
         names = {c["id"]: (c.get("name") or course["name"])
                  for c in discovered}
+        # Seats per tee time. A pinned id the tenant does not list
+        # (heathergardens 131) has no max_players to read; four is the
+        # foursome every sheet measured so far uses.
+        caps = {c["id"]: c.get("max_players") or DEFAULT_MAX_PLAYERS
+                for c in discovered}
 
         if pinned:
             # An explicit pin is TRUSTED, even if the id is not in this tenant's
-            # window.courses. window.courses lists only the top-level sheets, but
+            # data.courses. data.courses lists only the top-level sheets, but
             # some tenants (heathergardens) expose their real bookable sheet only
             # under a property/teetimes id (131) that never appears there — its
             # top-level id (148) is an empty placeholder. teetimes-day resolves
             # ids globally, so a deliberately-pinned, verified id is valid. The
             # global id space still means a WRONG pin serves another club's
-            # sheet, so we warn on any pinned id not in window.courses — but we
+            # sheet, so we warn on any pinned id not in data.courses — but we
             # use it, because the operator pinned it on purpose after verifying.
             owned = {c["id"] for c in discovered}
             course_ids = [int(i) for i in pinned]
             foreign = [i for i in course_ids if i not in owned]
             if foreign:
                 print(f"    {course['slug']}: pinned Teesnap id(s) {foreign} not "
-                      f"in {sub}'s window.courses — using anyway (explicit pin; "
+                      f"in {sub}'s property courses — using anyway (explicit pin; "
                       f"teetimes-day ids are global, see adapters/teesnap.py)")
         else:
             course_ids = [c["id"] for c in discovered]
 
         if not course_ids:
             raise RuntimeError(f"{course['slug']}: no Teesnap course id in "
-                               f"{sub}'s window.courses")
+                               f"{sub}'s property courses")
 
         multi = len(course_ids) > 1
         out: list[TeeTime] = []
@@ -219,7 +214,7 @@ class TeesnapAdapter(Adapter):
             # because the venue counted as scraped).
             try:
                 data = self.get_json(
-                    f"https://{sub}.teesnap.net/customer-api/teetimes-day",
+                    API.format(sub=sub) + "/teetimes-day",
                     params={"course": cid, "date": date.isoformat(),
                             "players": 1, "holes": 18, "addons": "off"})
             except Exception as exc:  # noqa: BLE001
@@ -227,31 +222,56 @@ class TeesnapAdapter(Adapter):
                 failed.append((cid, f"{type(exc).__name__}: {exc}"))
                 continue
             block = (data or {}).get("teeTimes", {})
+            cap = caps.get(cid, DEFAULT_MAX_PLAYERS)
+            # booking id -> golfers on it. A booking a section names but the
+            # list does not carry still holds at least one seat.
+            golfers = {b.get("bookingId"): len(b.get("golfers") or [])
+                       for b in block.get("bookings") or []
+                       if isinstance(b, dict)}
+
+            def seats_left(sec: dict) -> int:
+                taken = sum(golfers.get(bid, 1)
+                            for bid in sec.get("bookings") or [])
+                return max(cap - taken, 0)
+
             for slot in block.get("teeTimes", []):
                 prices = [float(p["price"]) for p in slot.get("prices", [])
                           if p.get("price") not in (None, "")]
                 holes = sorted({18 if p.get("roundType") == "EIGHTEEN_HOLE"
                                 else 9 for p in slot.get("prices", [])})
                 # Teesnap has two slot shapes: older sheets nest the time in
-                # teeOffSections[].turnTo.time; newer ones (e.g. Pagosa Springs)
-                # put the ISO time at the slot's top-level "teeTime" and use
+                # teeOffSections[].turnTo.time; newer ones (Pagosa Springs, and
+                # every sheet seen on the 2026 API) put the ISO time at the
+                # slot's top-level "teeTime" and use
                 # teeOffSections only for FRONT_NINE/BACK_NINE labels. Prefer the
                 # nested times if present (preserves existing courses), else fall
                 # back to the top-level teeTime.
-                times = []
-                for sec in slot.get("teeOffSections", []) or []:
+                #
+                # Either way a time is emitted only while it has a seat left
+                # (see the module docstring). Nested shape: each section is
+                # its own time, judged on its own bookings. Top-level shape:
+                # one time for the slot, open while ANY of its sections (first
+                # tee / tenth tee) has room, at the roomiest section's count.
+                sections = [s for s in slot.get("teeOffSections", []) or []
+                            if isinstance(s, dict)]
+                times: list[tuple[str, int]] = []
+                for sec in sections:
                     t = (sec.get("turnTo") or {}).get("time") or sec.get("time")
                     if t:
-                        times.append(t)
+                        times.append((t, seats_left(sec)))
                 if not times and slot.get("teeTime"):
-                    times.append(slot["teeTime"])
-                for t in times:
+                    times.append((slot["teeTime"],
+                                  max((seats_left(s) for s in sections),
+                                      default=cap)))
+                for t, spots in times:
+                    if spots <= 0:
+                        continue
                     out.append(self.base_tee_time(
                         course,
                         teetime=str(t),
                         course_label=(names.get(cid) or "") if multi else "",
                         holes=holes,
-                        open_spots=None,  # derive from bookings if needed later
+                        open_spots=spots,
                         price_min=min(prices) if prices else None,
                         price_max=max(prices) if prices else None,
                         raw={"course_name": names.get(cid, course["name"])},
