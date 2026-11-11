@@ -23,10 +23,18 @@ are not fetched — the tee sheet needs none of them, and it keeps each club to 
 few hundred KB.
 
 PARTY SIZES. The API has no remaining-seats field; out_of_capacity is relative
-to the requested party size. As in the plain adapter, ask at 4, 3, 2 and 1
-players (the widget sends one affiliation_type_ids[] per player) and take the
-largest party that still fits. The four requests for a course-date go out
-together, as four tabs of the widget would.
+to the requested party size (the widget sends one affiliation_type_ids[] per
+player). Ask for 1 player first — an empty day stops there. Then 4; a slot open
+at 4 has 4 seats. Only if some slot is open at 1 but not at 4 are 2 and then 3
+asked. Typically two requests per course-date instead of the plain adapter's
+four.
+
+PACING (first branch run, 2026-11-11: run 42975063549). Four parallel requests
+per date drew HTTP 429 from Chronogolf after ~150 requests in ~20 s — a rate
+limit, and a clear one. So requests go out one at a time with a gap
+(CHRONO_REQ_GAP_MS, default 1000 ms per shard), a 429 is honoured (Retry-After,
+else 30 s) and doubles the gap, and the gap eases back only after a long run of
+successes. Two shards = two runner addresses at ~1 request/second each.
 
 This owns ALL chronogolf courses; scrape.yml, scrape-near.yml and scrape-far.yml
 --exclude the platform, so the two never write the same course_slug in D1.
@@ -56,9 +64,9 @@ from .sharding import apply_shard, set_env_shard_count
 log = logging.getLogger("teetime")
 
 PLATFORM = "chronogolf"
-PARTY_SIZES = (4, 3, 2, 1)
-DATE_GAP_MS = int(os.environ.get("CHRONO_DATE_GAP_MS", "150"))
-CLUB_GAP_MS = int(os.environ.get("CHRONO_CLUB_GAP_MS", "800"))
+REQ_GAP_MS = int(os.environ.get("CHRONO_REQ_GAP_MS", "1000"))
+MAX_GAP_MS = 8000
+CLUB_GAP_MS = int(os.environ.get("CHRONO_CLUB_GAP_MS", "1000"))
 SETTLE_MS = int(os.environ.get("CHRONO_SETTLE_MS", "1500"))
 
 # Everything the tee sheet needs is served from www.chronogolf.com (measured on
@@ -90,25 +98,83 @@ async (key) => {
 """
 
 TEETIMES_JS = r"""
-async ({club_id, course_id, aff, date, sizes}) => {
-  const one = async (n) => {
-    const p = new URLSearchParams();
-    p.append('date', date);
-    p.append('course_id', String(course_id));
-    for (let i = 0; i < n; i++) p.append('affiliation_type_ids[]', String(aff));
-    p.append('nb_holes', '18');
-    try {
-      const r = await fetch('/marketplace/clubs/' + club_id + '/teetimes?' + p.toString(),
-                            {credentials: 'include', headers: {'Accept': 'application/json'}});
-      const t = await r.text();
-      if (r.status !== 200) return {n, status: r.status, slots: null};
-      try { const j = JSON.parse(t); return {n, status: 200, slots: Array.isArray(j) ? j : []}; }
-      catch (e) { return {n, status: 200, slots: null, parse_failed: true}; }
-    } catch (e) { return {n, status: -1, slots: null, error: String(e).slice(0, 80)}; }
-  };
-  return await Promise.all(sizes.map(one));
+async ({club_id, course_id, aff, date, n}) => {
+  const p = new URLSearchParams();
+  p.append('date', date);
+  p.append('course_id', String(course_id));
+  for (let i = 0; i < n; i++) p.append('affiliation_type_ids[]', String(aff));
+  p.append('nb_holes', '18');
+  try {
+    const r = await fetch('/marketplace/clubs/' + club_id + '/teetimes?' + p.toString(),
+                          {credentials: 'include', headers: {'Accept': 'application/json'}});
+    const t = await r.text();
+    if (r.status !== 200)
+      return {n, status: r.status, slots: null,
+              retry_after: r.headers.get('retry-after'),
+              body: t.replace(/\s+/g, ' ').slice(0, 160)};
+    try { const j = JSON.parse(t); return {n, status: 200, slots: Array.isArray(j) ? j : []}; }
+    catch (e) { return {n, status: 200, slots: null, parse_failed: true}; }
+  } catch (e) { return {n, status: -1, slots: null, body: String(e).slice(0, 80)}; }
 }
 """
+
+
+class _Pacer:
+    """One request at a time, a gap between them, 429 honoured."""
+
+    def __init__(self):
+        self.gap = REQ_GAP_MS
+        self.ok_streak = 0
+        self.n429 = 0
+        self.requests = 0
+
+    def call(self, page, args: dict) -> dict:
+        for attempt in range(4):
+            time.sleep(self.gap / 1000.0)
+            self.requests += 1
+            r = page.evaluate(TEETIMES_JS, args)
+            if r.get("status") != 429:
+                self.ok_streak += 1
+                if self.ok_streak >= 200 and self.gap > REQ_GAP_MS:
+                    self.gap = max(REQ_GAP_MS, int(self.gap * 0.8))
+                    self.ok_streak = 0
+                return r
+            self.n429 += 1
+            self.ok_streak = 0
+            self.gap = min(MAX_GAP_MS, self.gap * 2)
+            try:
+                wait = float(r.get("retry_after") or 30)
+            except ValueError:
+                wait = 30.0
+            log.info("    429 — waiting %.0fs, gap now %d ms", min(wait, 120), self.gap)
+            time.sleep(min(wait, 120))
+        return r
+
+
+def _party_results(pacer: _Pacer, page, base: dict) -> list:
+    """Ask 1 player, then only what is needed to tell 1/2/3/4 seats apart:
+    4 (open at 4 -> 4 seats); for the rest, 2 (closed at 2 -> 1 seat); for the
+    ones open at 2, 3. -> results; the first is n=1 (its failure = 'unknown')."""
+    def open_ids(r):
+        return {_sid(x) for x in (r.get("slots") or []) if not x.get("out_of_capacity")}
+    r1 = pacer.call(page, {**base, "n": 1})
+    out = [r1]
+    if r1.get("slots") is None or not open_ids(r1):
+        return out
+    r4 = pacer.call(page, {**base, "n": 4})
+    out.append(r4)
+    unresolved = open_ids(r1) - open_ids(r4)
+    if not unresolved:
+        return out
+    r2 = pacer.call(page, {**base, "n": 2})
+    out.append(r2)
+    if unresolved & open_ids(r2):
+        out.append(pacer.call(page, {**base, "n": 3}))
+    return out
+
+
+def _sid(slot: dict):
+    return slot.get("id") or slot.get("uuid") or slot.get("start_time")
 
 
 def _route(route):
@@ -152,7 +218,7 @@ def _rows(course: dict, date: dt.date, cname: str, multi: bool,
         for slot in res.get("slots") or []:
             if slot.get("out_of_capacity"):
                 continue
-            sid = slot.get("id") or slot.get("uuid") or slot.get("start_time")
+            sid = _sid(slot)
             e = by_slot.setdefault(sid, {"slot": slot, "spots": n})
             e["spots"] = max(e["spots"], n)
     out = []
@@ -176,7 +242,7 @@ def _rows(course: dict, date: dt.date, cname: str, multi: bool,
     return out
 
 
-def _fetch_club(ctx, course: dict, dates: list[dt.date]) -> dict:
+def _fetch_club(ctx, pacer: "_Pacer", course: dict, dates: list[dt.date]) -> dict:
     """-> {date_iso: {"tts": [...], "error": str|None, "failed_labels": [...]}}"""
     ids = course["ids"]
     key = str(ids.get("club_id") or ids.get("slug") or "")
@@ -211,25 +277,25 @@ def _fetch_club(ctx, course: dict, dates: list[dt.date]) -> dict:
         for d in dates:
             tts, failed, statuses = [], [], set()
             for cid in cids:
-                res = page.evaluate(TEETIMES_JS, {
+                res = _party_results(pacer, page, {
                     "club_id": disc["club_id"], "course_id": cid,
-                    "aff": disc["affiliation_type_id"], "date": d.isoformat(),
-                    "sizes": list(PARTY_SIZES)})
-                statuses |= {r.get("status") for r in res}
+                    "aff": disc["affiliation_type_id"], "date": d.isoformat()})
+                for r in res:
+                    if r.get("status") != 200:
+                        statuses.add(f"{r.get('status')}" +
+                                     (f" {r['body'][:60]}" if r.get("body") else ""))
                 good = [r for r in res if r.get("slots") is not None]
                 cname = disc["course_names"].get(cid, course["name"])
-                if not good:            # all four sizes failed: unknown, not empty
+                if res[0].get("slots") is None:   # the 1-player ask failed: unknown
                     failed.append(cname if multi else "")
                     continue
                 tts.extend(_rows(course, d, cname, multi, good))
             err = None
             if failed and len(failed) == len(cids):
-                err = "teetimes failed at every party size " + \
-                      "(statuses " + ",".join(str(s) for s in sorted(statuses, key=str)) + ")"
+                err = "teetimes failed (" + "; ".join(sorted(statuses))[:160] + ")"
                 failed = []             # course-level error shields everything
             out[d.isoformat()] = {"tts": tts, "error": err,
                                   "failed_labels": failed if multi else []}
-            page.wait_for_timeout(DATE_GAP_MS)
         return out
     except Exception as e:  # noqa: BLE001 — one club must not end the shard
         err = f"browser {type(e).__name__}"
@@ -256,11 +322,12 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
         browser = pw.chromium.launch(headless=headless, args=["--no-sandbox"])
         ctx = browser.new_context(user_agent=USER_AGENT, locale="en-US")
         ctx.route("**/*", _route)
+        pacer = _Pacer()
         for i, c in enumerate(courses):
             if i:
                 time.sleep(CLUB_GAP_MS / 1000.0)
             t0 = time.monotonic()
-            got = _fetch_club(ctx, c, dates)
+            got = _fetch_club(ctx, pacer, c, dates)
             for diso, r in got.items():
                 per[diso][c["slug"]] = r
             n = sum(len(r["tts"]) for r in got.values())
@@ -269,6 +336,8 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
                      time.monotonic() - t0,
                      ("  ERROR " + "; ".join(sorted(errs))[:140]) if errs else "")
         browser.close()
+    log.info("requests: %d, 429s: %d, final gap %d ms",
+             pacer.requests, pacer.n429, pacer.gap)
 
     outp = pathlib.Path(out_dir)
     outp.mkdir(parents=True, exist_ok=True)
