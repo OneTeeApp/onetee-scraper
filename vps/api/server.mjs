@@ -203,6 +203,52 @@ async function health() {
            headers: { "Cache-Control": "public, max-age=60" } };
 }
 
+// GET /api/dbstats — the size and health of tee_times, read from Postgres'
+// own bookkeeping so it costs nothing to ask. Exists because the table is
+// append-mostly (a booked or elapsed slot is flipped to active = 0, never
+// removed) and for ten weeks nobody could see it growing: the prune and the
+// inventory monitor were failing on timeouts and the only evidence was a red
+// X in Actions. Everything here is an estimate or an index-only read — no
+// COUNT(*) over the heap. Sizes and counts only; nothing about golfers.
+let DBSTATS_CACHE = null;
+async function dbStats() {
+  if (DBSTATS_CACHE && Date.now() - DBSTATS_CACHE.at < 5 * 60 * 1000) return DBSTATS_CACHE.out;
+  const q = (sql) => pool.query(sql).then((r) => r.rows);
+  const [[t], [a], [span], idx, [db]] = await Promise.all([
+    q(`SELECT c.reltuples::bigint AS est_rows, pg_total_relation_size(c.oid) AS total_bytes,
+              pg_relation_size(c.oid) AS heap_bytes, s.n_live_tup, s.n_dead_tup,
+              s.last_autovacuum, s.last_vacuum, s.last_autoanalyze, s.last_analyze
+         FROM pg_class c LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+        WHERE c.relname = 'tee_times' AND c.relkind = 'r'`),
+    q(`SELECT COUNT(*) AS active_rows FROM tee_times WHERE active = 1`),
+    q(`SELECT MIN(substr(teetime,1,10)) AS oldest_date, MAX(substr(teetime,1,10)) AS newest_date FROM tee_times`),
+    q(`SELECT indexrelname AS name, pg_relation_size(indexrelid) AS bytes, idx_scan AS scans
+         FROM pg_stat_user_indexes WHERE relname = 'tee_times' ORDER BY 2 DESC`),
+    q(`SELECT pg_database_size(current_database()) AS db_bytes,
+              (SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()) AS connections`),
+  ]);
+  const n = (v) => (v === null || v === undefined ? null : Number(v));
+  const mb = (v) => (v === null || v === undefined ? null : Math.round(Number(v) / 1048576));
+  const est = n(t && t.est_rows), active = n(a && a.active_rows);
+  const out = { status: 200, headers: { "Cache-Control": "public, max-age=300" }, body: {
+    at: new Date().toISOString(),
+    tee_times: {
+      est_rows: est, active_rows: active,
+      inactive_share: est > 0 && active !== null ? Math.round((1 - active / est) * 1000) / 1000 : null,
+      oldest_date: span && span.oldest_date, newest_date: span && span.newest_date,
+      total_mb: mb(t && t.total_bytes), heap_mb: mb(t && t.heap_bytes),
+      live_tuples: n(t && t.n_live_tup), dead_tuples: n(t && t.n_dead_tup),
+      last_autovacuum: t && t.last_autovacuum, last_vacuum: t && t.last_vacuum,
+      last_autoanalyze: t && t.last_autoanalyze, last_analyze: t && t.last_analyze,
+      indexes: idx.map((i) => ({ name: i.name, mb: mb(i.bytes), scans: n(i.scans) })),
+    },
+    db_mb: mb(db && db.db_bytes), connections: n(db && db.connections),
+    pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+  } };
+  DBSTATS_CACHE = { at: Date.now(), out };
+  return out;
+}
+
 async function directory(p) {
   const st = (p.get("state") || "").toUpperCase();
   const method = (p.get("method") || "").toLowerCase();
@@ -285,7 +331,19 @@ async function teeTimes(p) {
   const clauses = ["active = 1"];
   const binds = [];
   if (!wantsPast(p)) { const f = pastFilter(); clauses.push(f.clause); binds.push(...f.binds); }
-  if (p.get("date")) { clauses.push("substr(teetime,1,10) = ?"); binds.push(p.get("date")); }
+  // A request with neither `date` nor `course` used to mean "every active row
+  // for the next 30 days": the dedupe below has to rank all of them — tens of
+  // thousands per state, ~450k nationally — before LIMIT can discard all but
+  // 500. With a date the same call reads one day through idx_tt_state_date
+  // (measured on a 7M-row copy: 0.54 s vs 0.018 s warm; in production the
+  // dateless form ran past 20 s and anyone could send it). Its first 500 rows
+  // were today's anyway, so default to today (Denver, the gate's clock) and
+  // say so in the response. `date=all` keeps the old behaviour for diagnostics.
+  let date = (p.get("date") || "").trim();
+  let dateDefaulted = false;
+  if (date.toLowerCase() === "all") date = "";
+  else if (!date && !p.get("course")) { date = localNowISO("America/Denver").slice(0, 10); dateDefaulted = true; }
+  if (date) { clauses.push("substr(teetime,1,10) = ?"); binds.push(date); }
   if (p.get("state")) {
     const _st = p.get("state").toUpperCase().split(",").map((s) => s.trim()).filter(Boolean);
     if (_st.length === 1) { clauses.push("state = ?"); binds.push(_st[0]); }
@@ -331,7 +389,8 @@ async function teeTimes(p) {
     r.course_name = displayName(r.course_name, r.course_label);
     delete r.vid; delete r.clabel; delete r.rn;
   }
-  return { status: 200, body: { count: results.length, truncated: results.length === limit, tee_times: results } };
+  return { status: 200, body: { count: results.length, truncated: results.length === limit,
+                                ...(dateDefaulted ? { date, date_defaulted: true } : {}), tee_times: results } };
 }
 
 // GET /api/course-stats?state=XX — what a course's tee sheet usually looks like,
@@ -597,6 +656,7 @@ const server = http.createServer(async (req, res) => {
     else if (url.pathname === "/api/tee-times") out = await teeTimes(p);
     else if (url.pathname === "/api/course-stats") out = await courseStats(p);
     else if (url.pathname === "/api/traffic") out = await traffic(p);
+    else if (url.pathname === "/api/dbstats") out = await dbStats();
     else return send(res, 404, { error: "not found" });
     return send(res, out.status, out.body, out.headers || {});
   } catch (e) {
