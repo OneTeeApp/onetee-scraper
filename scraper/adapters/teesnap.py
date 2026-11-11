@@ -30,6 +30,19 @@ challenge.
 
 Prices are strings ("55.00"); times are ISO ("2026-07-24T09:40:00").
 
+teeTimes IS THE WHOLE SHEET, NOT WHAT IS LEFT. Every slot the course runs that
+day comes back whether or not anyone can still book it, and `players=` does
+not filter it (players=1 and players=4 return the same 45 slots). What is
+taken is in `bookings`: each slot section lists booking ids, and each booking
+carries its `golfers`. Teesnap's own page hides a slot once its golfers reach
+the course's `max_players`. Checked against that page on 2026-11-11, Hollydot
+for the 11th: 45 slots in the feed, 17 with four golfers, and the page showed
+exactly the other 28 — none of the 17, all of the 28. Until that day this
+adapter published all 45 with open_spots unknown, i.e. more than a third of
+that sheet was tee times nobody could book. So a section's open seats are
+max_players minus its booked golfers, and a slot with no seats left anywhere
+is not emitted — which also lets sync deactivate it the pass after it fills.
+
 THE HAZARD THAT SHAPES THIS FILE — `?course=` IS RESOLVED GLOBALLY.
 
 The tenant subdomain is decorative. teetimes-day looks the id up in one
@@ -69,6 +82,9 @@ from ..models import TeeTime
 # `property` return THIS tenant's course list, which is the only thing that
 # makes an id safe to use.
 API = "https://{sub}.api.teesnap.net/api/bookingsite"
+
+# Seats on a tee time when the course's own max_players is not available.
+DEFAULT_MAX_PLAYERS = 4
 
 
 class TeesnapAdapter(Adapter):
@@ -131,7 +147,10 @@ class TeesnapAdapter(Adapter):
                 continue
             if c.get("key") is None and c.get("name") is None:
                 continue
-            out.append({"id": cid, "name": (c.get("name") or "").strip()})
+            mp = c.get("max_players")
+            out.append({"id": cid, "name": (c.get("name") or "").strip(),
+                        "max_players": mp if isinstance(mp, int) and mp > 0
+                        else None})
         return out
 
     def _courses_cached(self, sub: str) -> list[dict]:
@@ -150,6 +169,11 @@ class TeesnapAdapter(Adapter):
         discovered = self._courses_cached(sub)
         names = {c["id"]: (c.get("name") or course["name"])
                  for c in discovered}
+        # Seats per tee time. A pinned id the tenant does not list
+        # (heathergardens 131) has no max_players to read; four is the
+        # foursome every sheet measured so far uses.
+        caps = {c["id"]: c.get("max_players") or DEFAULT_MAX_PLAYERS
+                for c in discovered}
 
         if pinned:
             # An explicit pin is TRUSTED, even if the id is not in this tenant's
@@ -198,6 +222,18 @@ class TeesnapAdapter(Adapter):
                 failed.append((cid, f"{type(exc).__name__}: {exc}"))
                 continue
             block = (data or {}).get("teeTimes", {})
+            cap = caps.get(cid, DEFAULT_MAX_PLAYERS)
+            # booking id -> golfers on it. A booking a section names but the
+            # list does not carry still holds at least one seat.
+            golfers = {b.get("bookingId"): len(b.get("golfers") or [])
+                       for b in block.get("bookings") or []
+                       if isinstance(b, dict)}
+
+            def seats_left(sec: dict) -> int:
+                taken = sum(golfers.get(bid, 1)
+                            for bid in sec.get("bookings") or [])
+                return max(cap - taken, 0)
+
             for slot in block.get("teeTimes", []):
                 prices = [float(p["price"]) for p in slot.get("prices", [])
                           if p.get("price") not in (None, "")]
@@ -210,20 +246,32 @@ class TeesnapAdapter(Adapter):
                 # teeOffSections only for FRONT_NINE/BACK_NINE labels. Prefer the
                 # nested times if present (preserves existing courses), else fall
                 # back to the top-level teeTime.
-                times = []
-                for sec in slot.get("teeOffSections", []) or []:
+                #
+                # Either way a time is emitted only while it has a seat left
+                # (see the module docstring). Nested shape: each section is
+                # its own time, judged on its own bookings. Top-level shape:
+                # one time for the slot, open while ANY of its sections (first
+                # tee / tenth tee) has room, at the roomiest section's count.
+                sections = [s for s in slot.get("teeOffSections", []) or []
+                            if isinstance(s, dict)]
+                times: list[tuple[str, int]] = []
+                for sec in sections:
                     t = (sec.get("turnTo") or {}).get("time") or sec.get("time")
                     if t:
-                        times.append(t)
+                        times.append((t, seats_left(sec)))
                 if not times and slot.get("teeTime"):
-                    times.append(slot["teeTime"])
-                for t in times:
+                    times.append((slot["teeTime"],
+                                  max((seats_left(s) for s in sections),
+                                      default=cap)))
+                for t, spots in times:
+                    if spots <= 0:
+                        continue
                     out.append(self.base_tee_time(
                         course,
                         teetime=str(t),
                         course_label=(names.get(cid) or "") if multi else "",
                         holes=holes,
-                        open_spots=None,  # derive from bookings if needed later
+                        open_spots=spots,
                         price_min=min(prices) if prices else None,
                         price_max=max(prices) if prices else None,
                         raw={"course_name": names.get(cid, course["name"])},
