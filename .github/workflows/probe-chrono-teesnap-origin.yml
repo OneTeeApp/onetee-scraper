@@ -1,0 +1,115 @@
+name: Probe chronogolf + teesnap from a hosted runner (blocked, or site changed?)
+
+# One-off, read-only, no secrets (2026-11-11).
+#
+# Both platforms have served nothing since about 2026-09-29. From a home
+# connection on 2026-11-11:
+#   * chronogolf: the exact three URLs the adapter calls all answer 200 JSON.
+#   * teesnap: the homepage no longer inlines `window.courses`, and
+#     /customer-api/teetimes-day now returns the app's HTML shell; the booking
+#     app calls https://<sub>.api.teesnap.net/api/bookingsite/* instead.
+# This asks the same URLs from a GitHub-hosted runner and prints the status
+# code, a few headers and the start of the body, so the two cases separate:
+# "the runner is blocked" (moving runners would help) versus "the site
+# changed" (only an adapter change helps). The adapters swallow the HTTP
+# status, which is why the fleet logs could not answer this.
+#
+# Writes nothing anywhere. Runs once on the commit that adds it, then manual.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-chrono-teesnap-origin.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]            # two runners = two source IPs
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests "curl_cffi>=0.7"
+      - name: Probe
+        run: |
+          python3 - <<'PY'
+          import datetime as dt
+          import requests
+
+          UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+          H = {"User-Agent": UA, "Accept": "application/json, text/plain, */*",
+               "Accept-Language": "en-US,en;q=0.9"}
+          DATE = (dt.date.today() + dt.timedelta(days=2)).isoformat()
+          CH = "https://www.chronogolf.com"
+
+
+          def show(tag, r):
+              body = r.text[:150].replace("\n", " ")
+              hd = {k: r.headers.get(k) for k in
+                    ("content-type", "server", "cf-mitigated", "retry-after")
+                    if r.headers.get(k)}
+              print(f"{tag}: HTTP {r.status_code} len={len(r.content)} {hd} :: {body}",
+                    flush=True)
+
+
+          def chrono(get, label):
+              for slug in ("collindale-golf-course", "city-park-nine-golf-course",
+                           "granby-ranch-golf-course"):
+                  try:
+                      r = get(f"{CH}/private_api/clubs/{slug}")
+                      show(f"[{label}] chrono club {slug}", r)
+                      club = r.json()
+                      rc = get(f"{CH}/private_api/clubs/{club['id']}/courses")
+                      show(f"[{label}] chrono courses {slug}", rc)
+                      cj = rc.json()
+                      courses = cj if isinstance(cj, list) else cj.get("courses", [])
+                      aff = (club.get("settings") or {}).get("default_affiliation_type_id")
+                      for n in (4, 1):
+                          params = ([("date", DATE), ("course_id", courses[0]["id"])]
+                                    + [("affiliation_type_ids[]", aff)] * n
+                                    + [("nb_holes", 18)])
+                          t = get(f"{CH}/marketplace/clubs/{club['id']}/teetimes",
+                                  params=params)
+                          show(f"[{label}] chrono teetimes {slug} party={n}", t)
+                  except Exception as e:  # noqa: BLE001
+                      print(f"[{label}] chrono {slug}: EXC {type(e).__name__}: "
+                            f"{str(e)[:200]}", flush=True)
+
+
+          def teesnap(get, label):
+              sub, cid = "hollydotgolf", 1550
+              q = f"course={cid}&date={DATE}&players=1&holes=18&addons=off"
+              for url in (f"https://{sub}.teesnap.net/",
+                          f"https://{sub}.teesnap.net/customer-api/teetimes-day?{q}",
+                          f"https://{sub}.api.teesnap.net/api/bookingsite/property",
+                          f"https://{sub}.api.teesnap.net/api/bookingsite/teetimes-day?{q}"):
+                  tag = f"[{label}] teesnap {url.split('teesnap.net')[1][:42]}"
+                  try:
+                      show(tag, get(url))
+                  except Exception as e:  # noqa: BLE001
+                      print(f"{tag}: EXC {type(e).__name__}: {str(e)[:200]}", flush=True)
+
+
+          print(f"date probed: {DATE}")
+          s = requests.Session()
+          s.headers.update(H)
+          plain = lambda u, **k: s.get(u, timeout=20, **k)  # noqa: E731
+          chrono(plain, "requests")
+          teesnap(plain, "requests")
+
+          from curl_cffi import requests as cr
+          cs = cr.Session(impersonate="chrome")
+          imp = lambda u, **k: cs.get(u, timeout=20, **k)  # noqa: E731
+          chrono(imp, "curl_cffi")
+          teesnap(imp, "curl_cffi")
+          PY
