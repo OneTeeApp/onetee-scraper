@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,30 +70,31 @@ jobs:
           [ "${{ github.event.inputs.deep }}" = "yes" ] && DEEP=yes
           LAST=6
           [ "$DEEP" = "yes" ] && LAST=30
-          echo "chronogolf horizon: deep=${DEEP}, days 0-${LAST}, shard ${{ matrix.shard }}/2"
+          echo "chronogolf horizon: deep=${DEEP}, days 0-${LAST}, shard ${{ matrix.shard }}/3"
           # Day 0 from scraper.dates, not `date -u` (UTC is already tomorrow
           # after ~5pm Mountain).
           START=$(python -m scraper.dates --registry registry.json --days 1 | head -1)
           echo "start=${START}" >> "$GITHUB_OUTPUT"
           echo "last=${LAST}" >> "$GITHUB_OUTPUT"
           xvfb-run -a python -m scraper.browser_chronogolf --date "${START}" \
-            --days $((LAST + 1)) --shard "${{ matrix.shard }}/2" --out-dir output || true
+            --days $((LAST + 1)) --shard "${{ matrix.shard }}/3" --out-dir output || true
 
       - name: Summary
         if: always()
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import glob, json, collections
-          print("### Chronogolf browser — shard ${{ matrix.shard }}/2\n")
-          print("| date | courses | ok | tee times | errors | empty |")
-          print("|---|---|---|---|---|---|")
+          print("### Chronogolf browser — shard ${{ matrix.shard }}/3\n")
+          print("| date | courses | ok | tee times | errors | empty | window closed |")
+          print("|---|---|---|---|---|---|---|")
           kinds = collections.Counter()
           for p in sorted(glob.glob("output/chrono_*.json")):
               d = json.load(open(p))
               for e in d["errors"]:
-                  kinds[e["error"].split(" (")[0][:70]] += 1
+                  kinds[e["error"][:90]] += 1
               print(f"| {d['date']} | {d['courses_queried']} | {d['courses_ok']} | "
-                    f"{len(d['tee_times'])} | {len(d['errors'])} | {len(d['courses_empty'])} |")
+                    f"{len(d['tee_times'])} | {len(d['errors'])} | {len(d['courses_empty'])} | "
+                    f"{len(d.get('window_closed', []))} |")
           if kinds:
               print("\n**Error kinds (course-dates):**\n")
               for k, n in kinds.most_common():
