@@ -32,12 +32,23 @@ four.
 PACING (first branch run, 2026-11-11: run 42975063549). Four parallel requests
 per date drew HTTP 429 from Chronogolf after ~150 requests in ~20 s — a rate
 limit, and a clear one. So requests go out one at a time with a gap
-(CHRONO_REQ_GAP_MS, default 1000 ms per shard), a 429 is honoured (Retry-After,
-else 30 s) and doubles the gap, and the gap eases back only after a long run of
-successes. Two shards = two runner addresses at ~1 request/second each.
+(CHRONO_REQ_GAP_MS, default 600 ms; with the round-trip that is ~1 request a
+second per shard), a 429 is honoured (Retry-After, else 30 s) and doubles the
+gap, and the gap eases back only after a long run of successes. Three shards =
+three runner addresses at ~1 request/second each, against the ~7/second per
+address that drew the 429s.
 
 This owns ALL chronogolf courses; scrape.yml, scrape-near.yml and scrape-far.yml
 --exclude the platform, so the two never write the same course_slug in D1.
+
+A 422 on the 1-player ask is Chronogolf saying the date is not bookable for the
+public player type: "You cannot request tee times on a past date" (day 0, when
+the run's first date — the union of every covered zone's today — has already
+ended in the club's zone), "Players … can book …" and "You are out of …"
+(beyond the club's booking window). Measured on branch run 42975793895. Such a
+course-date is dropped — not an error, not data, not a sell-out — and the
+distinct messages are logged at the end of the run and listed in the doc as
+`window_closed`, so a club that 422s on every date is still visible.
 
 Usage:
     xvfb-run -a python -m scraper.browser_chronogolf --date 2026-11-12 --days 7 \
@@ -46,6 +57,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as dt
 import json
 import logging
@@ -62,9 +74,10 @@ from .aggregate import load_registry
 from .sharding import apply_shard, set_env_shard_count
 
 log = logging.getLogger("teetime")
+WINDOW_MSGS: "collections.Counter[str]" = collections.Counter()
 
 PLATFORM = "chronogolf"
-REQ_GAP_MS = int(os.environ.get("CHRONO_REQ_GAP_MS", "1000"))
+REQ_GAP_MS = int(os.environ.get("CHRONO_REQ_GAP_MS", "600"))
 MAX_GAP_MS = 8000
 CLUB_GAP_MS = int(os.environ.get("CHRONO_CLUB_GAP_MS", "1000"))
 SETTLE_MS = int(os.environ.get("CHRONO_SETTLE_MS", "1500"))
@@ -275,7 +288,7 @@ def _fetch_club(ctx, pacer: "_Pacer", course: dict, dates: list[dt.date]) -> dic
         multi = len(cids) > 1
         out: dict = {}
         for d in dates:
-            tts, failed, statuses = [], [], set()
+            tts, failed, statuses, past = [], [], set(), 0
             for cid in cids:
                 res = _party_results(pacer, page, {
                     "club_id": disc["club_id"], "course_id": cid,
@@ -286,6 +299,13 @@ def _fetch_club(ctx, pacer: "_Pacer", course: dict, dates: list[dt.date]) -> dic
                                      (f" {r['body'][:60]}" if r.get("body") else ""))
                 good = [r for r in res if r.get("slots") is not None]
                 cname = disc["course_names"].get(cid, course["name"])
+                if res[0].get("status") == 422:
+                    # Chronogolf's "not bookable on this date" answers: a past
+                    # date, beyond the booking window, beyond what the public
+                    # player type may book. Not data and not an outage.
+                    past += 1
+                    WINDOW_MSGS[(res[0].get("body") or "")[:110]] += 1
+                    continue
                 if res[0].get("slots") is None:   # the 1-player ask failed: unknown
                     failed.append(cname if multi else "")
                     continue
@@ -295,7 +315,10 @@ def _fetch_club(ctx, pacer: "_Pacer", course: dict, dates: list[dt.date]) -> dic
                 err = "teetimes failed (" + "; ".join(sorted(statuses))[:160] + ")"
                 failed = []             # course-level error shields everything
             out[d.isoformat()] = {"tts": tts, "error": err,
-                                  "failed_labels": failed if multi else []}
+                                  "failed_labels": failed if multi else [],
+                                  # every sub-course said "past date": not data,
+                                  # not an error, and not a sell-out either
+                                  "past": past == len(cids)}
         return out
     except Exception as e:  # noqa: BLE001 — one club must not end the shard
         err = f"browser {type(e).__name__}"
@@ -338,6 +361,8 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
         browser.close()
     log.info("requests: %d, 429s: %d, final gap %d ms",
              pacer.requests, pacer.n429, pacer.gap)
+    for msg, n in WINDOW_MSGS.most_common(8):
+        log.info("  422 x%d: %s", n, msg)
 
     outp = pathlib.Path(out_dir)
     outp.mkdir(parents=True, exist_ok=True)
@@ -345,6 +370,8 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
     for d in dates:
         diso = d.isoformat()
         rs = per[diso]
+        closed = sorted(s for s, r in rs.items() if r.get("past"))
+        rs = {s: r for s, r in rs.items() if not r.get("past")}
         served = any(r["tts"] for r in rs.values())
         errors = [{"course": s, "platform": PLATFORM, "error": r["error"]}
                   for s, r in rs.items() if r["error"]]
@@ -366,6 +393,7 @@ def run(dates: list[dt.date], registry_path: str, out_dir: str,
                 if served and not r["error"] and not r["tts"]
                 and not r["failed_labels"]),
             "errors": errors,
+            "window_closed": closed,
         }
         path = outp / f"chrono_{diso}.json"
         path.write_text(json.dumps(doc, indent=2))
