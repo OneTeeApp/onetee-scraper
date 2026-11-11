@@ -101,10 +101,14 @@ class SqliteLocal:
 
     def execute(self, sql: str, params: list | None = None) -> list[dict]:
         cur = self.conn.execute(sql, params or [])
+        # Drain BEFORE committing: an UPDATE ... RETURNING leaves its cursor
+        # open until read, and sqlite refuses to commit with a statement in
+        # progress ("cannot commit transaction - SQL statements in progress").
+        rows = [dict(r) for r in cur.fetchall()]
         self.conn.commit()
         # sqlite reports -1 for SELECTs; clamp so it mirrors D1Rest's meta.
         self.last_changes = max(0, cur.rowcount)
-        return [dict(r) for r in cur.fetchall()]
+        return rows
 
     def executescript(self, sql: str) -> None:
         self.conn.executescript(sql)
@@ -449,13 +453,27 @@ def _prune_chunked(db, where: str, params: list, chunk: int = 5000) -> int:
     fought the ingest fleet for row locks and died on lock_timeout (SQLSTATE
     55P03 through the /exec 4s cap) once the table grew; each chunk locks
     only a sliver, finishes fast, and interleaves with ingest instead.
+
+    ORDER BY teetime is load-bearing, not cosmetic. Without it the planner
+    sees a bare LIMIT, assumes matches are spread evenly through the heap, and
+    seq-scans the whole table expecting to stop early — but the matching rows
+    are the few thousand just-elapsed ones, so it reads everything (173,000
+    buffers on a 7M-row copy). Ordered, it walks the partial active-rows index
+    from the oldest tee time, which is exactly where elapsed rows sit (392).
+    [revert: drop "ORDER BY teetime" from the inner SELECT]
     [revert: db.execute("UPDATE tee_times SET active = 0 WHERE " + where,
     params) at each call site]"""
+    # Postgres addresses a row by ctid, SQLite/D1 by rowid. The ctid form was
+    # written when the VPS became the only store and silently broke the local
+    # SQLite path (and scripts/test_d1_orphans.py with it: "no such column:
+    # ctid"); pick the column the backend actually has.
+    rid = "ctid" if isinstance(db, HttpBackend) else "rowid"
     total = 0
     for _ in range(2000):          # hard stop: 10M rows per call site
         rows = db.execute(
-            f"UPDATE tee_times SET active = 0 WHERE ctid IN ("
-            f"SELECT ctid FROM tee_times WHERE {where} LIMIT {chunk}) "
+            f"UPDATE tee_times SET active = 0 WHERE {rid} IN ("
+            f"SELECT {rid} FROM tee_times WHERE {where} "
+            f"ORDER BY teetime LIMIT {chunk}) "
             f"RETURNING 1", params)
         total += len(rows)
         if len(rows) < chunk:
