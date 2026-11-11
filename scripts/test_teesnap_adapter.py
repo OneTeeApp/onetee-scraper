@@ -154,7 +154,8 @@ def main() -> None:
           Fake({}, homepage=prop([1550, "1550", {"name": "no id"},
                                   {"id": "1550", "name": "string id"},
                                   {"id": 7, "name": "ok"}])
-               ).discover_courses("hollydotgolf") == [{"id": 7, "name": "ok"}])
+               ).discover_courses("hollydotgolf")
+          == [{"id": 7, "name": "ok", "max_players": None}])
     check("a disabled course is skipped",
           Fake({}, homepage=prop([{"id": 7, "name": "off", "enabled": False}])
                ).discover_courses("hollydotgolf") == [])
@@ -282,6 +283,67 @@ def main() -> None:
           str([t.teetime for t in out]))
     check("its price and holes", out and out[0].price_min == 16.0
           and out[0].holes == [9, 18])
+    check("a booking the list does not carry still takes a seat (4 - 1)",
+          out[0].open_spots == 3, str(out[0].open_spots))
+
+    print("\nfetch: the feed is the whole sheet — full slots are not tee times")
+
+    def lslot(hhmm: str, *sections: list[int]) -> dict:
+        return {"prices": [{"roundType": "EIGHTEEN_HOLE", "price": "16.00"}],
+                "teeOffSections": [{"teeOff": n, "bookings": list(b),
+                                    "isHeld": False}
+                                   for n, b in zip(("FRONT_NINE", "BACK_NINE"),
+                                                   sections)],
+                "teeTime": f"2026-11-11T{hhmm}:00"}
+
+    def book(bid: int, n: int) -> dict:
+        return {"bookingId": bid, "golfers": list(range(n))}
+
+    day = {"teeTimes": {"bookings": [book(1, 4), book(2, 2), book(3, 2),
+                                     book(4, 1), book(5, 3), book(6, 4)],
+                        "teeTimes": [
+        lslot("09:02", []),            # untouched            -> 4
+        lslot("09:10", [1]),           # one foursome         -> gone
+        lslot("09:18", [2, 3]),        # two twosomes         -> gone
+        lslot("09:26", [2]),           # one twosome          -> 2
+        lslot("09:34", [4, 5]),        # 1 + 3                -> gone
+        lslot("09:42", [5]),           # threesome            -> 1
+        lslot("09:50", [1], [4]),      # 1st tee full, 10th 1 -> 3
+        lslot("09:58", [1], [6]),      # both tees full       -> gone
+        {"prices": [], "teeTime": "2026-11-11T10:06:00"},  # no sections -> 4
+    ]}}
+    out = Fake({1550: day}, homepage=single).fetch(COURSE, DATE)
+    got = {t.teetime[11:16]: t.open_spots for t in out}
+    check("full slots are dropped, the rest carry their open seats",
+          got == {"09:02": 4, "09:26": 2, "09:42": 1, "09:50": 3, "10:06": 4},
+          str(got))
+
+    five = prop([{"id": 1550, "key": "hollydotgolf", "name": "Hollydot",
+                  "enabled": True, "deleted_at": None, "max_players": 5}])
+    out = Fake({1550: day}, homepage=five).fetch(COURSE, DATE)
+    got = {t.teetime[11:16]: t.open_spots for t in out}
+    check("the course's own max_players sets the seat count",
+          got.get("09:10") == 1 and got.get("09:02") == 5
+          and "09:58" in got and "09:18" in got, str(got))
+
+    old = {"teeTimes": {"bookings": [book(1, 4), book(2, 2)], "teeTimes": [
+        {"prices": [{"roundType": "EIGHTEEN_HOLE", "price": "38.00"}],
+         "teeOffSections": [
+             {"teeOff": "FRONT_NINE", "bookings": [1],
+              "turnTo": {"time": "2026-07-26T07:10:00"}},
+             {"teeOff": "BACK_NINE", "bookings": [2],
+              "turnTo": {"time": "2026-07-26T09:20:00"}}]}]}}
+    out = Fake({1550: old}, homepage=single).fetch(COURSE, DATE)
+    got = {t.teetime[11:16]: t.open_spots for t in out}
+    check("nested-time shape: each section is judged on its own bookings",
+          got == {"09:20": 2}, str(got))
+
+    pin = dict(COURSE, ids={"subdomain": "hollydotgolf",
+                            "teesnap_course_ids": [131]})
+    out = Fake({131: day}, homepage=five).fetch(pin, DATE)
+    got = {t.teetime[11:16]: t.open_spots for t in out}
+    check("a pinned id the tenant does not list falls back to a foursome",
+          got.get("09:02") == 4 and "09:10" not in got, str(got))
 
     print("\nfetch: pinned registry ids are honoured, and flagged when foreign")
     c = dict(COURSE, ids={"subdomain": "hollydotgolf",
