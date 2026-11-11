@@ -8,6 +8,10 @@ name: Scrape EZLinks via browser (0-6 hourly, 0-30 daily)
 # Hourly: portal availability isn't as volatile as same-day popular slots, and
 # spinning up Chromium every 5 min would be wasteful.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # Split so the DEEP slots have their own cron STRINGS to match on — a
@@ -39,7 +43,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 170
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +53,7 @@ jobs:
       - name: Install deps + Chromium
         run: |
           pip install requests playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium   # deps preinstalled by vps/scraper-host/bootstrap.sh
 
       - name: Scrape + push each date to D1 (tiered horizon)
         env:

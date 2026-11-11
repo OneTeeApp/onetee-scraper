@@ -8,6 +8,10 @@ name: Scrape GolfNow via browser (0-6 hourly, 7-30 in halves every 6h)
 # The plain scraper excludes golfnow, so this job solely owns those slugs in D1.
 # Hourly for the same reason as the other browser jobs.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # SHALLOW, days 0-6. Every hour except the four tail slots below, so the
@@ -46,7 +50,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 170
     # SHARDED, and the shard count lives in a repo VARIABLE so it can be dialled
     # without a commit — the same instant-revert lever as BROWSER_LANES.
@@ -72,7 +76,7 @@ jobs:
       - name: Install deps + Chromium
         run: |
           pip install requests playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium   # deps preinstalled by vps/scraper-host/bootstrap.sh
 
       - name: Scrape + push each date to D1 (tiered horizon)
         env:
@@ -228,7 +232,7 @@ jobs:
     if: >-
       needs.scrape.result == 'success' &&
       (github.event.inputs.window == 'full' || github.event.inputs.deep == 'yes')
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

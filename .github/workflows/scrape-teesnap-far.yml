@@ -9,6 +9,10 @@ name: Scrape Teesnap far (days 6-30, plain HTTP direct, low concurrency)
 # OWNERSHIP. scrape-teesnap.yml owns days 0-6; this owns days 6-30. Teesnap is
 # EXCLUDED from scrape-near.yml / scrape.yml / scrape-far.yml. Plain HTTP, no proxy.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     - cron: "41 */2 * * *"
@@ -28,7 +32,7 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

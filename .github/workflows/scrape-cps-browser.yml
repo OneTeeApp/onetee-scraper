@@ -21,6 +21,10 @@ name: Scrape CPS (plain tenants every 10 min; challenged near = self-chaining lo
 # (plain vs browser) and disjoint date ranges (near vs deep) => one writer per
 # (slug,date).
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # NO near cron here any more. Days 0-3 for the plain tenants moved to
@@ -71,7 +75,7 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule != '7 10 * * *')
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'plain' || github.event.inputs.set == 'all'))
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 60
     concurrency:
       group: scrape-cps-plain
@@ -116,7 +120,7 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule == '7 10 * * *')
       || (github.event_name == 'workflow_dispatch' &&
         (github.event.inputs.set == 'browser' || github.event.inputs.set == 'all'))
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 120
     concurrency:
       group: scrape-cps-browser
@@ -128,7 +132,7 @@ jobs:
           python-version: "3.12"
       - name: Install deps + patched browser + xvfb
         run: |
-          sudo apt-get update && sudo apt-get install -y xvfb
+          command -v xvfb-run >/dev/null || { sudo apt-get update && sudo apt-get install -y xvfb; }   # preinstalled on the scraper host
           pip install requests patchright
           patchright install --with-deps chromium
       - name: Scrape challenged cps tenants (Patchright, no proxy) + push each date to D1

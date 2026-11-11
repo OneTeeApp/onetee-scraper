@@ -26,6 +26,10 @@ name: Scrape far tier (days 8-30, every 2 hours)
 # retries: if a full sweep's derivation fails, as_of stays stale and the next
 # run goes full again instead of waiting for tomorrow.
 
+# 2026-09-01: moved to the self-hosted runner on the scraper VPS (label
+# "scraper"). Same job, your hardware: no 20-slot concurrency cap, no queueing
+# behind the near-tier loops, and Chromium/xvfb come preinstalled by
+# vps/scraper-host/bootstrap.sh instead of apt-under-sudo per run.
 on:
   schedule:
     # CADENCE IS CRON + SUPERVISOR, NOT A SELF-CHAIN (2026-08-16).
@@ -62,7 +66,7 @@ jobs:
   plan:
     # ONE mode decision for the whole run — every shard and the derive job
     # consume this output, so they can never disagree with each other.
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 5
     outputs:
       full: ${{ steps.mode.outputs.full }}
@@ -90,7 +94,7 @@ jobs:
 
   scrape:
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 110
     strategy:
       fail-fast: false
@@ -179,7 +183,7 @@ jobs:
     # automatically retries the full sweep.
     needs: [plan, scrape]
     if: needs.plan.outputs.full == 'yes' && needs.scrape.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, scraper]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
